@@ -1,0 +1,24 @@
+name: fashion
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.9
+  - black
+  - ipython
+  - ipykernel
+  - pytorch
+  - tqdm
+  - numpy
+  - pandas
+  - pytest
+  - tensorboard
+  - torchmetrics
+  - networkx
+  - pip
+  - pip:
+    - torch-geometric
+    - torch-sparse
+    - torch-scatter
+
+prefix: /usr/local/anaconda3/envs/fashion

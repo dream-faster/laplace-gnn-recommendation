@@ -1,1 +1,1 @@
-# fashion-recommendation
+# https://www.kaggle.com/c/h-and-m-personalized-fashion-recommendations
