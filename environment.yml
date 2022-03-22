@@ -15,6 +15,7 @@ dependencies:
   - tensorboard
   - torchmetrics
   - networkx
+  - kaggle
   - pip
   - pip:
     - torch-geometric
