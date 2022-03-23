@@ -32,8 +32,9 @@ class PreprocessingConfig:
 
 
 def preprocess(config: PreprocessingConfig):
-    print("| Loading customers and adding them to the graph...")
+    print("| Loading customers...")
     customers = pd.read_parquet("data/customers.parquet").fillna(0.0)
+    print("| Transforming customers...")
     customers = create_prefixed_values_df(
         customers,
         {
@@ -47,6 +48,7 @@ def preprocess(config: PreprocessingConfig):
         },
     )
 
+    print("| Adding customers to the graph...")
     G_customers = nx.Graph()
     G_customers.add_nodes_from(customers["customer_id"])
 
@@ -66,6 +68,7 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Loading transactions...")
     transactions = pd.read_parquet("data/transactions_train.parquet")
+    print("| Transforming transactions...")
     transactions = create_prefixed_values_df(
         transactions,
         {
@@ -82,6 +85,7 @@ def preprocess(config: PreprocessingConfig):
     for article_id, price in tqdm(transactions_per_article.items()):
         articles.loc[articles["article_id"] == article_id, "avg_price"] = price
 
+    print("| Transforming articles...")
     articles = create_prefixed_values_df(
         articles,
         {
@@ -111,6 +115,7 @@ def preprocess(config: PreprocessingConfig):
     G = G_customers
     G.update(G_articles.edges, G_articles.nodes)
     G.add_edges_from(zip(transactions["article_id"], transactions["customer_id"]))
+
     print("| Saving the graph...")
     nx.write_gpickle(G, "data/graph.gpickle")
 
