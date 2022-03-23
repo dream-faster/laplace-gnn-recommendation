@@ -37,26 +37,30 @@ def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
     customers = pd.read_parquet("data/customers.parquet").fillna(0.0)
     print("| Transforming customers...")
-    customers = create_prefixed_values_df(
-        customers,
-        {
-            "customer_id": "C-",
-            UserColumn.PostalCode.value: "Post-",
-            UserColumn.FN.value: "FN-",
-            UserColumn.Age.value: "Age-",
-            UserColumn.ClubMemberStatus.value: "Club-",
-            UserColumn.FashionNewsFrequency.value: "News-",
-            UserColumn.Active.value: "Active-",
-        },
+    customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
+        customers, "customer_id", 1
     )
+    # TODO: remove this when format stabilizes
+    # customers = create_prefixed_values_df(
+    #     customers,
+    #     {
+    #         UserColumn.PostalCode.value: "Post-",
+    #         UserColumn.FN.value: "FN-",
+    #         UserColumn.Age.value: "Age-",
+    #         UserColumn.ClubMemberStatus.value: "Club-",
+    #         UserColumn.FashionNewsFrequency.value: "News-",
+    #         UserColumn.Active.value: "Active-",
+    #     },
+    # )
 
     print("| Adding customers to the graph...")
     G = nx.Graph()
-    G.add_nodes_from(customers["customer_id"])
+    G.add_nodes_from(customers["index"])
 
-    for column in config.customer_nodes:
-        G.add_nodes_from(customers[column.value])
-        G.add_edges_from(zip(customers["customer_id"], customers[column.value]))
+    # TODO: add back the ability to create nodes from node features
+    # for column in config.customer_nodes:
+    #     G.add_nodes_from(customers[column.value])
+    #     G.add_edges_from(zip(customers["index"], customers[column.value]))
 
     for column in config.customer_features:
         nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
@@ -68,13 +72,14 @@ def preprocess(config: PreprocessingConfig):
     transactions = pd.read_parquet("data/transactions_train.parquet")
     # transactions = transactions[:10000]
     print("| Transforming transactions...")
-    transactions = create_prefixed_values_df(
-        transactions,
-        {
-            "article_id": "A-",
-            "customer_id": "C-",
-        },
-    )
+    # TODO: remove this when format stabilizes
+    # transactions = create_prefixed_values_df(
+    #     transactions,
+    #     {
+    #         "article_id": "A-",
+    #         "customer_id": "C-",
+    #     },
+    # )
 
     print("| Calculating average price per product...")
     transactions_per_article = (
@@ -85,30 +90,39 @@ def preprocess(config: PreprocessingConfig):
         articles.loc[articles["article_id"] == article_id, "avg_price"] = price
 
     print("| Transforming articles...")
-    articles = create_prefixed_values_df(
-        articles,
-        {
-            "article_id": "A-",
-            ArticleColumn.ProductCode.value: "PCode-",
-            ArticleColumn.ProductTypeNo.value: "PType-",
-            ArticleColumn.GraphicalAppearanceNo.value: "Appea-",
-            ArticleColumn.ColourGroupCode.value: "Colour-",
-            ArticleColumn.AvgPrice.value: "Price-",
-        },
+    # TODO: remove this when format stabilizes
+    # articles = create_prefixed_values_df(
+    #     articles,
+    #     {
+    #         ArticleColumn.ProductCode.value: "PCode-",
+    #         ArticleColumn.ProductTypeNo.value: "PType-",
+    #         ArticleColumn.GraphicalAppearanceNo.value: "Appea-",
+    #         ArticleColumn.ColourGroupCode.value: "Colour-",
+    #         ArticleColumn.AvgPrice.value: "Price-",
+    #     },
+    # )
+    articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
+        articles, "article_id", len(customer_id_map_forward) + 1
     )
 
     print("| Adding articles to the graph...")
-    G.add_nodes_from(articles["article_id"])
+    G.add_nodes_from(articles["index"])
 
-    for column in config.article_nodes:
-        G.add_nodes_from(articles[column.value])
-        G.add_edges_from(zip(articles["article_id"], articles[column.value]))
+    # TODO: remove this when format stabilizes
+    # for column in config.article_nodes:
+    #     G.add_nodes_from(articles[column.value])
+    #     G.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
     for column in config.article_features:
         nx.set_node_attributes(G, articles[column.value].to_dict(), column.value)
 
     print("| Adding transactions to the graph...")
-    G.add_edges_from(zip(transactions["article_id"], transactions["customer_id"]))
+    G.add_edges_from(
+        zip(
+            transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
+            transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
+        )
+    )
 
     print("| Calculating the K-core of the graph...")
     G = nx.k_core(G, config.K)
@@ -117,10 +131,22 @@ def preprocess(config: PreprocessingConfig):
     nx.write_gpickle(G, "data/graph.gpickle")
 
 
+# TODO: remove this when format stabilizes
 def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
     for key, value in tqdm(prefix_mapping.items()):
         df[key] = df[key].apply(lambda x: value + str(x))
     return df
+
+
+def create_ids_and_maps(
+    df: pd.DataFrame, column: str, start: int
+) -> tuple[pd.DataFrame, dict, dict]:
+    df.index += start
+    mapping_forward = df[column].to_dict()
+    mapping_reverse = {v: k for k, v in mapping_forward.items()}
+    df.drop(column, axis=1, inplace=True)
+    df.reset_index(inplace=True)
+    return df, mapping_forward, mapping_reverse
 
 
 only_users_and_articles_nodes = PreprocessingConfig(
