@@ -30,6 +30,8 @@ class PreprocessingConfig:
     article_features: list[ArticleColumn]
     article_nodes: list[ArticleColumn]
 
+    K: int
+
 
 def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
@@ -49,25 +51,22 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Adding customers to the graph...")
-    G_customers = nx.Graph()
-    G_customers.add_nodes_from(customers["customer_id"])
+    G = nx.Graph()
+    G.add_nodes_from(customers["customer_id"])
 
     for column in config.customer_nodes:
-        G_customers.add_nodes_from(customers[column.value])
-        G_customers.add_edges_from(
-            zip(customers["customer_id"], customers[column.value])
-        )
+        G.add_nodes_from(customers[column.value])
+        G.add_edges_from(zip(customers["customer_id"], customers[column.value]))
 
     for column in config.customer_features:
-        nx.set_node_attributes(
-            G_customers, customers[column.value].to_dict(), column.value
-        )
+        nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
 
     print("| Loading articles...")
     articles = pd.read_parquet("data/articles.parquet").fillna(0.0)
 
     print("| Loading transactions...")
     transactions = pd.read_parquet("data/transactions_train.parquet")
+    # transactions = transactions[:10000]
     print("| Transforming transactions...")
     transactions = create_prefixed_values_df(
         transactions,
@@ -99,22 +98,20 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Adding articles to the graph...")
-    G_articles = nx.Graph()
-    G_articles.add_nodes_from(articles["article_id"])
+    G.add_nodes_from(articles["article_id"])
 
     for column in config.article_nodes:
-        G_articles.add_nodes_from(articles[column.value])
-        G_customers.add_edges_from(zip(articles["article_id"], articles[column.value]))
+        G.add_nodes_from(articles[column.value])
+        G.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
     for column in config.article_features:
-        nx.set_node_attributes(
-            G_articles, articles[column.value].to_dict(), column.value
-        )
+        nx.set_node_attributes(G, articles[column.value].to_dict(), column.value)
 
     print("| Adding transactions to the graph...")
-    G = G_customers
-    G.update(G_articles.edges, G_articles.nodes)
     G.add_edges_from(zip(transactions["article_id"], transactions["customer_id"]))
+
+    print("| Calculating the K-core of the graph...")
+    G = nx.k_core(G, config.K)
 
     print("| Saving the graph...")
     nx.write_gpickle(G, "data/graph.gpickle")
@@ -143,6 +140,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # ArticleColumn.ColourGroupCode,
     ],
     article_nodes=[],
+    K=10,
 )
 
 preprocess(only_users_and_articles_nodes)
