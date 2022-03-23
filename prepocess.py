@@ -94,7 +94,6 @@ def preprocess(config: PreprocessingConfig):
         },
     )
 
-
     print("| Adding articles to the graph...")
     G_articles = nx.Graph()
     G_articles.add_nodes_from(articles["article_id"])
@@ -112,6 +111,7 @@ def preprocess(config: PreprocessingConfig):
     G = G_customers
     G.update(G_articles.edges, G_articles.nodes)
     G.add_edges_from(zip(transactions["article_id"], transactions["customer_id"]))
+    print("| Saving the graph...")
     nx.write_gpickle(G, "data/graph.gpickle")
 
 
