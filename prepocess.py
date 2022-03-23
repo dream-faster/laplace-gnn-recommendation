@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 import pandas as pd
 import networkx as nx
-
+from tqdm import tqdm
 
 
 class UserColumn(Enum):
@@ -11,17 +11,19 @@ class UserColumn(Enum):
     Age = "age"
     ClubMemberStatus = "club_member_status"
     FashionNewsFrequency = "fashion_news_frequency"
-    Active = "active"
+    Active = "Active"
+
 
 class ArticleColumn(Enum):
     ProductCode = "product_code"
     ProductTypeNo = "product_type_no"
     GraphicalAppearanceNo = "graphical_appearance_no"
     ColourGroupCode = "colour_group_code"
+    AvgPrice = "avg_price"
 
 
 @dataclass
-class PreprocessingConfig():
+class PreprocessingConfig:
     customer_features: list[UserColumn]
     customer_nodes: list[UserColumn]
 
@@ -29,25 +31,113 @@ class PreprocessingConfig():
     article_nodes: list[ArticleColumn]
 
 
-
 def preprocess(config: PreprocessingConfig):
-    customers = pd.read_parquet('data/customers.parquet').fillna(0.)
+    print("| Loading customers and adding them to the graph...")
+    customers = pd.read_parquet("data/customers.parquet").fillna(0.0)
+    customers = create_prefixed_values_df(
+        customers,
+        {
+            "customer_id": "C-",
+            UserColumn.PostalCode.value: "Post-",
+            UserColumn.FN.value: "FN-",
+            UserColumn.Age.value: "Age-",
+            UserColumn.ClubMemberStatus.value: "Club-",
+            UserColumn.FashionNewsFrequency.value: "News-",
+            UserColumn.Active.value: "Active-",
+        },
+    )
+
     G_customers = nx.Graph()
-    G_customers.add_nodes_from(["C-" + c for c in customers['customer_id']])
-    G_customers.add_nodes_from(["Post-" + p for p in customers['postal_code']])
-    G_customers.add_edges_from([("C-" + c, "Post-" + p) for c, p in zip(customers['customer_id'], customers['postal_code'])])
+    G_customers.add_nodes_from(customers["customer_id"])
 
-    articles = pd.read_parquet('data/articles.parquet').fillna(0.)
-    transactions = pd.read_parquet('data/transactions_train.parquet')
+    for column in config.customer_nodes:
+        G_customers.add_nodes_from(customers[column.value])
+        G_customers.add_edges_from(
+            zip(customers["customer_id"], customers[column.value])
+        )
 
-    transactions_per_article = transactions.groupby(['article_id']).mean()['price'].to_dict()
+    for column in config.customer_features:
+        nx.set_node_attributes(
+            G_customers, customers[column.value].to_dict(), column.value
+        )
 
+    print("| Loading articles...")
+    articles = pd.read_parquet("data/articles.parquet").fillna(0.0)
+
+    print("| Loading transactions...")
+    transactions = pd.read_parquet("data/transactions_train.parquet")
+    transactions = create_prefixed_values_df(
+        transactions,
+        {
+            "article_id": "A-",
+            "customer_id": "C-",
+        },
+    )
+
+    print("| Calculating average price per product...")
+    transactions_per_article = (
+        transactions.groupby(["article_id"]).mean()["price"].to_dict()
+    )
+    articles["avg_price"] = 0.0
+    for article_id, price in tqdm(transactions_per_article.items()):
+        articles.loc[articles["article_id"] == article_id, "avg_price"] = price
+
+    articles = create_prefixed_values_df(
+        articles,
+        {
+            "article_id": "A-",
+            ArticleColumn.ProductCode.value: "PCode-",
+            ArticleColumn.ProductTypeNo.value: "PType-",
+            ArticleColumn.GraphicalAppearanceNo.value: "Appea-",
+            ArticleColumn.ColourGroupCode.value: "Colour-",
+            ArticleColumn.AvgPrice.value: "Price-",
+        },
+    )
+
+
+    print("| Adding articles to the graph...")
     G_articles = nx.Graph()
-    G_articles.add_nodes_from(["A-" + str(c) for c in articles['article_id']])
-    G_articles.add_nodes_from(["Product-" + str(p) for p in articles['product_code']])
-    G_articles.add_edges_from([("A-" + str(a), "Product-" + str(p)) for a, p in zip(articles['article_id'], articles['product_code'])])
+    G_articles.add_nodes_from(articles["article_id"])
 
-    G = G_customers.update(G_articles.nodes, G_articles.edges)
-    print(G.nodes)
+    for column in config.article_nodes:
+        G_articles.add_nodes_from(articles[column.value])
+        G_customers.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
-preprocess(PreprocessingConfig(customer_features=[UserColumn.Active], customer_nodes=[UserColumn.PostalCode, UserColumn.Age], article_features=[], article_nodes=[]))
+    for column in config.article_features:
+        nx.set_node_attributes(
+            G_articles, articles[column.value].to_dict(), column.value
+        )
+
+    print("| Adding transactions to the graph...")
+    G = G_customers
+    G.update(G_articles.edges, G_articles.nodes)
+    G.add_edges_from(zip(transactions["article_id"], transactions["customer_id"]))
+    nx.write_gpickle(G, "data/graph.gpickle")
+
+
+def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
+    for key, value in tqdm(prefix_mapping.items()):
+        df[key] = df[key].apply(lambda x: value + str(x))
+    return df
+
+
+only_users_and_articles_nodes = PreprocessingConfig(
+    customer_features=[
+        UserColumn.PostalCode,
+        # UserColumn.FN,
+        # UserColumn.Age,
+        # UserColumn.ClubMemberStatus,
+        # UserColumn.FashionNewsFrequency,
+        # UserColumn.Active,
+    ],
+    customer_nodes=[],
+    article_features=[
+        ArticleColumn.ProductCode,
+        # ArticleColumn.ProductTypeNo,
+        # ArticleColumn.GraphicalAppearanceNo,
+        # ArticleColumn.ColourGroupCode,
+    ],
+    article_nodes=[],
+)
+
+preprocess(only_users_and_articles_nodes)
