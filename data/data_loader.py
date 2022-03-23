@@ -39,12 +39,12 @@ config = DataLoaderConfig(test_split=0.15, val_split=0.15)
 def run_dataloader(
     config: DataLoaderConfig,
 ) -> tuple[
-    tuple(FashionDataset, GeoData),
-    tuple(FashionDataset, GeoData),
-    tuple(FashionDataset, GeoData),
+    tuple[FashionDataset, GeoData],
+    tuple[FashionDataset, GeoData],
+    tuple[FashionDataset, GeoData],
 ]:
     # %%
-    graph = read_graph("data/graph.gpickle")
+    graph = read_graph("data/saved/graph.gpickle")
     data = graph_to_GeoData(graph)
     train_split, val_split, test_split = train_test_val_split(data, config)
 
