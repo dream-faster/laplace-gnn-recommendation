@@ -4,7 +4,7 @@ import torch
 
 class FashionDataset(Dataset):
     """
-    Dataset object containing the Spotify supervision/evaluation edges. This will be used by the DataLoader to load
+    Dataset object containing the Fashion supervision/evaluation edges. This will be used by the DataLoader to load
     batches of edges to calculate loss or evaluation metrics on. Here, get(idx) will return ALL outgoing edges of the graph
     corresponding to playlist "idx." This is because when calculating metrics such as recall@k, we need all of the
     playlist's positive edges in the same batch.

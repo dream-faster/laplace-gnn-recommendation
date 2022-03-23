@@ -1,17 +1,12 @@
 #%%
-from dataclasses import dataclass
+
 import networkx as nx
 from torch_geometric.utils.convert import from_networkx
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import Data as GeoData
 from data.dataset import FashionDataset
-from data.utils import read_graph, graph_to_GeoData
-
-
-@dataclass
-class DataLoaderConfig:
-    val_split: float
-    test_split: float
+from utils.types import DataLoaderConfig
+from utils.data import read_graph, graph_to_GeoData
 
 
 def train_test_val_split(

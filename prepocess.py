@@ -3,6 +3,7 @@ from enum import Enum
 import pandas as pd
 import networkx as nx
 from tqdm import tqdm
+from utils.types import PreprocessingConfig
 
 
 class UserColumn(Enum):
@@ -20,18 +21,6 @@ class ArticleColumn(Enum):
     GraphicalAppearanceNo = "graphical_appearance_no"
     ColourGroupCode = "colour_group_code"
     AvgPrice = "avg_price"
-
-
-@dataclass
-class PreprocessingConfig:
-    customer_features: list[UserColumn]
-    customer_nodes: list[UserColumn]
-
-    article_features: list[ArticleColumn]
-    article_nodes: list[ArticleColumn]
-
-    K: int
-    data_size: int
 
 
 def preprocess(config: PreprocessingConfig):
