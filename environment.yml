@@ -16,6 +16,8 @@ dependencies:
   - torchmetrics
   - networkx
   - kaggle
+  - pyarrow
+  - fastparquet
   - pip
   - pip:
     - torch-geometric
