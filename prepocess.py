@@ -36,7 +36,7 @@ class PreprocessingConfig:
 
 def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
-    customers = pd.read_parquet("data/customers.parquet").fillna(0.0)
+    customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     print("| Transforming customers...")
     customers = create_prefixed_values_df(
         customers,
@@ -63,10 +63,10 @@ def preprocess(config: PreprocessingConfig):
         nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
 
     print("| Loading articles...")
-    articles = pd.read_parquet("data/articles.parquet").fillna(0.0)
+    articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
 
     print("| Loading transactions...")
-    transactions = pd.read_parquet("data/transactions_train.parquet")
+    transactions = pd.read_parquet("data/original/transactions_train.parquet")
     if config.data_size is not None:
         transactions = transactions.iloc[: config.data_size]
         # transactions = transactions[:10000]
@@ -117,7 +117,7 @@ def preprocess(config: PreprocessingConfig):
     G = nx.k_core(G, config.K)
 
     print("| Saving the graph...")
-    nx.write_gpickle(G, "data/graph.gpickle")
+    nx.write_gpickle(G, "data/saved/graph.gpickle")
 
 
 def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
