@@ -1,41 +1,13 @@
 from dataclasses import dataclass
-from enum import Enum
 import pandas as pd
 import networkx as nx
 from tqdm import tqdm
-
-
-class UserColumn(Enum):
-    PostalCode = "postal_code"
-    FN = "FN"
-    Age = "age"
-    ClubMemberStatus = "club_member_status"
-    FashionNewsFrequency = "fashion_news_frequency"
-    Active = "Active"
-
-
-class ArticleColumn(Enum):
-    ProductCode = "product_code"
-    ProductTypeNo = "product_type_no"
-    GraphicalAppearanceNo = "graphical_appearance_no"
-    ColourGroupCode = "colour_group_code"
-    AvgPrice = "avg_price"
-
-
-@dataclass
-class PreprocessingConfig:
-    customer_features: list[UserColumn]
-    customer_nodes: list[UserColumn]
-
-    article_features: list[ArticleColumn]
-    article_nodes: list[ArticleColumn]
-
-    K: int
+from utils.types import PreprocessingConfig, UserColumn, ArticleColumn
 
 
 def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
-    customers = pd.read_parquet("data/customers.parquet").fillna(0.0)
+    customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     print("| Transforming customers...")
     customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
         customers, "customer_id", 1
@@ -66,11 +38,13 @@ def preprocess(config: PreprocessingConfig):
         nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
 
     print("| Loading articles...")
-    articles = pd.read_parquet("data/articles.parquet").fillna(0.0)
+    articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
 
     print("| Loading transactions...")
-    transactions = pd.read_parquet("data/transactions_train.parquet")
-    # transactions = transactions[:10000]
+    transactions = pd.read_parquet("data/original/transactions_train.parquet")
+    if config.data_size is not None:
+        transactions = transactions.iloc[: config.data_size]
+        # transactions = transactions[:10000]
     print("| Transforming transactions...")
     # TODO: remove this when format stabilizes
     # transactions = create_prefixed_values_df(
@@ -128,7 +102,7 @@ def preprocess(config: PreprocessingConfig):
     G = nx.k_core(G, config.K)
 
     print("| Saving the graph...")
-    nx.write_gpickle(G, "data/graph.gpickle")
+    nx.write_gpickle(G, "data/saved/graph.gpickle")
 
 
 # TODO: remove this when format stabilizes
@@ -166,7 +140,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # ArticleColumn.ColourGroupCode,
     ],
     article_nodes=[],
-    K=10,
+    K=2,
+    data_size=1000,
 )
 
 preprocess(only_users_and_articles_nodes)
