@@ -31,6 +31,7 @@ class PreprocessingConfig:
     article_nodes: list[ArticleColumn]
 
     K: int
+    data_size: int
 
 
 def preprocess(config: PreprocessingConfig):
@@ -66,7 +67,9 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Loading transactions...")
     transactions = pd.read_parquet("data/transactions_train.parquet")
-    # transactions = transactions[:10000]
+    if config.data_size is not None:
+        transactions = transactions.iloc[: config.data_size]
+        # transactions = transactions[:10000]
     print("| Transforming transactions...")
     transactions = create_prefixed_values_df(
         transactions,
@@ -140,7 +143,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # ArticleColumn.ColourGroupCode,
     ],
     article_nodes=[],
-    K=10,
+    K=2,
+    data_size=1000,
 )
 
 preprocess(only_users_and_articles_nodes)
