@@ -1,26 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum
 import pandas as pd
 import networkx as nx
 from tqdm import tqdm
-from utils.types import PreprocessingConfig
-
-
-class UserColumn(Enum):
-    PostalCode = "postal_code"
-    FN = "FN"
-    Age = "age"
-    ClubMemberStatus = "club_member_status"
-    FashionNewsFrequency = "fashion_news_frequency"
-    Active = "Active"
-
-
-class ArticleColumn(Enum):
-    ProductCode = "product_code"
-    ProductTypeNo = "product_type_no"
-    GraphicalAppearanceNo = "graphical_appearance_no"
-    ColourGroupCode = "colour_group_code"
-    AvgPrice = "avg_price"
+from utils.types import PreprocessingConfig, UserColumn, ArticleColumn
 
 
 def preprocess(config: PreprocessingConfig):

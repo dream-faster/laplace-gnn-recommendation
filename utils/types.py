@@ -1,4 +1,22 @@
 from dataclasses import dataclass
+from enum import Enum
+
+
+class UserColumn(Enum):
+    PostalCode = "postal_code"
+    FN = "FN"
+    Age = "age"
+    ClubMemberStatus = "club_member_status"
+    FashionNewsFrequency = "fashion_news_frequency"
+    Active = "Active"
+
+
+class ArticleColumn(Enum):
+    ProductCode = "product_code"
+    ProductTypeNo = "product_type_no"
+    GraphicalAppearanceNo = "graphical_appearance_no"
+    ColourGroupCode = "colour_group_code"
+    AvgPrice = "avg_price"
 
 
 @dataclass
