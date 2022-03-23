@@ -1,13 +1,13 @@
 name: fashion
 channels:
   - conda-forge
-  - pytorch
+  - pyg
 dependencies:
   - python=3.9
   - black
   - ipython
   - ipykernel
-  - pytorch
+  - pytorch=1.10.2
   - tqdm
   - numpy
   - pandas
