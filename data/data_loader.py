@@ -1,11 +1,9 @@
-#%%
-
-import networkx as nx
 from torch_geometric.utils.convert import from_networkx
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import Data as PyGData
 from data.dataset import FashionDataset
 from data.types import DataLoaderConfig
+import torch
 
 
 def train_test_val_split(
@@ -42,9 +40,7 @@ def run_dataloader(
     tuple[FashionDataset, PyGData],
     tuple[FashionDataset, PyGData],
 ]:
-    # %%
-    graph = nx.read_gpickle("data/derived/graph.gpickle")
-    data = from_networkx(graph)
+    data = torch.load("data/derived/graph.pt")
     train_split, val_split, test_split = train_test_val_split(data, config)
 
     train_ev = FashionDataset("temp", edge_index=train_split.edge_label_index)

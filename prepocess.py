@@ -4,6 +4,7 @@ from data.types import PreprocessingConfig, UserColumn, ArticleColumn
 from torch_geometric.utils.convert import from_networkx
 import torch
 import networkit as nk
+from torch_geometric.data import Data
 
 
 def preprocess(config: PreprocessingConfig):
@@ -49,16 +50,15 @@ def preprocess(config: PreprocessingConfig):
     node_features = pd.concat([node_features, article_features], axis=0)
 
     print("| Adding transactions to the graph...")
-    G = nk.Graph(n=node_features.shape[0])
+    # G = nk.Graph(n=node_features.shape[0])
+    # edge_pairs = zip(
+    #     transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
+    #     transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
+    # )
+    # TODO: if we want to get k-core working, we need to use networkit (but there are some issues there)
+    # for edge in tqdm(edge_pairs):
+    #     G.addEdge(edge[0], edge[1])
 
-    edge_pairs = zip(
-        transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
-        transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
-    )
-    for edge in tqdm(edge_pairs):
-        G.addEdge(edge[0], edge[1])
-
-    # TODO: this is currently failing because the number of edges don't match in the original (networkit) and converted (networkx), will make it work later.
     # print("| Calculating the K-core of the graph...")
     # original_node_count = G.numberOfNodes()
     # k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
@@ -72,8 +72,17 @@ def preprocess(config: PreprocessingConfig):
     # )
 
     # print("| Converting the graph to torch-geometric format...")
-    G = nk.nxadapter.nk2nx(G)
-    data = from_networkx(G)
+    # G = nk.nxadapter.nk2nx(G)
+
+    print("| Creating PyG Data...")
+    data = Data(
+        edge_index=torch.Tensor(
+            [
+                transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
+                transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
+            ]
+        )
+    )
 
     print("| Saving the graph...")
     torch.save(data, "data/derived/graph.pt")
@@ -115,7 +124,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     K=0,
-    data_size=1000000,
+    data_size=None,
 )
 
 preprocess(only_users_and_articles_nodes)
