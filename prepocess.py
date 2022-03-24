@@ -1,9 +1,9 @@
 import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
-from igraph import *
-from torch_geometric.data import Data
+from torch_geometric.utils.convert import from_networkx
 import torch
+import networkit as nk
 
 
 def preprocess(config: PreprocessingConfig):
@@ -49,25 +49,30 @@ def preprocess(config: PreprocessingConfig):
     node_features = pd.concat([node_features, article_features], axis=0)
 
     print("| Adding transactions to the graph...")
-    G = Graph(n=node_features.shape[0], vertex_attrs=node_features.to_dict())
+    G = nk.Graph(n=node_features.shape[0])
 
     edge_pairs = zip(
         transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
         transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
     )
-    G.add_edges(edge_pairs)
+    for edge in tqdm(edge_pairs):
+        G.addEdge(edge[0], edge[1])
 
     print("| Calculating the K-core of the graph...")
-    original_node_count = G.vcount()
-    G = G.k_core(config.K)
+    original_node_count = G.numberOfNodes()
+    k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
+    k_core_per_node = [row[0] for row in k_core_per_node if row[1] >= config.K]
+    for node in tqdm(k_core_per_node):
+        G.removeNode(node)
+    node_features.drop(node_features.index[k_core_per_node], axis=0, inplace=True)
+
     print(
-        f"     Number of nodes in the K-core: {G.vcount()}, kept: {round(G.vcount() / original_node_count, 2)}%"
+        f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
     )
 
     print("| Converting the graph to torch-geometric format...")
-    adj_matrix = G.get_adjacency_sparse()
-    vertex_features = G.vs.attributes()
-    data = Data(edge_index=adj_matrix)
+    G = nk.nxadapter.nk2nx(G)
+    data = from_networkx(G)
 
     print("| Saving the graph...")
     torch.save(data, "data/derived/graph.pt")
@@ -108,8 +113,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
-    K=20,
-    data_size=10000000,
+    K=10,
+    data_size=1000000,
 )
 
 preprocess(only_users_and_articles_nodes)
