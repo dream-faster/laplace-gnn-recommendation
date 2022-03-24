@@ -58,19 +58,20 @@ def preprocess(config: PreprocessingConfig):
     for edge in tqdm(edge_pairs):
         G.addEdge(edge[0], edge[1])
 
-    print("| Calculating the K-core of the graph...")
-    original_node_count = G.numberOfNodes()
-    k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
-    k_core_per_node = [row[0] for row in k_core_per_node if row[1] >= config.K]
-    for node in tqdm(k_core_per_node):
-        G.removeNode(node)
-    node_features.drop(node_features.index[k_core_per_node], axis=0, inplace=True)
+    # TODO: this is currently failing because the number of edges don't match in the original (networkit) and converted (networkx), will make it work later.
+    # print("| Calculating the K-core of the graph...")
+    # original_node_count = G.numberOfNodes()
+    # k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
+    # k_core_per_node = [row[0] for row in k_core_per_node if row[1] >= config.K]
+    # for node in tqdm(k_core_per_node):
+    #     G.removeNode(node)
+    # node_features.drop(node_features.index[k_core_per_node], axis=0, inplace=True)
 
-    print(
-        f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
-    )
+    # print(
+    #     f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
+    # )
 
-    print("| Converting the graph to torch-geometric format...")
+    # print("| Converting the graph to torch-geometric format...")
     G = nk.nxadapter.nk2nx(G)
     data = from_networkx(G)
 
@@ -92,7 +93,7 @@ def create_ids_and_maps(
     mapping_forward = df[column].to_dict()
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
     df.drop(column, axis=1, inplace=True)
-    df.reset_index(inplace=True)
+    df["index"] = df.index
     return df, mapping_forward, mapping_reverse
 
 
@@ -113,7 +114,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
-    K=10,
+    K=0,
     data_size=1000000,
 )
 
