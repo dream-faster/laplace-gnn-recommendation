@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 import pandas as pd
 import networkx as nx
 from tqdm import tqdm
 from utils.types import PreprocessingConfig, UserColumn, ArticleColumn
+import networkit as nk
 
 
 def preprocess(config: PreprocessingConfig):
@@ -10,7 +10,7 @@ def preprocess(config: PreprocessingConfig):
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     print("| Transforming customers...")
     customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
-        customers, "customer_id", 1
+        customers, "customer_id", 0
     )
     # TODO: remove this when format stabilizes
     # customers = create_prefixed_values_df(
@@ -26,16 +26,17 @@ def preprocess(config: PreprocessingConfig):
     # )
 
     print("| Adding customers to the graph...")
-    G = nx.Graph()
-    G.add_nodes_from(customers["index"])
+    G = nk.Graph()
+    G.addNodes(customers.shape[0])
+    # G.add(customers["index"])
 
     # TODO: add back the ability to create nodes from node features
     # for column in config.customer_nodes:
     #     G.add_nodes_from(customers[column.value])
     #     G.add_edges_from(zip(customers["index"], customers[column.value]))
 
-    for column in config.customer_features:
-        nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
+    # for column in config.customer_features:
+    #     nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
 
     print("| Loading articles...")
     articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
@@ -80,26 +81,27 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Adding articles to the graph...")
-    G.add_nodes_from(articles["index"])
+    G.addNodes(articles.shape[0])
 
     # TODO: remove this when format stabilizes
     # for column in config.article_nodes:
     #     G.add_nodes_from(articles[column.value])
     #     G.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
-    for column in config.article_features:
-        nx.set_node_attributes(G, articles[column.value].to_dict(), column.value)
+    # for column in config.article_features:
+    #     nx.set_node_attributes(G, articles[column.value].to_dict(), column.value)
 
     print("| Adding transactions to the graph...")
-    G.add_edges_from(
-        zip(
-            transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
-            transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
-        )
+
+    edge_pairs = zip(
+        transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
+        transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
     )
+    for edge_pair in tqdm(edge_pairs):
+        G.addEdge(edge_pair[0], edge_pair[1])
 
     print("| Calculating the K-core of the graph...")
-    G = nx.k_core(G, config.K)
+    G = nk.centrality.CoreDecomposition(G)
 
     print("| Saving the graph...")
     nx.write_gpickle(G, "data/saved/graph.gpickle")
