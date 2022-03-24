@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 data/original/**
-data/saved/**
+data/derived/**

@@ -1,8 +1,9 @@
 import pandas as pd
-import networkx as nx
 from tqdm import tqdm
-from utils.types import PreprocessingConfig, UserColumn, ArticleColumn
-import networkit as nk
+from data.types import PreprocessingConfig, UserColumn, ArticleColumn
+from igraph import *
+from torch_geometric.data import Data
+import torch
 
 
 def preprocess(config: PreprocessingConfig):
@@ -12,31 +13,14 @@ def preprocess(config: PreprocessingConfig):
     customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
         customers, "customer_id", 0
     )
-    # TODO: remove this when format stabilizes
-    # customers = create_prefixed_values_df(
-    #     customers,
-    #     {
-    #         UserColumn.PostalCode.value: "Post-",
-    #         UserColumn.FN.value: "FN-",
-    #         UserColumn.Age.value: "Age-",
-    #         UserColumn.ClubMemberStatus.value: "Club-",
-    #         UserColumn.FashionNewsFrequency.value: "News-",
-    #         UserColumn.Active.value: "Active-",
-    #     },
-    # )
 
-    print("| Adding customers to the graph...")
-    G = nk.Graph()
-    G.addNodes(customers.shape[0])
-    # G.add(customers["index"])
-
+    print("| Adding customer features...")
     # TODO: add back the ability to create nodes from node features
     # for column in config.customer_nodes:
     #     G.add_nodes_from(customers[column.value])
     #     G.add_edges_from(zip(customers["index"], customers[column.value]))
 
-    # for column in config.customer_features:
-    #     nx.set_node_attributes(G, customers[column.value].to_dict(), column.value)
+    node_features = customers[[c.value for c in config.customer_features]]
 
     print("| Loading articles...")
     articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
@@ -44,67 +28,49 @@ def preprocess(config: PreprocessingConfig):
     print("| Loading transactions...")
     transactions = pd.read_parquet("data/original/transactions_train.parquet")
     if config.data_size is not None:
-        transactions = transactions.iloc[: config.data_size]
-        # transactions = transactions[:10000]
-    print("| Transforming transactions...")
-    # TODO: remove this when format stabilizes
-    # transactions = create_prefixed_values_df(
-    #     transactions,
-    #     {
-    #         "article_id": "A-",
-    #         "customer_id": "C-",
-    #     },
-    # )
+        transactions = transactions[: config.data_size]
 
     print("| Calculating average price per product...")
-    transactions_per_article = (
-        transactions.groupby(["article_id"]).mean()["price"].to_dict()
-    )
-    articles["avg_price"] = 0.0
-    for article_id, price in tqdm(transactions_per_article.items()):
-        articles.loc[articles["article_id"] == article_id, "avg_price"] = price
+    transactions_per_article = transactions.groupby(["article_id"]).mean()["price"]
+    articles = articles.merge(
+        transactions_per_article, on="article_id", how="outer"
+    ).fillna(0.0)
 
-    print("| Transforming articles...")
-    # TODO: remove this when format stabilizes
-    # articles = create_prefixed_values_df(
-    #     articles,
-    #     {
-    #         ArticleColumn.ProductCode.value: "PCode-",
-    #         ArticleColumn.ProductTypeNo.value: "PType-",
-    #         ArticleColumn.GraphicalAppearanceNo.value: "Appea-",
-    #         ArticleColumn.ColourGroupCode.value: "Colour-",
-    #         ArticleColumn.AvgPrice.value: "Price-",
-    #     },
-    # )
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
-        articles, "article_id", len(customer_id_map_forward) + 1
+        articles, "article_id", len(customer_id_map_forward)
     )
 
-    print("| Adding articles to the graph...")
-    G.addNodes(articles.shape[0])
-
-    # TODO: remove this when format stabilizes
+    # TODO: add back the ability to create nodes from node features
     # for column in config.article_nodes:
     #     G.add_nodes_from(articles[column.value])
     #     G.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
-    # for column in config.article_features:
-    #     nx.set_node_attributes(G, articles[column.value].to_dict(), column.value)
+    article_features = articles[[c.value for c in config.article_features]]
+    node_features = pd.concat([node_features, article_features], axis=0)
 
     print("| Adding transactions to the graph...")
+    G = Graph(n=node_features.shape[0], vertex_attrs=node_features.to_dict())
 
     edge_pairs = zip(
         transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
         transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
     )
-    for edge_pair in tqdm(edge_pairs):
-        G.addEdge(edge_pair[0], edge_pair[1])
+    G.add_edges(edge_pairs)
 
     print("| Calculating the K-core of the graph...")
-    G = nk.centrality.CoreDecomposition(G)
+    original_node_count = G.vcount()
+    G = G.k_core(config.K)
+    print(
+        f"     Number of nodes in the K-core: {G.vcount()}, kept: {round(G.vcount() / original_node_count, 2)}%"
+    )
+
+    print("| Converting the graph to torch-geometric format...")
+    adj_matrix = G.get_adjacency_sparse()
+    vertex_features = G.vs.attributes()
+    data = Data(edge_index=adj_matrix)
 
     print("| Saving the graph...")
-    nx.write_gpickle(G, "data/saved/graph.gpickle")
+    torch.save(data, "data/derived/graph.pt")
 
 
 # TODO: remove this when format stabilizes
@@ -134,16 +100,16 @@ only_users_and_articles_nodes = PreprocessingConfig(
         # UserColumn.FashionNewsFrequency,
         # UserColumn.Active,
     ],
-    customer_nodes=[],
+    # customer_nodes=[],
     article_features=[
         ArticleColumn.ProductCode,
         # ArticleColumn.ProductTypeNo,
         # ArticleColumn.GraphicalAppearanceNo,
         # ArticleColumn.ColourGroupCode,
     ],
-    article_nodes=[],
-    K=2,
-    data_size=1000,
+    # article_nodes=[],
+    K=20,
+    data_size=10000000,
 )
 
 preprocess(only_users_and_articles_nodes)

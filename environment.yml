@@ -18,7 +18,6 @@ dependencies:
   - kaggle
   - pyarrow
   - fastparquet
-  - networkit
   - pyright
   - pip
   - pip:
