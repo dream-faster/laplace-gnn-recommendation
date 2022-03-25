@@ -1,31 +1,28 @@
-"""
-Defines the architecture of the full LightGCN model.
-"""
-
 import torch
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import degree
 from utils.metrics import recall_at_k
+from torch_geometric.data import Data as PyGData
 
 
 class GNN(torch.nn.Module):
     """
-    Overall graph neural network. Consists of learnable user/item (i.e., playlist/song) embeddings
+    Overall graph neural network. Consists of learnable user/item embeddings
     and LightGCN layers.
     """
 
-    def __init__(self, embedding_dim, num_nodes, num_playlists, num_layers):
+    def __init__(
+        self, embedding_dim: int, num_nodes: int, num_customers: int, num_layers: int
+    ):
         super(GNN, self).__init__()
 
         self.embedding_dim = embedding_dim
-        self.num_nodes = (
-            num_nodes  # total number of nodes (songs + playlists) in dataset
-        )
-        self.num_playlists = num_playlists  # total number of playlists in dataset
+        self.num_nodes = num_nodes
+        self.num_customers = num_customers
         self.num_layers = num_layers
 
-        # Initialize embeddings for all playlists and songs. Playlists will have indices from 0...num_playlists-1,
-        # songs will have indices from num_playlists...num_nodes-1
+        # Initialize embeddings for all customers and articles. Customers will have indices from 0...customers-1,
+        # articles will have indices from articles...articles-1
         self.embeddings = torch.nn.Embedding(
             num_embeddings=self.num_nodes, embedding_dim=self.embedding_dim
         )
@@ -42,7 +39,7 @@ class GNN(torch.nn.Module):
             "forward() has not been implemented for the GNN class. Do not use"
         )
 
-    def gnn_propagation(self, edge_index_mp):
+    def gnn_propagation(self, edge_index_mp: torch.Tensor) -> torch.Tensor:
         """
         Performs the linear embedding propagation (using the LightGCN layers) and calculates final (multi-scale) embeddings
         for each user/item, which are calculated as a weighted sum of that user/item's embeddings at each layer (from
@@ -67,23 +64,27 @@ class GNN(torch.nn.Module):
         )  # take average to calculate multi-scale embeddings
         return final_embs
 
-    def predict_scores(self, edge_index, embs):
+    def predict_scores(
+        self, edge_index: torch.Tensor, embs: torch.Tensor
+    ) -> torch.Tensor:
         """
-        Calculates predicted scores for each playlist/song pair in the list of edges. Uses dot product of their embeddings.
+        Calculates predicted scores for each customer/article pair in the list of edges. Uses dot product of their embeddings.
         args:
-          edge_index: tensor of edges (between playlists and songs) whose scores we will calculate.
+          edge_index: tensor of edges (between customers and articles) whose scores we will calculate.
           embs: node embeddings for calculating predicted scores (typically the multi-scale embeddings from gnn_propagation())
         returns:
           predicted scores for each playlist/song pair in edge_index
         """
         scores = (
             embs[edge_index[0, :], :] * embs[edge_index[1, :], :]
-        )  # taking dot product for each playlist/song pair
+        )  # taking dot product for each customer/article pair
         scores = scores.sum(dim=1)
         scores = self.sigmoid(scores)
         return scores
 
-    def calc_loss(self, data_mp, data_pos, data_neg):
+    def calc_loss(
+        self, data_mp: PyGData, data_pos: PyGData, data_neg: PyGData
+    ) -> torch.Tensor:
         """
         The main training step. Performs GNN propagation on message passing edges, to get multi-scale embeddings.
         Then predicts scores for each training example, and calculates Bayesian Personalized Ranking (BPR) loss.
@@ -112,7 +113,7 @@ class GNN(torch.nn.Module):
         loss = -torch.log(self.sigmoid(pos_scores - neg_scores)).mean()
         return loss
 
-    def evaluation(self, data_mp, data_pos, k):
+    def evaluation(self, data_mp: PyGData, data_pos: PyGData, k: int):
         """
         Performs evaluation on validation or test set. Calculates recall@k.
         args:
@@ -125,29 +126,29 @@ class GNN(torch.nn.Module):
         # Run propagation on the message-passing edges to get multi-scale embeddings
         final_embs = self.gnn_propagation(data_mp.edge_index)
 
-        # Get embeddings of all unique playlists in the batch of evaluation edges
-        unique_playlists = torch.unique_consecutive(data_pos.edge_index[0, :])
+        # Get embeddings of all unique customers in the batch of evaluation edges
+        unique_customers = torch.unique_consecutive(data_pos.edge_index[0, :])
         playlist_emb = final_embs[
-            unique_playlists, :
-        ]  # has shape [number of playlists in batch, 64]
+            unique_customers, :
+        ]  # has shape [number of customers in batch, 64]
 
         # Get embeddings of ALL songs in dataset
         song_emb = final_embs[
-            self.num_playlists :, :
+            self.num_customers :, :
         ]  # has shape [total number of songs in dataset, 64]
 
         # All ratings for each playlist in batch to each song in entire dataset (using dot product as the scoring function)
         ratings = self.sigmoid(
             torch.matmul(playlist_emb, song_emb.t())
-        )  # shape: [# playlists in batch, # songs in dataset]
+        )  # shape: [# customeres in batch, # songs in dataset]
         # where entry i,j is rating of song j for playlist i
         # Calculate recall@k
         result = recall_at_k(
             ratings.cpu(),
             k,
-            self.num_playlists,
+            self.num_customers,
             data_pos.edge_index.cpu(),
-            unique_playlists.cpu(),
+            unique_customers.cpu(),
             data_mp.edge_index.cpu(),
         )
         return result
@@ -161,7 +162,7 @@ class LightGCN(MessagePassing):
     def __init__(self):
         super(LightGCN, self).__init__(aggr="add")  # aggregation function is 'add'
 
-    def message(self, x_j, norm):
+    def message(self, x_j: torch.Tensor, norm: torch.Tensor) -> torch.Tensor:
         """
         Specifies how to perform message passing during GNN propagation. For LightGCN, we simply pass along each
         source node's embedding to the target node, normalized by the normalization term for that node.
@@ -174,7 +175,7 @@ class LightGCN(MessagePassing):
         # Here we are just multiplying the x_j's by the normalization terms (using some broadcasting)
         return norm.view(-1, 1) * x_j
 
-    def forward(self, x, edge_index):
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
         Performs the LightGCN message passing/aggregation/update to get updated node embeddings
         args:

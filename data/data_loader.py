@@ -53,7 +53,3 @@ def run_dataloader(
     test_mp = PyGData(edge_index=test_split.edge_index)
 
     return (train_ev, train_mp), (val_ev, val_mp), (test_ev, test_mp)
-
-
-if __name__ == "__main__":
-    run_dataloader(config)

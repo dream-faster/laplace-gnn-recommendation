@@ -12,7 +12,7 @@ def sample_negative_edges(
     # sampling true negatives only. Here we sample 1 negative edge for each positive edge in the graph, so we will
     # end up having a balanced 1:1 ratio of positive to negative edges.
     negs = []
-    for i in batch.edge_index[0, :]:  # looping over playlists
+    for i in batch.edge_index[0, :]:  # looping over customers
         assert i < num_customers  # just ensuring that i is a customer
         rand = torch.randint(num_customers, num_nodes, (1,))  # randomly sample a song
         negs.append(rand.item())

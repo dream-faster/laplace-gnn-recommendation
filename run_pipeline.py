@@ -114,7 +114,7 @@ def run_pipeline():
     epochs = 300  # number of training epochs
     k = 250  # value of k for recall@k. It is important to set this to a reasonable value!
     num_layers = 3  # number of LightGCN layers (i.e., number of hops to consider during propagation)
-    batch_size = 2048  # batch size. refers to the # of playlists in the batch (each will come with all of its edges)
+    batch_size = 2048  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
     embedding_dim = 64  # dimension to use for the playlist/song embeddings
     save_emb_dir = None  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
 
@@ -130,7 +130,7 @@ def run_pipeline():
     gnn = GNN(
         embedding_dim=embedding_dim,
         num_nodes=data.num_nodes,
-        num_playlists=num_playlists,
+        num_customers=num_playlists,
         num_layers=num_layers,
     ).to(device)
 
