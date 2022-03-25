@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 
 class UserColumn(Enum):
@@ -28,10 +29,10 @@ class DataLoaderConfig:
 @dataclass
 class PreprocessingConfig:
     customer_features: list[UserColumn]
-    customer_nodes: list[UserColumn]
+    # customer_nodes: list[UserColumn]
 
     article_features: list[ArticleColumn]
-    article_nodes: list[ArticleColumn]
+    # article_nodes: list[ArticleColumn]
 
     K: int
-    data_size: int
+    data_size: Optional[int]

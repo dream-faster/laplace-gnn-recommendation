@@ -18,10 +18,12 @@ dependencies:
   - kaggle
   - pyarrow
   - fastparquet
+  - pyright
   - pip
   - pip:
     - torch-geometric
     - torch-sparse
     - torch-scatter
+    - igraph
 
 prefix: /usr/local/anaconda3/envs/fashion
