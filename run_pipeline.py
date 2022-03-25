@@ -2,13 +2,25 @@ from data.types import DataLoaderConfig
 from data.data_loader import run_dataloader
 from torch_geometric import seed_everything
 import torch
+from torch.optim import Optimizer
 from torch_geometric.loader import DataLoader
+from torch_geometric.data import Data as PyGData
 from model.lightgcn import GNN
 import os
 import numpy as np
+from utils.sample_negative import sample_negative_edges
+from typing import Optional
 
 
-def train(model, data_mp, loader, opt, num_playlists, num_nodes, device):
+def train(
+    model: GNN,
+    data_mp: PyGData,
+    loader: DataLoader,
+    opt: Optimizer,
+    num_customers: int,
+    num_nodes: int,
+    device: str,
+):
     """
     Main training loop
     args:
@@ -16,8 +28,8 @@ def train(model, data_mp, loader, opt, num_playlists, num_nodes, device):
        data_mp: message passing edges to use for performing propagation/calculating multi-scale embeddings
        loader: DataLoader that loads in batches of supervision/evaluation edges
        opt: the optimizer
-       num_playlists: the number of playlists in the entire dataset
-       num_nodes: the number of nodes (playlists + songs) in the entire dataset
+       num_customers: the number of customers in the entire dataset
+       num_nodes: the number of nodes (customers + articles) in the entire dataset
        device: whether to run on CPU or GPU
     returns:
        the training loss for this epoch
@@ -31,7 +43,7 @@ def train(model, data_mp, loader, opt, num_playlists, num_nodes, device):
 
         opt.zero_grad()
         negs = sample_negative_edges(
-            batch, num_playlists, num_nodes
+            batch, num_customers, num_nodes
         )  # sample negative edges
         data_mp, batch, negs = data_mp.to(device), batch.to(device), negs.to(device)
         loss = model.calc_loss(data_mp, batch, negs)
@@ -45,7 +57,15 @@ def train(model, data_mp, loader, opt, num_playlists, num_nodes, device):
     return avg_loss
 
 
-def test(model, data_mp, loader, k, device, save_dir, epoch):
+def test(
+    model: GNN,
+    data_mp: PyGData,
+    loader: DataLoader,
+    k: int,
+    device: str,
+    save_dir: Optional[str],
+    epoch: int,
+):
     """
     Evaluation loop for validation/testing.
     args:
@@ -65,7 +85,7 @@ def test(model, data_mp, loader, k, device, save_dir, epoch):
         # Save multi-scale embeddings if save_dir is not None
         data_mp = data_mp.to(device)
         if save_dir is not None:
-            embs_to_save = gnn.gnn_propagation(data_mp.edge_index)
+            embs_to_save = model.gnn_propagation(data_mp.edge_index)
             torch.save(
                 embs_to_save, os.path.join(save_dir, f"embeddings_epoch_{epoch}.pt")
             )
@@ -77,8 +97,8 @@ def test(model, data_mp, loader, k, device, save_dir, epoch):
 
             batch = batch.to(device)
             recalls = model.evaluation(data_mp, batch, k)
-            for playlist_idx in recalls:
-                assert playlist_idx not in all_recalls
+            for customer_idx in recalls:
+                assert customer_idx not in all_recalls
             all_recalls.update(recalls)
     recall_at_k = np.mean(list(all_recalls.values()))
     return recall_at_k
@@ -122,7 +142,7 @@ def run_pipeline():
     # Main training loop
     for epoch in range(epochs):
         train_loss = train(
-            gnn, train_mp, train_loader, opt, num_playlists, num_nodes, device
+            gnn, train_mp, train_loader, opt, num_customers, num_nodes, device
         )
         all_train_losses.append((epoch, train_loss))
 
