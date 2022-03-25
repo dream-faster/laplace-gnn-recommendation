@@ -6,6 +6,7 @@ import torch
 import networkit as nk
 from torch_geometric.data import Data
 from sklearn.preprocessing import OneHotEncoder
+import json
 
 
 def preprocess(config: PreprocessingConfig):
@@ -95,6 +96,12 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Saving the graph...")
     torch.save(data, "data/derived/graph.pt")
+
+    print("| Saving the node-to-id mapping...")
+    with open("data/derived/customer_id_map_forward.csv", "w") as fp:
+        json.dump(customer_id_map_forward, fp)
+    with open("data/derived/article_id_map_forward.csv", "w") as fp:
+        json.dump(article_id_map_forward, fp)
 
 
 # TODO: remove this when format stabilizes
