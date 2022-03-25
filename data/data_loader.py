@@ -15,6 +15,7 @@ def train_test_val_split(
         add_negative_train_samples=False,
         num_val=config.val_split,
         num_test=config.test_split,
+        neg_sampling_ratio=0,
     )
     train_split, val_split, test_split = transform(data)
 

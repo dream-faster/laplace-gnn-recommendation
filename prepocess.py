@@ -81,15 +81,21 @@ def preprocess(config: PreprocessingConfig):
     # node_features = node_features.reset_index().to_numpy()
     # enc = OneHotEncoder(sparse=False)
     # node_features = enc.fit_transform(node_features)
-    node_features = torch.tensor(node_features, dtype=torch.long)
+    node_features = torch.tensor(
+        node_features.reset_index().to_numpy(), dtype=torch.long
+    )
 
     print("| Creating PyG Data...")
     data = Data(
         x=node_features,
         edge_index=torch.Tensor(
             [
-                transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
-                transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
+                transactions["article_id"].apply(lambda x: article_id_map_reverse[x])
+                + transactions["customer_id"].apply(
+                    lambda x: customer_id_map_reverse[x]
+                ),
+                transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x])
+                + transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
             ]
         ),
     )
@@ -140,7 +146,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     K=0,
-    data_size=100000,
+    data_size=None,
 )
 
 preprocess(only_users_and_articles_nodes)
