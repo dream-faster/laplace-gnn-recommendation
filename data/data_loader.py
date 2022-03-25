@@ -13,7 +13,6 @@ def train_test_val_split(
     transform = RandomLinkSplit(
         is_undirected=True,
         add_negative_train_samples=False,
-        neg_sampling_ratio=0,
         num_val=config.val_split,
         num_test=config.test_split,
     )

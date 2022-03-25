@@ -5,6 +5,7 @@ from torch_geometric.utils.convert import from_networkx
 import torch
 import networkit as nk
 from torch_geometric.data import Data
+from sklearn.preprocessing import OneHotEncoder
 
 
 def preprocess(config: PreprocessingConfig):
@@ -50,12 +51,12 @@ def preprocess(config: PreprocessingConfig):
     node_features = pd.concat([node_features, article_features], axis=0)
 
     print("| Adding transactions to the graph...")
+    # TODO: if we want to get k-core working, we need to use networkit (but there are some issues there)
     # G = nk.Graph(n=node_features.shape[0])
     # edge_pairs = zip(
     #     transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
     #     transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
     # )
-    # TODO: if we want to get k-core working, we need to use networkit (but there are some issues there)
     # for edge in tqdm(edge_pairs):
     #     G.addEdge(edge[0], edge[1])
 
@@ -74,14 +75,22 @@ def preprocess(config: PreprocessingConfig):
     # print("| Converting the graph to torch-geometric format...")
     # G = nk.nxadapter.nk2nx(G)
 
+    print("| Encoding features...")
+
+    # node_features = node_features.reset_index().to_numpy()
+    # enc = OneHotEncoder(sparse=False)
+    # node_features = enc.fit_transform(node_features)
+    node_features = torch.tensor(node_features, dtype=torch.long)
+
     print("| Creating PyG Data...")
     data = Data(
+        x=node_features,
         edge_index=torch.Tensor(
             [
                 transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
                 transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
             ]
-        )
+        ),
     )
 
     print("| Saving the graph...")
@@ -108,9 +117,9 @@ def create_ids_and_maps(
 
 only_users_and_articles_nodes = PreprocessingConfig(
     customer_features=[
-        UserColumn.PostalCode,
+        # UserColumn.PostalCode,
         # UserColumn.FN,
-        # UserColumn.Age,
+        UserColumn.Age,
         # UserColumn.ClubMemberStatus,
         # UserColumn.FashionNewsFrequency,
         # UserColumn.Active,
@@ -124,7 +133,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     K=0,
-    data_size=None,
+    data_size=100000,
 )
 
 preprocess(only_users_and_articles_nodes)
