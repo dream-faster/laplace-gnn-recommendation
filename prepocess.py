@@ -5,7 +5,7 @@ from torch_geometric.utils.convert import from_networkx
 import torch
 import networkit as nk
 from torch_geometric.data import Data
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
 import json
 
 
@@ -78,12 +78,13 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Encoding features...")
 
-    # node_features = node_features.reset_index().to_numpy()
-    # enc = OneHotEncoder(sparse=False)
-    # node_features = enc.fit_transform(node_features)
-    node_features = torch.tensor(
-        node_features.reset_index().to_numpy(), dtype=torch.long
-    )
+    label_encoders = [LabelEncoder() for _ in node_features.columns]
+    node_features = node_features.reset_index().to_numpy()
+    for col_index, encoder in enumerate(label_encoders):
+        node_features[
+            :,col_index
+        ] = encoder.fit_transform(node_features[:, col_index])
+    node_features = torch.tensor(node_features, dtype=torch.long)
 
     print("| Creating PyG Data...")
     data = Data(
