@@ -7,6 +7,7 @@ import networkit as nk
 from torch_geometric.data import Data
 from sklearn.preprocessing import LabelEncoder
 import json
+from utils.labelencoder import encode_labels
 
 
 def preprocess(config: PreprocessingConfig):
@@ -77,13 +78,10 @@ def preprocess(config: PreprocessingConfig):
     # G = nk.nxadapter.nk2nx(G)
 
     print("| Encoding features...")
-
-    label_encoders = [LabelEncoder() for _ in node_features.columns]
+    for column in tqdm(node_features.columns):
+        node_features[column] = encode_labels(node_features[column])
+        
     node_features = node_features.reset_index().to_numpy()
-    for col_index, encoder in enumerate(label_encoders):
-        node_features[
-            :,col_index
-        ] = encoder.fit_transform(node_features[:, col_index])
     node_features = torch.tensor(node_features, dtype=torch.long)
 
     print("| Creating PyG Data...")
@@ -131,19 +129,19 @@ def create_ids_and_maps(
 
 only_users_and_articles_nodes = PreprocessingConfig(
     customer_features=[
-        # UserColumn.PostalCode,
-        # UserColumn.FN,
+        UserColumn.PostalCode,
+        UserColumn.FN,
         UserColumn.Age,
-        # UserColumn.ClubMemberStatus,
-        # UserColumn.FashionNewsFrequency,
-        # UserColumn.Active,
+        UserColumn.ClubMemberStatus,
+        UserColumn.FashionNewsFrequency,
+        UserColumn.Active,
     ],
     # customer_nodes=[],
     article_features=[
         ArticleColumn.ProductCode,
-        # ArticleColumn.ProductTypeNo,
-        # ArticleColumn.GraphicalAppearanceNo,
-        # ArticleColumn.ColourGroupCode,
+        ArticleColumn.ProductTypeNo,
+        ArticleColumn.GraphicalAppearanceNo,
+        ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
     K=0,
