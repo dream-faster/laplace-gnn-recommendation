@@ -18,6 +18,7 @@ class ArticleColumn(Enum):
     GraphicalAppearanceNo = "graphical_appearance_no"
     ColourGroupCode = "colour_group_code"
     AvgPrice = "avg_price"
+    ImgEmbedding = "img_embedding"
 
 
 @dataclass

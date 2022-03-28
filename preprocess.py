@@ -40,6 +40,17 @@ def preprocess(config: PreprocessingConfig):
         transactions_per_article, on="article_id", how="outer"
     ).fillna(0.0)
 
+    print("| Loading article image embeddings...")
+    articles_image_embeddings = torch.load(
+        "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
+    )
+    articles["img_embedding"] = articles.apply(
+        lambda article: articles_image_embeddings.get(
+            int(article["article_id"]), torch.zeros(512)
+        ),
+        axis=1,
+    )
+
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles, "article_id", len(customer_id_map_forward)
     )
@@ -80,7 +91,7 @@ def preprocess(config: PreprocessingConfig):
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
         node_features[column] = encode_labels(node_features[column])
-        
+
     node_features = node_features.reset_index().to_numpy()
     node_features = torch.tensor(node_features, dtype=torch.long)
 
@@ -142,6 +153,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
         ArticleColumn.ProductTypeNo,
         ArticleColumn.GraphicalAppearanceNo,
         ArticleColumn.ColourGroupCode,
+        ArticleColumn.ImgEmbedding,
     ],
     # article_nodes=[],
     K=0,
