@@ -18,6 +18,7 @@ class ArticleColumn(Enum):
     GraphicalAppearanceNo = "graphical_appearance_no"
     ColourGroupCode = "colour_group_code"
     AvgPrice = "avg_price"
+    ImgEmbedding = "img_embedding"
 
 
 @dataclass
@@ -33,6 +34,8 @@ class PreprocessingConfig:
 
     article_features: list[ArticleColumn]
     # article_nodes: list[ArticleColumn]
+
+    article_non_categorical_features: list[ArticleColumn]
 
     K: int
     data_size: Optional[int]
