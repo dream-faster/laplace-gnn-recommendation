@@ -1,9 +1,9 @@
-from torch_geometric.utils.convert import from_networkx
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import Data as PyGData
 from data.dataset import FashionDataset
-from data.types import DataLoaderConfig
+from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
 import torch
+import json
 
 
 def train_test_val_split(
@@ -33,12 +33,14 @@ def train_test_val_split(
 config = DataLoaderConfig(test_split=0.15, val_split=0.15)
 
 
-def run_dataloader(
+def create_dataloaders(
     config: DataLoaderConfig,
 ) -> tuple[
     tuple[FashionDataset, PyGData],
     tuple[FashionDataset, PyGData],
     tuple[FashionDataset, PyGData],
+    CustomerIdMap,
+    ArticleIdMap,
 ]:
     data = torch.load("data/derived/graph.pt")
     train_split, val_split, test_split = train_test_val_split(data, config)
@@ -52,4 +54,17 @@ def run_dataloader(
     test_ev = FashionDataset("temp", edge_index=test_split.edge_label_index)
     test_mp = PyGData(edge_index=test_split.edge_index)
 
-    return (train_ev, train_mp), (val_ev, val_mp), (test_ev, test_mp)
+    customer_id_map = read_json("data/derived/customer_id_map_forward.json")
+    article_id_map = read_json("data/derived/article_id_map_forward.json")
+
+    return (
+        (train_ev, train_mp),
+        (val_ev, val_mp),
+        (test_ev, test_mp),
+        customer_id_map,
+        article_id_map,
+    )
+
+def read_json(filename: str):
+    with open(filename) as f_in:
+        return json.load(f_in)

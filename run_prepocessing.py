@@ -80,7 +80,7 @@ def preprocess(config: PreprocessingConfig):
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
         node_features[column] = encode_labels(node_features[column])
-        
+
     node_features = node_features.reset_index().to_numpy()
     node_features = torch.tensor(node_features, dtype=torch.long)
 
@@ -103,9 +103,9 @@ def preprocess(config: PreprocessingConfig):
     torch.save(data, "data/derived/graph.pt")
 
     print("| Saving the node-to-id mapping...")
-    with open("data/derived/customer_id_map_forward.csv", "w") as fp:
+    with open("data/derived/customer_id_map_forward.json", "w") as fp:
         json.dump(customer_id_map_forward, fp)
-    with open("data/derived/article_id_map_forward.csv", "w") as fp:
+    with open("data/derived/article_id_map_forward.json", "w") as fp:
         json.dump(article_id_map_forward, fp)
 
 
@@ -148,4 +148,5 @@ only_users_and_articles_nodes = PreprocessingConfig(
     data_size=None,
 )
 
-preprocess(only_users_and_articles_nodes)
+if __name__ == "__main__":
+    preprocess(only_users_and_articles_nodes)

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+ArticleIdMap = dict
+CustomerIdMap = dict
 
 class UserColumn(Enum):
     PostalCode = "postal_code"

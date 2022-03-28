@@ -1,5 +1,5 @@
 from data.types import DataLoaderConfig
-from data.data_loader import run_dataloader
+from data.data_loader import create_dataloaders
 from torch_geometric import seed_everything
 import torch
 from torch.optim import Optimizer
@@ -19,7 +19,7 @@ def train(
     opt: Optimizer,
     num_customers: int,
     num_nodes: int,
-    device: str,
+    device: torch.device,
 ):
     """
     Main training loop
@@ -62,7 +62,7 @@ def test(
     data_mp: PyGData,
     loader: DataLoader,
     k: int,
-    device: str,
+    device: torch.device,
     save_dir: Optional[str],
     epoch: int,
 ):
@@ -107,8 +107,15 @@ def test(
 def run_pipeline():
     seed_everything(5)
 
-    config = DataLoaderConfig(test_split=0.15, val_split=0.15)
-    train_data, val_data, test_data = run_dataloader(config)
+    (
+        train_data,
+        val_data,
+        test_data,
+        customer_id_map,
+        article_id_map,
+    ) = create_dataloaders(DataLoaderConfig(test_split=0.15, val_split=0.15))
+    num_customers = len(customer_id_map)
+    num_nodes = len(customer_id_map) + len(article_id_map)
 
     # Training hyperparameters
     epochs = 300  # number of training epochs
@@ -129,8 +136,8 @@ def run_pipeline():
     # Initialize GNN model
     gnn = GNN(
         embedding_dim=embedding_dim,
-        num_nodes=data.num_nodes,
-        num_customers=num_playlists,
+        num_nodes=num_nodes,
+        num_customers=num_customers,
         num_layers=num_layers,
     ).to(device)
 
@@ -142,12 +149,14 @@ def run_pipeline():
     # Main training loop
     for epoch in range(epochs):
         train_loss = train(
-            gnn, train_mp, train_loader, opt, num_customers, num_nodes, device
+            gnn, train_data[1], train_loader, opt, num_customers, num_nodes, device
         )
         all_train_losses.append((epoch, train_loss))
 
         if epoch % 5 == 0:
-            val_recall = test(gnn, val_mp, val_loader, k, device, save_emb_dir, epoch)
+            val_recall = test(
+                gnn, val_data[1], val_loader, k, device, save_emb_dir, epoch
+            )
             all_val_recalls.append((epoch, val_recall))
             print(f"Epoch {epoch}: train loss={train_loss}, val_recall={val_recall}")
         else:
@@ -162,7 +171,7 @@ def run_pipeline():
     )
 
     # Print final recall@k on test set
-    test_recall = test(gnn, test_mp, test_loader, k, device, None, None)
+    test_recall = test(gnn, test_data[1], test_loader, k, device, None, 1)
     print(f"Test set recall@k: {test_recall}")
 
 
