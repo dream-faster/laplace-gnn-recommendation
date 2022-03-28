@@ -90,7 +90,8 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
-        node_features[column] = encode_labels(node_features[column])
+        if column not in config.article_non_categorical_features:
+            node_features[column] = encode_labels(node_features[column])
 
     node_features = node_features.reset_index().to_numpy()
     node_features = torch.tensor(node_features, dtype=torch.long)
@@ -153,6 +154,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
         ArticleColumn.ProductTypeNo,
         ArticleColumn.GraphicalAppearanceNo,
         ArticleColumn.ColourGroupCode,
+    ],
+    article_non_categorical_features=[
         ArticleColumn.ImgEmbedding,
     ],
     # article_nodes=[],
