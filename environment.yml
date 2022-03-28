@@ -15,6 +15,7 @@ dependencies:
   - tensorboard
   - torchmetrics
   - networkx
+  - networkit
   - kaggle
   - pyarrow
   - fastparquet
