@@ -8,6 +8,7 @@ from torch_geometric.data import Data
 from sklearn.preprocessing import LabelEncoder
 import json
 from utils.labelencoder import encode_labels
+import numpy as np
 
 
 def preprocess(config: PreprocessingConfig):
@@ -84,17 +85,26 @@ def preprocess(config: PreprocessingConfig):
     node_features = node_features.reset_index().to_numpy()
     node_features = torch.tensor(node_features, dtype=torch.long)
 
+    transactions_to_article_id = (
+        transactions["article_id"].apply(lambda x: article_id_map_reverse[x]).to_numpy()
+    )
+    transactions_to_customer_id = (
+        transactions["customer_id"]
+        .apply(lambda x: customer_id_map_reverse[x])
+        .to_numpy()
+    )
+
     print("| Creating PyG Data...")
     data = Data(
         x=node_features,
         edge_index=torch.Tensor(
             [
-                transactions["article_id"].apply(lambda x: article_id_map_reverse[x])
-                + transactions["customer_id"].apply(
-                    lambda x: customer_id_map_reverse[x]
+                np.concatenate(
+                    (transactions_to_article_id, transactions_to_customer_id)
                 ),
-                transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x])
-                + transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
+                np.concatenate(
+                    (transactions_to_customer_id, transactions_to_article_id)
+                ),
             ]
         ),
     )
