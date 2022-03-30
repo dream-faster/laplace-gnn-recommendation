@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 ArticleIdMap = dict
 CustomerIdMap = dict
+
 
 class UserColumn(Enum):
     PostalCode = "postal_code"
@@ -31,13 +32,13 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
-    customer_features: list[UserColumn]
-    # customer_nodes: list[UserColumn]
+    customer_features: List[UserColumn]
+    # customer_nodes: List[UserColumn]
 
-    article_features: list[ArticleColumn]
-    # article_nodes: list[ArticleColumn]
+    article_features: List[ArticleColumn]
+    # article_nodes: List[ArticleColumn]
 
-    article_non_categorical_features: list[ArticleColumn]
+    article_non_categorical_features: List[ArticleColumn]
 
     K: int
     data_size: Optional[int]
