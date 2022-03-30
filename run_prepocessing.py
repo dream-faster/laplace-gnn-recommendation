@@ -97,15 +97,18 @@ def preprocess(config: PreprocessingConfig):
     print("| Creating PyG Data...")
     data = Data(
         x=node_features,
-        edge_index=torch.Tensor(
-            [
-                np.concatenate(
-                    (transactions_to_article_id, transactions_to_customer_id)
-                ),
-                np.concatenate(
-                    (transactions_to_customer_id, transactions_to_article_id)
-                ),
-            ]
+        edge_index=torch.as_tensor(
+            np.array(
+                [
+                    np.concatenate(
+                        (transactions_to_article_id, transactions_to_customer_id)
+                    ),
+                    np.concatenate(
+                        (transactions_to_customer_id, transactions_to_article_id)
+                    ),
+                ]
+            ),
+            dtype=torch.long,
         ),
     )
 
