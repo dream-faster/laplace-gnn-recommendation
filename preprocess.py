@@ -2,7 +2,8 @@ import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
 import torch
-import networkit as nk
+
+# import networkit as nk
 from torch_geometric.data import Data
 import json
 from utils.labelencoder import encode_labels
