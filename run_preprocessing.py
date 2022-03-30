@@ -1,11 +1,10 @@
 import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
-from torch_geometric.utils.convert import from_networkx
 import torch
-import networkit as nk
+
+# import networkit as nk
 from torch_geometric.data import Data
-from sklearn.preprocessing import LabelEncoder
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
@@ -81,7 +80,8 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
-        node_features[column] = encode_labels(node_features[column])
+        if column not in config.article_non_categorical_features:
+            node_features[column] = encode_labels(node_features[column])
 
     node_features = node_features.reset_index().to_numpy()
     node_features = torch.tensor(node_features, dtype=torch.long)
@@ -158,7 +158,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
         ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
-    article_non_categorical_features=[],
+    article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
     data_size=None,
 )
