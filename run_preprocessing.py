@@ -9,6 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
+from typing import Tuple
 
 
 def preprocess(config: PreprocessingConfig):
@@ -131,7 +132,7 @@ def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
 
 def create_ids_and_maps(
     df: pd.DataFrame, column: str, start: int
-) -> tuple[pd.DataFrame, dict, dict]:
+) -> Tuple[pd.DataFrame, dict, dict]:
     df.index += start
     mapping_forward = df[column].to_dict()
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
@@ -157,6 +158,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
         ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
+    article_non_categorical_features=[],
     K=0,
     data_size=None,
 )

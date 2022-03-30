@@ -4,11 +4,12 @@ from data.dataset import FashionDataset
 from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
 import torch
 import json
+from typing import Tuple
 
 
 def train_test_val_split(
     data: PyGData, config: DataLoaderConfig
-) -> tuple[PyGData, PyGData, PyGData]:
+) -> Tuple[PyGData, PyGData, PyGData]:
     print("| Splitting the graph into train, val and test")
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -35,10 +36,10 @@ config = DataLoaderConfig(test_split=0.15, val_split=0.15)
 
 def create_dataloaders(
     config: DataLoaderConfig,
-) -> tuple[
-    tuple[FashionDataset, PyGData],
-    tuple[FashionDataset, PyGData],
-    tuple[FashionDataset, PyGData],
+) -> Tuple[
+    Tuple[FashionDataset, PyGData],
+    Tuple[FashionDataset, PyGData],
+    Tuple[FashionDataset, PyGData],
     CustomerIdMap,
     ArticleIdMap,
 ]:
