@@ -82,7 +82,7 @@ def preprocess(config: PreprocessingConfig):
         G.addEdge(edge[0], edge[1])
 
     print("| Calculating the K-core of the graph...")
-    original_node_count = G.numberOfNodes()
+    original_node_count = len(node_features)
     k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
     nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
 
@@ -112,7 +112,7 @@ def preprocess(config: PreprocessingConfig):
     node_features.drop(["customer_id", "article_id"], axis=1, inplace=True)
 
     print(
-        f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
+        f"     Number of nodes in the K-core: {len(node_features)}, kept: {round(len(node_features) / original_node_count, 2) * 100 }%"
     )
 
     print("| Encoding features...")
@@ -195,7 +195,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    K=10,
+    K=20,
     data_size=None,
 )
 
