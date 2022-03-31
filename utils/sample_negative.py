@@ -14,7 +14,9 @@ def sample_negative_edges(
     negs = []
     for i in batch.edge_index[0, :]:  # looping over customers
         assert i < num_customers  # just ensuring that i is a customer
-        rand = torch.randint(num_customers, num_nodes, (1,))  # randomly sample a song
+        rand = torch.randint(
+            num_customers, num_nodes, (1,)
+        )  # randomly sample a article
         negs.append(rand.item())
     edge_index_negs = torch.row_stack([batch.edge_index[0, :], torch.LongTensor(negs)])
     return PyGData(edge_index=edge_index_negs)

@@ -73,7 +73,7 @@ class GNN(torch.nn.Module):
           edge_index: tensor of edges (between customers and articles) whose scores we will calculate.
           embs: node embeddings for calculating predicted scores (typically the multi-scale embeddings from gnn_propagation())
         returns:
-          predicted scores for each playlist/song pair in edge_index
+          predicted scores for each customer/article pair in edge_index
         """
         scores = (
             embs[edge_index[0, :], :] * embs[edge_index[1, :], :]
@@ -121,27 +121,27 @@ class GNN(torch.nn.Module):
           data_pos: positive edges to use for scoring metrics. Should be no overlap between these edges and data_mp's edges
           k: value of k to use for recall@k
         returns:
-          dictionary mapping playlist ID -> recall@k on that playlist
+          dictionary mapping customer ID -> recall@k on that customer
         """
         # Run propagation on the message-passing edges to get multi-scale embeddings
         final_embs = self.gnn_propagation(data_mp.edge_index)
 
         # Get embeddings of all unique customers in the batch of evaluation edges
         unique_customers = torch.unique_consecutive(data_pos.edge_index[0, :])
-        playlist_emb = final_embs[
+        customer_emb = final_embs[
             unique_customers, :
         ]  # has shape [number of customers in batch, 64]
 
-        # Get embeddings of ALL songs in dataset
-        song_emb = final_embs[
+        # Get embeddings of ALL articles in dataset
+        article_emb = final_embs[
             self.num_customers :, :
-        ]  # has shape [total number of songs in dataset, 64]
+        ]  # has shape [total number of articles in dataset, 64]
 
-        # All ratings for each playlist in batch to each song in entire dataset (using dot product as the scoring function)
+        # All ratings for each customer in batch to each article in entire dataset (using dot product as the scoring function)
         ratings = self.sigmoid(
-            torch.matmul(playlist_emb, song_emb.t())
-        )  # shape: [# customeres in batch, # songs in dataset]
-        # where entry i,j is rating of song j for playlist i
+            torch.matmul(customer_emb, article_emb.t())
+        )  # shape: [# customeres in batch, # articles in dataset]
+        # where entry i,j is rating of article j for customer i
         # Calculate recall@k
         result = recall_at_k(
             ratings.cpu(),
