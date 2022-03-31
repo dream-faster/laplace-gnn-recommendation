@@ -37,7 +37,10 @@ def train(
     total_loss = 0
     total_examples = 0
     model.train()
+    i = 0
     for batch in loader:
+        print("Iter: ", i)
+        i += 1
         del batch.batch
         del batch.ptr  # delete unwanted attributes
 
