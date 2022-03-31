@@ -86,14 +86,17 @@ def preprocess(config: PreprocessingConfig):
     k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
     nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
 
+    print("     Processing the about-to-be removed nodes...")
     # Remove the nodes from our records (node_features)
     node_features_to_remove = node_features.take(nodes_to_remove)
     node_features.drop(node_features.index[nodes_to_remove], axis=0, inplace=True)
 
+    print("     Calculating the values for the to-be-removed edges...")
     # Remove the affected transactions (referring to missing nodes)
-    customer_ids_to_remove = set(node_features_to_remove["customer_id"].to_list())
-    article_ids_to_remove = set(node_features_to_remove["article_id"].to_list())
+    customer_ids_to_remove = node_features_to_remove["customer_id"].unique()
+    article_ids_to_remove = node_features_to_remove["article_id"].unique()
 
+    print("     Get the indicies of the transactions to be removed...")
     transactions_to_remove_customers = transactions["customer_id"].isin(
         customer_ids_to_remove
     )
@@ -104,6 +107,8 @@ def preprocess(config: PreprocessingConfig):
         transactions_to_remove_customers | transactions_to_remove_articles
     )
     transactions = transactions[~transactions_to_remove]
+
+    print("     Remove the transactions...")
     node_features.drop(["customer_id", "article_id"], axis=1, inplace=True)
 
     print(
