@@ -2,8 +2,7 @@ import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
 import torch
-
-# import networkit as nk
+import networkit as nk
 from torch_geometric.data import Data
 import json
 from utils.labelencoder import encode_labels
@@ -25,7 +24,9 @@ def preprocess(config: PreprocessingConfig):
     #     G.add_nodes_from(customers[column.value])
     #     G.add_edges_from(zip(customers["index"], customers[column.value]))
 
-    node_features = customers[[c.value for c in config.customer_features]]
+    node_features = customers[
+        [c.value for c in config.customer_features] + ["customer_id"]
+    ]
 
     print("| Loading articles...")
     articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
@@ -61,33 +62,53 @@ def preprocess(config: PreprocessingConfig):
     #     G.add_nodes_from(articles[column.value])
     #     G.add_edges_from(zip(articles["article_id"], articles[column.value]))
 
-    article_features = articles[[c.value for c in config.article_features]]
+    article_features = articles[
+        [c.value for c in config.article_features] + ["article_id"]
+    ]
     node_features = pd.concat([node_features, article_features], axis=0)
 
     print("| Adding transactions to the graph...")
     # TODO: if we want to get k-core working, we need to use networkit (but there are some issues there)
-    # G = nk.Graph(n=node_features.shape[0])
-    # edge_pairs = zip(
-    #     transactions["article_id"].apply(lambda x: article_id_map_reverse[x]),
-    #     transactions["customer_id"].apply(lambda x: customer_id_map_reverse[x]),
-    # )
-    # for edge in tqdm(edge_pairs):
-    #     G.addEdge(edge[0], edge[1])
+    G = nk.Graph(n=node_features.shape[0])
+    edge_pairs = zip(
+        transactions["article_id"]
+        .apply(lambda x: article_id_map_reverse[x])
+        .to_numpy(),
+        transactions["customer_id"]
+        .apply(lambda x: customer_id_map_reverse[x])
+        .to_numpy(),
+    )
+    for edge in tqdm(edge_pairs):
+        G.addEdge(edge[0], edge[1])
 
-    # print("| Calculating the K-core of the graph...")
-    # original_node_count = G.numberOfNodes()
-    # k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
-    # k_core_per_node = [row[0] for row in k_core_per_node if row[1] >= config.K]
-    # for node in tqdm(k_core_per_node):
-    #     G.removeNode(node)
-    # node_features.drop(node_features.index[k_core_per_node], axis=0, inplace=True)
+    print("| Calculating the K-core of the graph...")
+    original_node_count = G.numberOfNodes()
+    k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
+    nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
 
-    # print(
-    #     f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
-    # )
+    # Remove the nodes from our records (node_features)
+    node_features_to_remove = node_features.take(nodes_to_remove)
+    node_features.drop(node_features.index[nodes_to_remove], axis=0, inplace=True)
 
-    # print("| Converting the graph to torch-geometric format...")
-    # G = nk.nxadapter.nk2nx(G)
+    # Remove the affected transactions (referring to missing nodes)
+    customer_ids_to_remove = set(node_features_to_remove["customer_id"].to_list())
+    article_ids_to_remove = set(node_features_to_remove["article_id"].to_list())
+
+    transactions_to_remove_customers = transactions["customer_id"].isin(
+        customer_ids_to_remove
+    )
+    transactions_to_remove_articles = transactions["article_id"].isin(
+        article_ids_to_remove
+    )
+    transactions_to_remove = (
+        transactions_to_remove_customers | transactions_to_remove_articles
+    )
+    transactions = transactions[~transactions_to_remove]
+    node_features.drop(["customer_id", "article_id"], axis=1, inplace=True)
+
+    print(
+        f"     Number of nodes in the K-core: {G.numberOfNodes()}, kept: {round(G.numberOfNodes() / original_node_count, 2) * 100 }%"
+    )
 
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
@@ -147,7 +168,6 @@ def create_ids_and_maps(
     df.index += start
     mapping_forward = df[column].to_dict()
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
-    df.drop(column, axis=1, inplace=True)
     df["index"] = df.index
     return df, mapping_forward, mapping_reverse
 
@@ -170,7 +190,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    K=0,
+    K=10,
     data_size=None,
 )
 
