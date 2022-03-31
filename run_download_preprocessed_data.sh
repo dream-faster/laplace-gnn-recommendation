@@ -1,0 +1,1 @@
+wget -P data/derived/ https://storage.googleapis.com/heii-public/graph.pt
