@@ -10,6 +10,7 @@ import os
 import numpy as np
 from utils.sample_negative import sample_negative_edges
 from typing import Optional
+from config import config, Config
 
 
 def train(
@@ -43,6 +44,7 @@ def train(
         i += 1
         del batch.batch
         del batch.ptr  # delete unwanted attributes
+        print(batch)
 
         opt.zero_grad()
         negs = sample_negative_edges(
@@ -107,7 +109,7 @@ def test(
     return recall_at_k
 
 
-def run_pipeline():
+def run_pipeline(config: Config):
     seed_everything(5)
 
     (
@@ -120,28 +122,20 @@ def run_pipeline():
     num_customers = len(customer_id_map)
     num_nodes = len(customer_id_map) + len(article_id_map)
 
-    # Training hyperparameters
-    epochs = 300  # number of training epochs
-    k = 250  # value of k for recall@k. It is important to set this to a reasonable value!
-    num_layers = 3  # number of LightGCN layers (i.e., number of hops to consider during propagation)
-    batch_size = 2048  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
-    embedding_dim = 64  # dimension to use for the customer/article embeddings
-    save_emb_dir = None  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
-
     # Use GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Create DataLoaders for the supervision/evaluation edges (one each for train/val/test sets)
-    train_loader = DataLoader(train_data[0], batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_data[0], batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_data[0], batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_data[0], batch_size=config.batch_size, shuffle=True)
+    val_loader = DataLoader(val_data[0], batch_size=config.batch_size, shuffle=False)
+    test_loader = DataLoader(test_data[0], batch_size=config.batch_size, shuffle=False)
 
     # Initialize GNN model
     gnn = GNN(
-        embedding_dim=embedding_dim,
+        embedding_dim=config.embedding_dim,
         num_nodes=num_nodes,
         num_customers=num_customers,
-        num_layers=num_layers,
+        num_layers=config.num_layers,
     ).to(device)
 
     opt = torch.optim.Adam(gnn.parameters(), lr=1e-3)  # using Adam optimizer
@@ -150,7 +144,7 @@ def run_pipeline():
     all_val_recalls = []  # list of (epoch, validation recall@k)
 
     # Main training loop
-    for epoch in range(epochs):
+    for epoch in range(config.epochs):
         train_loss = train(
             gnn, train_data[1], train_loader, opt, num_customers, num_nodes, device
         )
@@ -158,7 +152,13 @@ def run_pipeline():
 
         if epoch % 5 == 0:
             val_recall = test(
-                gnn, val_data[1], val_loader, k, device, save_emb_dir, epoch
+                gnn,
+                val_data[1],
+                val_loader,
+                config.k,
+                device,
+                config.save_emb_dir,
+                epoch,
             )
             all_val_recalls.append((epoch, val_recall))
             print(f"Epoch {epoch}: train loss={train_loss}, val_recall={val_recall}")
@@ -174,9 +174,9 @@ def run_pipeline():
     )
 
     # Print final recall@k on test set
-    test_recall = test(gnn, test_data[1], test_loader, k, device, None, 1)
+    test_recall = test(gnn, test_data[1], test_loader, config.k, device, None, 1)
     print(f"Test set recall@k: {test_recall}")
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    run_pipeline(config)
