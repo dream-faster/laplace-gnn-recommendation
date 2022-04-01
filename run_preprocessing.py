@@ -2,7 +2,6 @@ import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
 import torch
-import networkit as nk
 from torch_geometric.data import Data
 import json
 from utils.labelencoder import encode_labels
@@ -67,53 +66,54 @@ def preprocess(config: PreprocessingConfig):
     ]
     node_features = pd.concat([node_features, article_features], axis=0)
 
-    print("| Adding transactions to the graph...")
-    # TODO: if we want to get k-core working, we need to use networkit (but there are some issues there)
-    G = nk.Graph(n=node_features.shape[0])
-    edge_pairs = zip(
-        transactions["article_id"]
-        .apply(lambda x: article_id_map_reverse[x])
-        .to_numpy(),
-        transactions["customer_id"]
-        .apply(lambda x: customer_id_map_reverse[x])
-        .to_numpy(),
-    )
-    for edge in tqdm(edge_pairs):
-        G.addEdge(edge[0], edge[1])
+    if config.K > 0:
+        print("| Adding transactions to the graph...")
+        import networkit as nk
 
-    print("| Calculating the K-core of the graph...")
-    original_node_count = len(node_features)
-    k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
-    nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
+        G = nk.Graph(n=node_features.shape[0])
+        edge_pairs = zip(
+            transactions["article_id"]
+            .apply(lambda x: article_id_map_reverse[x])
+            .to_numpy(),
+            transactions["customer_id"]
+            .apply(lambda x: customer_id_map_reverse[x])
+            .to_numpy(),
+        )
+        for edge in tqdm(edge_pairs):
+            G.addEdge(edge[0], edge[1])
 
-    print("     Processing the about-to-be removed nodes...")
-    # Remove the nodes from our records (node_features)
-    node_features_to_remove = node_features.take(nodes_to_remove)
-    node_features.drop(node_features.index[nodes_to_remove], axis=0, inplace=True)
+        print("| Calculating the K-core of the graph...")
+        original_node_count = len(node_features)
+        k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
+        nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
 
-    print("     Calculating the values for the to-be-removed edges...")
-    # Remove the affected transactions (referring to missing nodes)
-    customer_ids_to_remove = node_features_to_remove["customer_id"].unique()
-    article_ids_to_remove = node_features_to_remove["article_id"].unique()
+        print("     Processing the about-to-be removed nodes...")
+        # Remove the nodes from our records (node_features)
+        node_features_to_remove = node_features.take(nodes_to_remove)
+        node_features.drop(node_features.index[nodes_to_remove], axis=0, inplace=True)
 
-    print("     Get the indicies of the transactions to be removed...")
-    transactions_to_remove_customers = transactions["customer_id"].isin(
-        customer_ids_to_remove
-    )
-    transactions_to_remove_articles = transactions["article_id"].isin(
-        article_ids_to_remove
-    )
-    transactions_to_remove = (
-        transactions_to_remove_customers | transactions_to_remove_articles
-    )
-    transactions = transactions[~transactions_to_remove]
+        print("     Calculating the values for the to-be-removed edges...")
+        # Remove the affected transactions (referring to missing nodes)
+        customer_ids_to_remove = node_features_to_remove["customer_id"].unique()
+        article_ids_to_remove = node_features_to_remove["article_id"].unique()
 
-    print("     Remove the transactions...")
+        print("     Get the indicies of the transactions to be removed...")
+        transactions_to_remove_customers = transactions["customer_id"].isin(
+            customer_ids_to_remove
+        )
+        transactions_to_remove_articles = transactions["article_id"].isin(
+            article_ids_to_remove
+        )
+        transactions_to_remove = (
+            transactions_to_remove_customers | transactions_to_remove_articles
+        )
+        transactions = transactions[~transactions_to_remove]
+        print(
+            f"     Number of nodes in the K-core: {len(node_features)}, kept: {round(len(node_features) / original_node_count, 2) * 100 }%"
+        )
+
+    print("     Remove unused columns...")
     node_features.drop(["customer_id", "article_id"], axis=1, inplace=True)
-
-    print(
-        f"     Number of nodes in the K-core: {len(node_features)}, kept: {round(len(node_features) / original_node_count, 2) * 100 }%"
-    )
 
     print("| Encoding features...")
     for column in tqdm(node_features.columns):
@@ -195,7 +195,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    K=20,
+    K=0,
     data_size=None,
 )
 
