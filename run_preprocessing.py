@@ -52,6 +52,18 @@ def preprocess(config: PreprocessingConfig):
         axis=1,
     )
 
+    print("| Loading article text embeddings...")
+    articles_text_embeddings = torch.load(
+        "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
+    )
+    for key in articles_text_embeddings[108775015].keys():
+        articles[key] = articles.apply(
+            lambda article: articles_text_embeddings[int(article["article_id"])].get(
+                key, torch.zeros(512)
+            ),
+            axis=1,
+        )
+
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles, "article_id", len(customer_id_map_forward)
     )
