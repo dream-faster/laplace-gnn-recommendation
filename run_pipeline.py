@@ -82,12 +82,12 @@ def run_pipeline(config: Config):
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     (
-        train_data,
-        val_data,
-        test_data,
+        train_loader,
+        val_loader,
+        test_loader,
         customer_id_map,
         article_id_map,
-    ) = create_dataloaders(DataLoaderConfig(test_split=0.15, val_split=0.15))
+    ) = create_dataloaders(DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32))
 
     model = Model(hidden_channels=32).to(device)
 

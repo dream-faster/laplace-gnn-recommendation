@@ -1,3 +1,4 @@
+from sklearn.utils import shuffle
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
 from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
@@ -11,16 +12,16 @@ from torch_geometric.loader import NeighborLoader
 def create_dataloaders(
     config: DataLoaderConfig,
 ) -> Tuple[
-    tuple[NeighborLoader, NeighborLoader],
-    tuple[NeighborLoader, NeighborLoader],
-    tuple[NeighborLoader, NeighborLoader],
+    NeighborLoader,
+    NeighborLoader,
+    NeighborLoader,
     CustomerIdMap,
     ArticleIdMap,
 ]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
-    del data['article', 'rev_buys', 'customer'].edge_label  # Remove "reverse" label.
+    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -28,8 +29,8 @@ def create_dataloaders(
         num_val=config.val_split,
         num_test=config.test_split,
         neg_sampling_ratio=0,
-        edge_types=[('customer', 'buys', 'article')],
-        rev_edge_types=[('article', 'rev_buys', 'customer')],
+        edge_types=[("customer", "buys", "article")],
+        rev_edge_types=[("article", "rev_buys", "customer")],
     )
     train_split, val_split, test_split = transform(data)
 
@@ -43,9 +44,24 @@ def create_dataloaders(
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
     return (
-        (train_ev, train_mp),
-        (val_ev, val_mp),
-        (test_ev, test_mp),
+        NeighborLoader(
+            train_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
+        NeighborLoader(
+            val_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
+        NeighborLoader(
+            test_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
         customer_id_map,
         article_id_map,
     )
