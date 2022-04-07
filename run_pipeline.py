@@ -12,6 +12,11 @@ from torch.nn import Linear
 from torch_geometric.nn import SAGEConv, to_hetero
 
 
+def weighted_mse_loss(pred, target, weight=None):
+    weight = 1.0 if weight is None else weight[target].to(pred.dtype)
+    return (weight * (pred - target.to(pred.dtype)).pow(2)).mean()
+
+
 class GNNEncoder(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
         super().__init__()
@@ -32,7 +37,7 @@ class EdgeDecoder(torch.nn.Module):
 
     def forward(self, z_dict, edge_label_index):
         row, col = edge_label_index
-        z = torch.cat([z_dict["user"][row], z_dict["movie"][col]], dim=-1)
+        z = torch.cat([z_dict["customer"][row], z_dict["article"][col]], dim=-1)
 
         z = self.lin1(z).relu()
         z = self.lin2(z)
@@ -40,10 +45,10 @@ class EdgeDecoder(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, hidden_channels, metadata):
         super().__init__()
         self.encoder = GNNEncoder(hidden_channels, hidden_channels)
-        self.encoder = to_hetero(self.encoder, data.metadata(), aggr="sum")
+        self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(hidden_channels)
 
     def forward(self, x_dict, edge_index_dict, edge_label_index):
@@ -51,31 +56,31 @@ class Model(torch.nn.Module):
         return self.decoder(z_dict, edge_label_index)
 
 
-def train():
+def train(data, model, optimizer):
     model.train()
     optimizer.zero_grad()
     pred = model(
-        train_data.x_dict,
-        train_data.edge_index_dict,
-        train_data["user", "movie"].edge_label_index,
+        data.x_dict,
+        data.edge_index_dict,
+        data["customer", "article"].edge_label_index,
     )
-    target = train_data["user", "movie"].edge_label
-    loss = weighted_mse_loss(pred, target, weight)
+    target = data["customer", "article"].edge_label
+    loss = weighted_mse_loss(pred, target, None)
     loss.backward()
     optimizer.step()
-    return float(loss)
+    return float(loss), model
 
 
 @torch.no_grad()
-def test(data):
+def test(data, model):
     model.eval()
     pred = model(
-        data.x_dict, data.edge_index_dict, data["user", "movie"].edge_label_index
+        data.x_dict, data.edge_index_dict, data["customer", "article"].edge_label_index
     )
     pred = pred.clamp(min=0, max=5)
-    target = data["user", "movie"].edge_label.float()
+    target = data["customer", "article"].edge_label.float()
     rmse = F.mse_loss(pred, target).sqrt()
-    return float(rmse)
+    return float(rmse), model
 
 
 def run_pipeline(config: Config):
@@ -91,20 +96,20 @@ def run_pipeline(config: Config):
         DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
     )
 
-    model = Model(hidden_channels=32).to(device)
+    model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     with torch.no_grad():
-        model.encoder(train_data.x_dict, train_data.edge_index_dict)
+        model.encoder(train_loader.x_dict, train_loader.edge_index_dict)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     for epoch in range(1, 301):
         loss = train()
-        train_rmse = test(train_data)
-        val_rmse = test(val_data)
-        test_rmse = test(test_data)
+        train_rmse, model = test(train_loader, model, optimizer)
+        val_rmse, model = test(val_loader, model)
+        test_rmse, model = test(test_loader, model)
         print(
             f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
             f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
