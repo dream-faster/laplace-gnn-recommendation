@@ -23,6 +23,12 @@ def create_dataloaders(
     data = T.ToUndirected()(data)
     del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
+    # from torch_geometric.datasets import MovieLens
+    # import os.path as osp
+
+    # path = osp.join(osp.dirname(osp.realpath(__file__)), "data/MovieLens")
+    # data_mov = MovieLens(path, model_name="all-MiniLM-L6-v2")[0]
+
     transform = RandomLinkSplit(
         is_undirected=True,
         add_negative_train_samples=False,
