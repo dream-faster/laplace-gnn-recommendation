@@ -49,8 +49,8 @@ def preprocess(config: PreprocessingConfig):
     articles_text_embeddings = torch.load(
         "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
     )
-    for key in ['derived_name', 'derived_look', 'derived_category']:
-    # for key in articles_text_embeddings[108775015].keys():
+    for key in ["derived_name", "derived_look", "derived_category"]:
+        # for key in articles_text_embeddings[108775015].keys():
         articles[key] = articles.apply(
             lambda article: articles_text_embeddings[int(article["article_id"])].get(
                 key, torch.zeros(512)
@@ -148,7 +148,7 @@ def preprocess(config: PreprocessingConfig):
     data["customer"].x = customer_features
     data["article"].x = article_features
     data["customer", "buys", "article"].edge_index = torch.as_tensor(
-        np.concatenate((transactions_to_article_id, transactions_to_customer_id)),
+        (transactions_to_article_id, transactions_to_customer_id),
         dtype=torch.long,
     )
 
