@@ -140,6 +140,7 @@ def preprocess(config: PreprocessingConfig):
 
     article_features = article_features.reset_index().to_numpy()
     article_features = torch.tensor(article_features, dtype=torch.long)
+    assert torch.isnan(article_features).any() == False
 
     print("| Encoding customer features...")
     for column in tqdm(customer_features.columns):
@@ -147,6 +148,7 @@ def preprocess(config: PreprocessingConfig):
 
     customer_features = customer_features.reset_index().to_numpy()
     customer_features = torch.tensor(customer_features, dtype=torch.long)
+    assert torch.isnan(customer_features).any() == False
 
     print("| Parsing transactions...")
     transactions_to_article_id = (
