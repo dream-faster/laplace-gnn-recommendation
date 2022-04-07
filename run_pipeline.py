@@ -1,5 +1,5 @@
 from data.types import DataLoaderConfig
-from data.data_loader import create_dataloaders
+from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 import torch
 from typing import Optional
@@ -87,7 +87,9 @@ def run_pipeline(config: Config):
         test_loader,
         customer_id_map,
         article_id_map,
-    ) = create_dataloaders(DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32))
+    ) = create_datasets(
+        DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
+    )
 
     model = Model(hidden_channels=32).to(device)
 
