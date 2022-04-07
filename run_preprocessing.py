@@ -34,30 +34,6 @@ def preprocess(config: PreprocessingConfig):
         transactions_per_article, on="article_id", how="outer"
     ).fillna(0.0)
 
-    print("| Loading article image embeddings...")
-    articles_image_embeddings = torch.load(
-        "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
-    )
-    articles["img_embedding"] = articles.apply(
-        lambda article: articles_image_embeddings.get(
-            int(article["article_id"]), torch.zeros(512)
-        ),
-        axis=1,
-    )
-
-    print("| Loading article text embeddings...")
-    articles_text_embeddings = torch.load(
-        "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
-    )
-    # for key in articles_text_embeddings[108775015].keys():
-    for key in ["derived_name", "derived_look", "derived_category"]:
-        articles[key] = articles.apply(
-            lambda article: articles_text_embeddings[int(article["article_id"])].get(
-                key, torch.zeros(512)
-            ),
-            axis=1,
-        )
-
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles, "article_id", len(customer_id_map_forward)
     )
@@ -120,11 +96,50 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Encoding article features...")
     for column in tqdm(article_features.columns):
-        if column not in config.article_non_categorical_features:
+        if column not in [c.value for c in config.article_non_categorical_features]:
             article_features[column] = encode_labels(article_features[column])
 
-    article_features = article_features.reset_index().to_numpy()
-    article_features = torch.tensor(article_features, dtype=torch.long)
+    article_features = torch.tensor(article_features.reset_index().to_numpy())
+
+    print("| Concatenating article image embeddings...")
+    articles_image_embeddings = torch.load(
+        "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
+    )
+    article_features = torch.cat(
+        (
+            article_features,
+            torch.stack(
+                articles.apply(
+                    lambda article: articles_image_embeddings.get(
+                        int(article["article_id"]), torch.zeros(512)
+                    ),
+                    axis=1,
+                ).tolist()
+            ),
+        ),
+        1,
+    )
+
+    print("| Concatenating article text embeddings...")
+    articles_text_embeddings = torch.load(
+        "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
+    )
+    # for key in articles_text_embeddings[108775015].keys():
+    for key in ["derived_name", "derived_look", "derived_category"]:
+        article_features = torch.cat(
+            (
+                article_features,
+                torch.stack(
+                    articles.apply(
+                        lambda article: articles_text_embeddings[
+                            int(article["article_id"])
+                        ].get(key, torch.zeros(512)),
+                        axis=1,
+                    ).tolist()
+                ),
+            ),
+            1,
+        )
 
     print("| Encoding customer features...")
     for column in tqdm(customer_features.columns):
@@ -190,13 +205,18 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # customer_nodes=[],
     article_features=[
-        ArticleColumn.ProductCode,
+        # ArticleColumn.ProductCode,
         ArticleColumn.ProductTypeNo,
         ArticleColumn.GraphicalAppearanceNo,
         ArticleColumn.ColourGroupCode,
     ],
     # article_nodes=[],
-    article_non_categorical_features=[ArticleColumn.ImgEmbedding],
+    article_non_categorical_features=[
+        ArticleColumn.ImgEmbedding,
+        ArticleColumn.DerivedName,
+        ArticleColumn.DerivedLook,
+        ArticleColumn.DerivedCategory,
+    ],
     K=0,
     data_size=10000,
 )

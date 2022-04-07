@@ -22,6 +22,9 @@ class ArticleColumn(Enum):
     ColourGroupCode = "colour_group_code"
     AvgPrice = "avg_price"
     ImgEmbedding = "img_embedding"
+    DerivedName = "derived_name"
+    DerivedLook = "derived_look"
+    DerivedCategory = "derived_category"
 
 
 @dataclass
