@@ -49,6 +49,7 @@ def preprocess(config: PreprocessingConfig):
     articles_text_embeddings = torch.load(
         "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
     )
+    # for key in articles_text_embeddings[108775015].keys():
     for key in ["derived_name", "derived_look", "derived_category"]:
         articles[key] = articles.apply(
             lambda article: articles_text_embeddings[int(article["article_id"])].get(
