@@ -1,181 +1,114 @@
 from data.types import DataLoaderConfig
-from data.data_loader import create_dataloaders
+from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 import torch
-from torch.optim import Optimizer
-from torch_geometric.loader import DataLoader
-from torch_geometric.data import Data as PyGData
-from model.lightgcn import GNN
-import os
-import numpy as np
-from utils.sample_negative import sample_negative_edges
 from typing import Optional
 from config import config, Config
 
+import torch
+import torch.nn.functional as F
+from torch.nn import Linear
 
-def train(
-    model: GNN,
-    data_mp: PyGData,
-    loader: DataLoader,
-    opt: Optimizer,
-    num_customers: int,
-    num_nodes: int,
-    device: torch.device,
-):
-    """
-    Main training loop
-    args:
-       model: the GNN model
-       data_mp: message passing edges to use for performing propagation/calculating multi-scale embeddings
-       loader: DataLoader that loads in batches of supervision/evaluation edges
-       opt: the optimizer
-       num_customers: the number of customers in the entire dataset
-       num_nodes: the number of nodes (customers + articles) in the entire dataset
-       device: whether to run on CPU or GPU
-    returns:
-       the training loss for this epoch
-    """
-    total_loss = 0
-    total_examples = 0
+from torch_geometric.nn import SAGEConv, to_hetero
+
+
+class GNNEncoder(torch.nn.Module):
+    def __init__(self, hidden_channels, out_channels):
+        super().__init__()
+        self.conv1 = SAGEConv((-1, -1), hidden_channels)
+        self.conv2 = SAGEConv((-1, -1), out_channels)
+
+    def forward(self, x, edge_index):
+        x = self.conv1(x, edge_index).relu()
+        x = self.conv2(x, edge_index)
+        return x
+
+
+class EdgeDecoder(torch.nn.Module):
+    def __init__(self, hidden_channels):
+        super().__init__()
+        self.lin1 = Linear(2 * hidden_channels, hidden_channels)
+        self.lin2 = Linear(hidden_channels, 1)
+
+    def forward(self, z_dict, edge_label_index):
+        row, col = edge_label_index
+        z = torch.cat([z_dict["user"][row], z_dict["movie"][col]], dim=-1)
+
+        z = self.lin1(z).relu()
+        z = self.lin2(z)
+        return z.view(-1)
+
+
+class Model(torch.nn.Module):
+    def __init__(self, hidden_channels):
+        super().__init__()
+        self.encoder = GNNEncoder(hidden_channels, hidden_channels)
+        self.encoder = to_hetero(self.encoder, data.metadata(), aggr="sum")
+        self.decoder = EdgeDecoder(hidden_channels)
+
+    def forward(self, x_dict, edge_index_dict, edge_label_index):
+        z_dict = self.encoder(x_dict, edge_index_dict)
+        return self.decoder(z_dict, edge_label_index)
+
+
+def train():
     model.train()
-    i = 0
-    for batch in loader:
-        print("Iter: ", i)
-        i += 1
-        del batch.batch
-        del batch.ptr  # delete unwanted attributes
-        print(batch)
-
-        opt.zero_grad()
-        negs = sample_negative_edges(
-            batch, num_customers, num_nodes
-        )  # sample negative edges
-        data_mp, batch, negs = data_mp.to(device), batch.to(device), negs.to(device)
-        loss = model.calc_loss(data_mp, batch, negs)
-        loss.backward()
-        opt.step()
-
-        num_examples = batch.edge_index.shape[1]
-        total_loss += loss.item() * num_examples
-        total_examples += num_examples
-    avg_loss = total_loss / total_examples
-    return avg_loss
+    optimizer.zero_grad()
+    pred = model(
+        train_data.x_dict,
+        train_data.edge_index_dict,
+        train_data["user", "movie"].edge_label_index,
+    )
+    target = train_data["user", "movie"].edge_label
+    loss = weighted_mse_loss(pred, target, weight)
+    loss.backward()
+    optimizer.step()
+    return float(loss)
 
 
-def test(
-    model: GNN,
-    data_mp: PyGData,
-    loader: DataLoader,
-    k: int,
-    device: torch.device,
-    save_dir: Optional[str],
-    epoch: int,
-):
-    """
-    Evaluation loop for validation/testing.
-    args:
-       model: the GNN model
-       data_mp: message passing edges to use for propagation/calculating multi-scale embeddings
-       loader: DataLoader that loads in batches of evaluation (i.e., validation or test) edges
-       k: value of k to use for recall@k
-       device: whether to use CPU or GPU
-       save_dir: directory to save multi-scale embeddings for later analysis. If None, doesn't save any embeddings.
-       epoch: the number of the current epoch
-    returns:
-       recall@k for this epoch
-    """
+@torch.no_grad()
+def test(data):
     model.eval()
-    all_recalls = {}
-    with torch.no_grad():
-        # Save multi-scale embeddings if save_dir is not None
-        data_mp = data_mp.to(device)
-        if save_dir is not None:
-            embs_to_save = model.gnn_propagation(data_mp.edge_index)
-            torch.save(
-                embs_to_save, os.path.join(save_dir, f"embeddings_epoch_{epoch}.pt")
-            )
-
-        # Run evaluation
-        for batch in loader:
-            del batch.batch
-            del batch.ptr  # delete unwanted attributes
-
-            batch = batch.to(device)
-            recalls = model.evaluation(data_mp, batch, k)
-            for customer_idx in recalls:
-                assert customer_idx not in all_recalls
-            all_recalls.update(recalls)
-    recall_at_k = np.mean(list(all_recalls.values()))
-    return recall_at_k
+    pred = model(
+        data.x_dict, data.edge_index_dict, data["user", "movie"].edge_label_index
+    )
+    pred = pred.clamp(min=0, max=5)
+    target = data["user", "movie"].edge_label.float()
+    rmse = F.mse_loss(pred, target).sqrt()
+    return float(rmse)
 
 
 def run_pipeline(config: Config):
     seed_everything(5)
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     (
-        train_data,
-        val_data,
-        test_data,
+        train_loader,
+        val_loader,
+        test_loader,
         customer_id_map,
         article_id_map,
-    ) = create_dataloaders(DataLoaderConfig(test_split=0.15, val_split=0.15))
-    num_customers = len(customer_id_map)
-    num_nodes = len(customer_id_map) + len(article_id_map)
-
-    # Use GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Create DataLoaders for the supervision/evaluation edges (one each for train/val/test sets)
-    train_loader = DataLoader(train_data[0], batch_size=config.batch_size, shuffle=True)
-    val_loader = DataLoader(val_data[0], batch_size=config.batch_size, shuffle=False)
-    test_loader = DataLoader(test_data[0], batch_size=config.batch_size, shuffle=False)
-
-    # Initialize GNN model
-    gnn = GNN(
-        embedding_dim=config.embedding_dim,
-        num_nodes=num_nodes,
-        num_customers=num_customers,
-        num_layers=config.num_layers,
-    ).to(device)
-
-    opt = torch.optim.Adam(gnn.parameters(), lr=1e-3)  # using Adam optimizer
-
-    all_train_losses = []  # list of (epoch, training loss)
-    all_val_recalls = []  # list of (epoch, validation recall@k)
-
-    # Main training loop
-    for epoch in range(config.epochs):
-        train_loss = train(
-            gnn, train_data[1], train_loader, opt, num_customers, num_nodes, device
-        )
-        all_train_losses.append((epoch, train_loss))
-
-        if epoch % 5 == 0:
-            val_recall = test(
-                gnn,
-                val_data[1],
-                val_loader,
-                config.k,
-                device,
-                config.save_emb_dir,
-                epoch,
-            )
-            all_val_recalls.append((epoch, val_recall))
-            print(f"Epoch {epoch}: train loss={train_loss}, val_recall={val_recall}")
-        else:
-            print(f"Epoch {epoch}: train loss={train_loss}")
-
-    print()
-
-    # Print best validation recall@k value
-    best_val_recall = max(all_val_recalls, key=lambda x: x[1])
-    print(
-        f"Best validation recall@k: {best_val_recall[1]} at epoch {best_val_recall[0]}"
+    ) = create_datasets(
+        DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
     )
 
-    # Print final recall@k on test set
-    test_recall = test(gnn, test_data[1], test_loader, config.k, device, None, 1)
-    print(f"Test set recall@k: {test_recall}")
+    model = Model(hidden_channels=32).to(device)
+
+    # Due to lazy initialization, we need to run one model step so the number
+    # of parameters can be inferred:
+    with torch.no_grad():
+        model.encoder(train_data.x_dict, train_data.edge_index_dict)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    for epoch in range(1, 301):
+        loss = train()
+        train_rmse = test(train_data)
+        val_rmse = test(val_data)
+        test_rmse = test(test_data)
+        print(
+            f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
+            f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
+        )
 
 
 if __name__ == "__main__":

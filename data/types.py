@@ -26,6 +26,7 @@ class ArticleColumn(Enum):
 
 @dataclass
 class DataLoaderConfig:
+    batch_size: int
     val_split: float
     test_split: float
 
