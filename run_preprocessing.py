@@ -130,7 +130,7 @@ def preprocess(config: PreprocessingConfig):
         customer_features[column] = encode_labels(customer_features[column])
 
     customer_features = customer_features.reset_index().to_numpy()
-    customer_features = torch.tensor(article_features, dtype=torch.long)
+    customer_features = torch.tensor(customer_features, dtype=torch.long)
 
     print("| Parsing transactions...")
     transactions_to_article_id = (
