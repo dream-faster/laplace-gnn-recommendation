@@ -78,7 +78,8 @@ def create_datasets(
 ) -> Tuple[HeteroData, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
-    data = T.ToUndirected()(data)
+    undirected_transformer = T.ToUndirected()
+    data = undirected_transformer(data)
     del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
     # from torch_geometric.datasets import MovieLens

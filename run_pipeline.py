@@ -106,8 +106,8 @@ def run_pipeline(config: Config):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     for epoch in range(1, 301):
-        loss = train()
-        train_rmse, model = test(train_loader, model, optimizer)
+        loss = train(train_loader, model, optimizer)
+        train_rmse, model = test(train_loader, model)
         val_rmse, model = test(val_loader, model)
         test_rmse, model = test(test_loader, model)
         print(
