@@ -1,6 +1,7 @@
 from data.types import DataLoaderConfig
 from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
+from torch_geometric.loader import NeighborLoader
 import torch
 from typing import Optional
 from config import config, Config
@@ -58,18 +59,22 @@ class Model(torch.nn.Module):
         return self.decoder(z_dict, edge_label_index)
 
 
-def train(data, model, optimizer):
+def train(
+    dataloader: NeighborLoader, model: torch.nn.Module, optimizer: torch.optim.Optimizer
+) -> tuple[float, torch.nn.Module]:
     model.train()
-    optimizer.zero_grad()
-    pred = model(
-        data.x_dict,
-        data.edge_index_dict,
-        data["customer", "article"].edge_label_index,
-    )
-    target = data["customer", "article"].edge_label
-    loss = weighted_mse_loss(pred, target, None)
-    loss.backward()
-    optimizer.step()
+    loss = torch.zeros(0)
+    for data in tqdm(dataloader):
+        optimizer.zero_grad()
+        pred = model(
+            data.x_dict,
+            data.edge_index_dict,
+            data["customer", "article"].edge_label_index,
+        )
+        target = data["customer", "article"].edge_label
+        loss = weighted_mse_loss(pred, target, None)
+        loss.backward()
+        optimizer.step()
     return float(loss), model
 
 
@@ -97,19 +102,19 @@ def run_pipeline(config: Config):
         test_loader,
         customer_id_map,
         article_id_map,
-    ) = create_datasets(
-        DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
+    ) = create_dataloaders(
+        DataLoaderConfig(test_split=0.01, val_split=0.01, batch_size=128)
     )
-    assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
 
     print("| Creating Model...")
-    model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
+    first_batch = next(iter(train_loader))
+    model = Model(hidden_channels=32, metadata=first_batch.metadata()).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
     with torch.no_grad():
-        model.encoder(train_loader.x_dict, train_loader.edge_index_dict)
+        model.encoder(first_batch.x_dict, first_batch.edge_index_dict)
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)

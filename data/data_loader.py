@@ -11,23 +11,11 @@ from torch_geometric.loader import NeighborLoader
 
 def create_dataloaders(
     config: DataLoaderConfig,
-) -> Tuple[
-    NeighborLoader,
-    NeighborLoader,
-    NeighborLoader,
-    CustomerIdMap,
-    ArticleIdMap,
-]:
+) -> Tuple[NeighborLoader, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
-    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
-
-    # from torch_geometric.datasets import MovieLens
-    # import os.path as osp
-
-    # path = osp.join(osp.dirname(osp.realpath(__file__)), "data/MovieLens")
-    # data_mov = MovieLens(path, model_name="all-MiniLM-L6-v2")[0]
+    del data["article", "rev_buys", "customer"].edge_label  # type: ignore # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -53,24 +41,15 @@ def create_dataloaders(
         NeighborLoader(
             train_split,
             batch_size=config.batch_size,
-            num_neighbors=[10, 10],
+            num_neighbors=[5],
             shuffle=True,
+            input_nodes="customer",
         ),
-        NeighborLoader(
-            val_split,
-            batch_size=config.batch_size,
-            num_neighbors=[10, 10],
-            shuffle=True,
-        ),
-        NeighborLoader(
-            test_split,
-            batch_size=config.batch_size,
-            num_neighbors=[10, 10],
-            shuffle=True,
-        ),
+        val_split,
+        test_split,
         customer_id_map,
         article_id_map,
-    )
+    )  # type: ignore
 
 
 def create_datasets(
@@ -80,13 +59,7 @@ def create_datasets(
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     undirected_transformer = T.ToUndirected()
     data = undirected_transformer(data)
-    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
-
-    # from torch_geometric.datasets import MovieLens
-    # import os.path as osp
-
-    # path = osp.join(osp.dirname(osp.realpath(__file__)), "data/MovieLens")
-    # data_mov = MovieLens(path, model_name="all-MiniLM-L6-v2")[0]
+    del data["article", "rev_buys", "customer"].edge_label  # type: ignore # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -114,7 +87,7 @@ def create_datasets(
         test_split,
         customer_id_map,
         article_id_map,
-    )
+    )  # type: ignore
 
 
 def read_json(filename: str):
