@@ -1,6 +1,8 @@
+#%%
 from data.types import DataLoaderConfig
 from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
+from torch_geometric.utils import to_networkx
 import torch
 from typing import Optional
 from config import config, Config
@@ -83,6 +85,20 @@ def test(data, model):
     return float(rmse), model
 
 
+import networkx as nx
+import matplotlib.pyplot as plt
+
+
+def visualize_data(graph1, graph2):
+    G1 = to_networkx(graph1.to_homogeneous(), to_undirected=False)
+    G2 = to_networkx(graph2.to_homogeneous(), to_undirected=False)
+
+    subax1 = plt.subplot(121)
+    nx.draw(G1, with_labels=False, font_weight="bold")
+    subax2 = plt.subplot(122)
+    nx.draw_shell(G2, with_labels=False, font_weight="bold")
+
+
 def run_pipeline(config: Config):
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,10 +108,13 @@ def run_pipeline(config: Config):
         test_loader,
         customer_id_map,
         article_id_map,
+        full_data,
     ) = create_datasets(
         DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
     )
     assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
+
+    visualize_data(train_loader, full_data)
 
     model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
 
@@ -119,3 +138,5 @@ def run_pipeline(config: Config):
 
 if __name__ == "__main__":
     run_pipeline(config)
+
+# %%

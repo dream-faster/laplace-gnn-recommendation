@@ -43,3 +43,5 @@ class PreprocessingConfig:
 
     K: int
     data_size: Optional[int]
+    customer_size: Optional[int]
+    article_size: Optional[int]
