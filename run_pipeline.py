@@ -11,6 +11,7 @@ from torch.nn import Linear
 
 from torch_geometric.nn import SAGEConv, to_hetero
 from tqdm import tqdm
+import math
 
 
 def weighted_mse_loss(pred, target, weight=None):
@@ -114,7 +115,8 @@ def run_pipeline(config: Config):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     print("| Training Model...")
-    loop_obj = tqdm(range(1, 1500))
+    num_epochs = config.epochs
+    loop_obj = tqdm(range(0, num_epochs))
     for epoch in loop_obj:
         loss, model = train(train_loader, model, optimizer)
         train_rmse, model = test(train_loader, model)
@@ -125,6 +127,12 @@ def run_pipeline(config: Config):
             f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
             f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
         )
+        if epoch % math.floor(num_epochs / 3) == 0:
+            torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+            print(
+                f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
+                f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
+            )
 
 
 if __name__ == "__main__":
