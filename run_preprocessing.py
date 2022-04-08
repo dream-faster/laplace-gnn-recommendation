@@ -172,7 +172,7 @@ def preprocess(config: PreprocessingConfig):
     data["customer"].x = customers
     data["article"].x = articles
     data["customer", "buys", "article"].edge_index = torch.as_tensor(
-        (transactions_to_article_id, transactions_to_customer_id),
+        (transactions_to_customer_id, transactions_to_article_id),
         dtype=torch.long,
     )
 
