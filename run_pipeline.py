@@ -84,8 +84,11 @@ def test(data, model):
 
 
 def run_pipeline(config: Config):
+    print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    print("| Creating Datasets...")
     (
         train_loader,
         val_loader,
@@ -97,17 +100,21 @@ def run_pipeline(config: Config):
     )
     assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
 
+    print("| Creating Model...")
     model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
+    print("| Lazy Initialization of Model...")
     with torch.no_grad():
         model.encoder(train_loader.x_dict, train_loader.edge_index_dict)
 
+    print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
+    print("| Training Model...")
     for epoch in range(1, 301):
-        loss = train(train_loader, model, optimizer)
+        loss, model = train(train_loader, model, optimizer)
         train_rmse, model = test(train_loader, model)
         val_rmse, model = test(val_loader, model)
         test_rmse, model = test(test_loader, model)

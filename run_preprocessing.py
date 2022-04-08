@@ -145,7 +145,7 @@ def preprocess(config: PreprocessingConfig):
     )
     articles = articles[~articles["article_id"].isin(disjoint_articles)]
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
-        articles, "article_id", len(customer_id_map_forward)
+        articles, "article_id", 0
     )
     print("| Removing unused columns...")
     customers.drop(["customer_id"], axis=1, inplace=True)
@@ -161,10 +161,10 @@ def preprocess(config: PreprocessingConfig):
         .to_numpy()
     )
 
-    customers = torch.tensor(customers.reset_index().to_numpy(), dtype=torch.long)
+    customers = torch.tensor(customers.reset_index().to_numpy(), dtype=torch.float)
     assert torch.isnan(customers).any() == False
 
-    articles = torch.tensor(articles.reset_index().to_numpy(), dtype=torch.long)
+    articles = torch.tensor(articles.reset_index().to_numpy(), dtype=torch.float)
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
@@ -223,7 +223,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
-    data_size=None,
+    data_size=15,
 )
 
 if __name__ == "__main__":
