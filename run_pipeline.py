@@ -95,6 +95,7 @@ def run_pipeline(config: Config):
     ) = create_datasets(
         DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
     )
+    assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
 
     model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
 
