@@ -114,6 +114,7 @@ def create_datasets(
         test_split,
         customer_id_map,
         article_id_map,
+        data
     )
 
 
