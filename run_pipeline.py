@@ -90,13 +90,14 @@ import matplotlib.pyplot as plt
 
 
 def visualize_data(graph1, graph2):
+    plt.figure(figsize=(15, 15))
     G1 = to_networkx(graph1.to_homogeneous(), to_undirected=False)
     G2 = to_networkx(graph2.to_homogeneous(), to_undirected=False)
 
     subax1 = plt.subplot(121)
-    nx.draw(G1, with_labels=False, font_weight="bold")
+    nx.draw(G1, with_labels=False, font_weight="bold", node_size=2.5, width=0.1)
     subax2 = plt.subplot(122)
-    nx.draw_shell(G2, with_labels=False, font_weight="bold")
+    nx.draw_shell(G2, with_labels=False, font_weight="bold", node_size=2.5, width=0.1)
 
 
 def run_pipeline(config: Config):
