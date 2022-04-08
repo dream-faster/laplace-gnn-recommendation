@@ -29,12 +29,16 @@ class GNNEncoder(torch.nn.Module):
 
         for i in range(customer_info.num_feat):
             embedding_modules.append(
-                Embedding(customer_info.num_cat[i], customer_info.embedding_size[i])
+                Embedding(
+                    int(customer_info.num_cat[i]), int(customer_info.embedding_size[i])
+                )
             )
 
         for i in range(article_info.num_feat):
             embedding_modules.append(
-                Embedding(customer_info.num_cat[i], customer_info.embedding_size[i])
+                Embedding(
+                    int(customer_info.num_cat[i]), int(customer_info.embedding_size[i])
+                )
             )
 
         self.embedding = ModuleList(embedding_modules)
@@ -42,6 +46,11 @@ class GNNEncoder(torch.nn.Module):
         self.conv2 = SAGEConv((-1, -1), out_channels)
 
     def forward(self, x, edge_index):
+        embeddings = []
+        for i, l in enumerate(self.embedding):
+            embeddings.append(self.embedding[i](x))
+        x = torch.cat(embeddings)
+
         x = self.conv1(x, edge_index).relu()
         x = self.conv2(x, edge_index)
         return x
