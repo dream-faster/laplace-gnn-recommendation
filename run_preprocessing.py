@@ -12,13 +12,7 @@ from typing import Tuple
 def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
-    print("| Transforming customers...")
-    customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
-        customers, "customer_id", 0
-    )
-
-    print("| Adding customer features...")
-    customer_features = customers[[c.value for c in config.customer_features]]
+    customers = customers[[c.value for c in config.customer_features] + ["customer_id"]]
 
     print("| Loading articles...")
     articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
@@ -45,32 +39,27 @@ def preprocess(config: PreprocessingConfig):
         axis=1,
     )
 
-    print("| Loading article text embeddings...")
-    articles_text_embeddings = torch.load(
-        "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
-    )
-    # for key in articles_text_embeddings[108775015].keys():
-    for key in ["derived_name", "derived_look", "derived_category"]:
-        articles[key] = articles.apply(
-            lambda article: articles_text_embeddings[int(article["article_id"])].get(
-                key, torch.zeros(512)
-            ),
-            axis=1,
-        )
+    # print("| Loading article text embeddings...")
+    # articles_text_embeddings = torch.load(
+    #     "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
+    # )
+    # # for key in articles_text_embeddings[108775015].keys():
+    # for key in ["derived_name", "derived_look", "derived_category"]:
+    #     articles[key] = articles.apply(
+    #         lambda article: articles_text_embeddings[int(article["article_id"])].get(
+    #             key, torch.zeros(512)
+    #         ),
+    #         axis=1,
+    #     )
 
-    articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
-        articles, "article_id", len(customer_id_map_forward)
-    )
+    articles = articles[[c.value for c in config.article_features] + ["article_id"]]
 
-    article_features = articles[[c.value for c in config.article_features]]
-
-    # If we ever want to get k-core graph calculation back, uncomment this and figure out how to integrate it with a single node_feature dataframe, containing all the nodes.
-    # as it was done previously, before we moved over to treating the dataset as HeteroData
-    # node_features = pd.concat([node_features, article_features], axis=0)
-
+    # There's currently a problem with k-core graph calculation: we'd need to re-map the edge indices after the nodes are removed and assumed a new ids.
     # if config.K > 0:
     #     print("| Adding transactions to the graph...")
     #     import networkit as nk
+
+    #     node_features = pd.concat([customers, articles], axis=0)
 
     #     G = nk.Graph(n=node_features.shape[0])
     #     edge_pairs = zip(
@@ -99,7 +88,7 @@ def preprocess(config: PreprocessingConfig):
     #     customer_ids_to_remove = node_features_to_remove["customer_id"].unique()
     #     article_ids_to_remove = node_features_to_remove["article_id"].unique()
 
-    #     print("     Get the indicies of the transactions to be removed...")
+    #     print("     Remove the now redundant transactions...")
     #     transactions_to_remove_customers = transactions["customer_id"].isin(
     #         customer_ids_to_remove
     #     )
@@ -110,28 +99,57 @@ def preprocess(config: PreprocessingConfig):
     #         transactions_to_remove_customers | transactions_to_remove_articles
     #     )
     #     transactions = transactions[~transactions_to_remove]
+
+    #     print("     Remove the now redundant customers ...")
+    #     customer_rows_to_remove = customers["customer_id"].isin(
+    #         customer_ids_to_remove
+    #     )
+    #     customers = customers[~customer_rows_to_remove]
+
+    #     print("     Remove the now redundant articles ...")
+    #     article_rows_to_remove = articles["article_id"].isin(
+    #         article_ids_to_remove
+    #     )
+    #     articles = articles[~article_rows_to_remove]
+
     #     print(
     #         f"     Number of nodes in the K-core: {len(node_features)}, kept: {round(len(node_features) / original_node_count, 2) * 100 }%"
     #     )
 
-    # print("| Removing unused columns...")
-    # customer_features.drop(["customer_id"], axis=1, inplace=True)
-    # article_features.drop(["article_id"], axis=1, inplace=True)
-
     print("| Encoding article features...")
-    for column in tqdm(article_features.columns):
-        if column not in config.article_non_categorical_features:
-            article_features[column] = encode_labels(article_features[column])
-
-    article_features = article_features.reset_index().to_numpy()
-    article_features = torch.tensor(article_features, dtype=torch.long)
+    for column in tqdm(articles.columns):
+        if (
+            column not in config.article_non_categorical_features
+            and column != "article_id"
+        ):
+            articles[column] = encode_labels(articles[column])
 
     print("| Encoding customer features...")
-    for column in tqdm(customer_features.columns):
-        customer_features[column] = encode_labels(customer_features[column])
+    for column in tqdm(customers.columns):
+        if column != "customer_id":
+            customers[column] = encode_labels(customers[column])
 
-    customer_features = customer_features.reset_index().to_numpy()
-    customer_features = torch.tensor(customer_features, dtype=torch.long)
+    print("| Removing disjoint nodes...")
+    all_article_ids_referenced = set(transactions["article_id"].unique())
+    all_customer_ids_referenced = set(transactions["customer_id"].unique())
+    disjoint_customers = set(customers["customer_id"].unique()).difference(
+        all_customer_ids_referenced
+    )
+    disjoint_articles = set(articles["article_id"].unique()).difference(
+        all_article_ids_referenced
+    )
+
+    customers = customers[~customers["customer_id"].isin(disjoint_customers)]
+    customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
+        customers, "customer_id", 0
+    )
+    articles = articles[~articles["article_id"].isin(disjoint_articles)]
+    articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
+        articles, "article_id", len(customer_id_map_forward)
+    )
+    print("| Removing unused columns...")
+    customers.drop(["customer_id"], axis=1, inplace=True)
+    articles.drop(["article_id"], axis=1, inplace=True)
 
     print("| Parsing transactions...")
     transactions_to_article_id = (
@@ -143,10 +161,16 @@ def preprocess(config: PreprocessingConfig):
         .to_numpy()
     )
 
+    customers = torch.tensor(customers.reset_index().to_numpy(), dtype=torch.long)
+    assert torch.isnan(customers).any() == False
+
+    articles = torch.tensor(articles.reset_index().to_numpy(), dtype=torch.long)
+    assert torch.isnan(articles).any() == False
+
     print("| Creating PyG Data...")
     data = HeteroData()
-    data["customer"].x = customer_features
-    data["article"].x = article_features
+    data["customer"].x = customers
+    data["article"].x = articles
     data["customer", "buys", "article"].edge_index = torch.as_tensor(
         (transactions_to_article_id, transactions_to_customer_id),
         dtype=torch.long,
@@ -172,6 +196,7 @@ def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
 def create_ids_and_maps(
     df: pd.DataFrame, column: str, start: int
 ) -> Tuple[pd.DataFrame, dict, dict]:
+    df.reset_index(inplace=True)
     df.index += start
     mapping_forward = df[column].to_dict()
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
@@ -198,7 +223,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
-    data_size=10000,
+    data_size=None,
 )
 
 if __name__ == "__main__":
