@@ -118,12 +118,15 @@ def preprocess(config: PreprocessingConfig):
 
     print("| Encoding article features...")
     for column in tqdm(articles.columns):
-        if column not in config.article_non_categorical_features and column != "article_id":
+        if (
+            column not in config.article_non_categorical_features
+            and column != "article_id"
+        ):
             articles[column] = encode_labels(articles[column])
 
     print("| Encoding customer features...")
     for column in tqdm(customers.columns):
-        if column != 'customer_id':
+        if column != "customer_id":
             customers[column] = encode_labels(customers[column])
 
     print("| Removing disjoint nodes...")
@@ -193,6 +196,7 @@ def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
 def create_ids_and_maps(
     df: pd.DataFrame, column: str, start: int
 ) -> Tuple[pd.DataFrame, dict, dict]:
+    df.reset_index(inplace=True)
     df.index += start
     mapping_forward = df[column].to_dict()
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
