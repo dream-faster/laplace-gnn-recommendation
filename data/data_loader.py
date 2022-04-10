@@ -37,13 +37,14 @@ def create_dataloaders(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
+    input_node_type = ("customer", torch.ones((data["customer"].num_nodes)))
     return (
         NeighborLoader(
             train_split,
             batch_size=config.batch_size,
             num_neighbors=[5],
             shuffle=True,
-            input_nodes="customer",
+            input_nodes=input_node_type,
         ),
         val_split,
         test_split,
