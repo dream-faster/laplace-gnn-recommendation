@@ -15,5 +15,5 @@ class Config:
 
 
 config = Config(
-    epochs=300, k=12, num_layers=3, batch_size=1, embedding_dim=64, save_emb_dir=None
+    epochs=1500, k=12, num_layers=3, batch_size=1, embedding_dim=64, save_emb_dir=None
 )

@@ -76,8 +76,7 @@ class Model(torch.nn.Module):
         self.embedding_customers = ModuleList(embedding_customers)
         self.embedding_articles = ModuleList(embedding_articles)
 
-    def forward(self, x_dict, edge_index_dict, edge_label_index):
-
+    def __embedding(self, x_dict):
         customer_features, article_features = (
             x_dict["customer"].long(),
             x_dict["article"].long(),
@@ -92,6 +91,14 @@ class Model(torch.nn.Module):
         x_dict["customer"] = torch.cat(embedding_customers, dim=0)
         x_dict["article"] = torch.cat(embedding_articles, dim=0)
 
+        return x_dict
+
+    def initialize_encoder_input_size(self, x_dict, edge_index_dict):
+        x_dict_new = self.__embedding(x_dict)
+        self.encoder(x_dict_new, edge_index_dict)
+
+    def forward(self, x_dict, edge_index_dict, edge_label_index):
+        x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
         return self.decoder(z_dict, edge_label_index)
 
@@ -172,7 +179,9 @@ def run_pipeline(config: Config):
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
     with torch.no_grad():
-        model.encoder(train_loader.x_dict, train_loader.edge_index_dict)
+        model.initialize_encoder_input_size(
+            train_loader.x_dict, train_loader.edge_index_dict
+        )
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
