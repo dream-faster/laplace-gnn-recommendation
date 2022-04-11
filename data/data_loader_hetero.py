@@ -1,4 +1,3 @@
-from sklearn.utils import shuffle
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
 from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
@@ -6,28 +5,16 @@ import torch
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import LinkNeighborLoader
 
 
 def create_dataloaders(
     config: DataLoaderConfig,
-) -> Tuple[
-    NeighborLoader,
-    NeighborLoader,
-    NeighborLoader,
-    CustomerIdMap,
-    ArticleIdMap,
-]:
+) -> Tuple[LinkNeighborLoader, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
-    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
-
-    # from torch_geometric.datasets import MovieLens
-    # import os.path as osp
-
-    # path = osp.join(osp.dirname(osp.realpath(__file__)), "data/MovieLens")
-    # data_mov = MovieLens(path, model_name="all-MiniLM-L6-v2")[0]
+    del data["article", "rev_buys", "customer"].edge_label  # type: ignore # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -49,28 +36,25 @@ def create_dataloaders(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
+    input_node_type = ("customer", torch.ones((data["customer"].num_nodes)))
     return (
-        NeighborLoader(
+        LinkNeighborLoader(
             train_split,
             batch_size=config.batch_size,
-            num_neighbors=[10, 10],
+            num_neighbors=[5],  # {data.edge_types[0]: [5]},
             shuffle=True,
+            directed=False,
+            edge_label_index=(
+                train_split.edge_types[0],
+                train_split[train_split.edge_types[0]].edge_label_index,
+            ),
+            edge_label=train_split.edge_stores[0].edge_label_index,
         ),
-        NeighborLoader(
-            val_split,
-            batch_size=config.batch_size,
-            num_neighbors=[10, 10],
-            shuffle=True,
-        ),
-        NeighborLoader(
-            test_split,
-            batch_size=config.batch_size,
-            num_neighbors=[10, 10],
-            shuffle=True,
-        ),
+        val_split,
+        test_split,
         customer_id_map,
         article_id_map,
-    )
+    )  # type: ignore
 
 
 def create_datasets(
@@ -80,13 +64,7 @@ def create_datasets(
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     undirected_transformer = T.ToUndirected()
     data = undirected_transformer(data)
-    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
-
-    # from torch_geometric.datasets import MovieLens
-    # import os.path as osp
-
-    # path = osp.join(osp.dirname(osp.realpath(__file__)), "data/MovieLens")
-    # data_mov = MovieLens(path, model_name="all-MiniLM-L6-v2")[0]
+    del data["article", "rev_buys", "customer"].edge_label  # type: ignore # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -114,8 +92,7 @@ def create_datasets(
         test_split,
         customer_id_map,
         article_id_map,
-        data
-    )
+    )  # type: ignore
 
 
 def read_json(filename: str):
