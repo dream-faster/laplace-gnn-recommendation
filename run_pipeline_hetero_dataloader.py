@@ -1,5 +1,5 @@
 from data.types import DataLoaderConfig
-from data.data_loader import create_dataloaders, create_datasets
+from data.data_loader_hetero import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 from torch_geometric.loader import NeighborLoader
 import torch
@@ -102,7 +102,7 @@ def run_pipeline(config: Config):
         test_loader,
         customer_id_map,
         article_id_map,
-    ) = create_dataloaders(
+    ) = create_datasets(
         DataLoaderConfig(test_split=0.01, val_split=0.01, batch_size=128)
     )
 
