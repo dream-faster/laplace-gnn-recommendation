@@ -45,10 +45,13 @@ def create_dataloaders(
             shuffle=True,
             directed=False,
             edge_label_index=(
-                train_split.edge_stores[0],
+                train_split.edge_types[0],
                 train_split[train_split.edge_types[0]].edge_label_index,
             ),
-            edge_label=torch.ones(train_split.edge_stores[0].edge_index.size(1)),
+            edge_label=(
+                train_split.edge_types[0],
+                torch.ones(train_split.edge_stores[0].edge_index.size(1)),
+            ),
         ),
         val_split,
         test_split,
