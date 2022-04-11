@@ -1,4 +1,3 @@
-from sklearn.utils import shuffle
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
 from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
@@ -6,12 +5,12 @@ import torch
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import LinkNeighborLoader
 
 
 def create_dataloaders(
     config: DataLoaderConfig,
-) -> Tuple[NeighborLoader, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
+) -> Tuple[LinkNeighborLoader, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
@@ -39,12 +38,20 @@ def create_dataloaders(
 
     input_node_type = ("customer", torch.ones((data["customer"].num_nodes)))
     return (
-        NeighborLoader(
+        LinkNeighborLoader(
             train_split,
             batch_size=config.batch_size,
-            num_neighbors=[5],
+            num_neighbors=[5],  # {data.edge_types[0]: [5]},
             shuffle=True,
-            input_nodes=input_node_type,
+            directed=False,
+            edge_label_index=(
+                train_split.edge_types[0],
+                train_split[train_split.edge_types[0]].edge_label_index,
+            ),
+            edge_label=(
+                train_split.edge_types[0],
+                torch.ones(train_split.edge_stores[0].edge_index.size(1)),
+            ),
         ),
         val_split,
         test_split,
