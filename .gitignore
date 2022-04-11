@@ -131,3 +131,4 @@ dmypy.json
 data/original/**
 data/derived/**
 model/saved/**
+data/saved/**
