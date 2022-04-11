@@ -166,7 +166,8 @@ def preprocess(config: PreprocessingConfig):
         .to_numpy()
     )
 
-    save_to_csv(customers, articles, transactions)
+    if config.save_to_csv:
+        save_to_csv(customers, articles, transactions)
 
     print("| Removing unused columns...")
     customers.drop(["customer_id"], axis=1, inplace=True)
@@ -235,6 +236,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
     data_size=100,
+    save_to_csv=False
+    
 )
 
 if __name__ == "__main__":

@@ -43,6 +43,7 @@ class PreprocessingConfig:
 
     K: int
     data_size: Optional[int]
+    save_to_csv: Optional[bool]
 
 
 @dataclass
