@@ -1,67 +1,25 @@
 from data.types import DataLoaderConfig
-from data.data_loader_hetero import create_dataloaders, create_datasets
+from data.data_loader_hetero import create_dataloaders
 from torch_geometric import seed_everything
 from torch_geometric.loader import NeighborLoader
 import torch
-from typing import Optional
 from config import config, Config
 
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
+from torch.nn import Module
+from torch.optim import Optimizer
 
-from torch_geometric.nn import SAGEConv, to_hetero
 from tqdm import tqdm
 import math
 
-
-def weighted_mse_loss(pred, target, weight=None):
-    weight = 1.0 if weight is None else weight[target].to(pred.dtype)
-    return (weight * (pred - target.to(pred.dtype)).pow(2)).mean()
-
-
-class GNNEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels):
-        super().__init__()
-        self.conv1 = SAGEConv((-1, -1), hidden_channels)
-        self.conv2 = SAGEConv((-1, -1), out_channels)
-
-    def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index).relu()
-        x = self.conv2(x, edge_index)
-        return x
-
-
-class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels):
-        super().__init__()
-        self.lin1 = Linear(2 * hidden_channels, hidden_channels)
-        self.lin2 = Linear(hidden_channels, 1)
-
-    def forward(self, z_dict, edge_label_index):
-        row, col = edge_label_index
-        z = torch.cat([z_dict["customer"][row], z_dict["article"][col]], dim=-1)
-
-        z = self.lin1(z).relu()
-        z = self.lin2(z)
-        return z.view(-1)
-
-
-class Model(torch.nn.Module):
-    def __init__(self, hidden_channels, metadata):
-        super().__init__()
-        self.encoder = GNNEncoder(hidden_channels, hidden_channels)
-        self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
-        self.decoder = EdgeDecoder(hidden_channels)
-
-    def forward(self, x_dict, edge_index_dict, edge_label_index):
-        z_dict = self.encoder(x_dict, edge_index_dict)
-        return self.decoder(z_dict, edge_label_index)
+from model.encoder_decoder_model import Encoder_Decoder_Model
+from utils.loss_functions import weighted_mse_loss
 
 
 def train(
-    dataloader: NeighborLoader, model: torch.nn.Module, optimizer: torch.optim.Optimizer
-) -> tuple[float, torch.nn.Module]:
+    dataloader: NeighborLoader, model: Module, optimizer: Optimizer
+) -> tuple[float, Module]:
     model.train()
     loss = torch.zeros(0)
     for data in tqdm(dataloader):
@@ -108,7 +66,9 @@ def run_pipeline(config: Config):
 
     print("| Creating Model...")
     first_batch = next(iter(train_loader))
-    model = Model(hidden_channels=32, metadata=first_batch.metadata()).to(device)
+    model = Encoder_Decoder_Model(
+        hidden_channels=32, metadata=first_batch.metadata()
+    ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
