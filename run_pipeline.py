@@ -2,7 +2,7 @@ from data.types import DataLoaderConfig, FeatureInfo
 from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 import torch
-from typing import Optional
+from typing import Optional, Union
 from config import config, Config
 from torch_geometric.data import HeteroData
 
@@ -13,15 +13,18 @@ from torch.nn import Linear, Embedding, ModuleList
 from torch_geometric.nn import SAGEConv, to_hetero
 from tqdm import tqdm
 import math
+import numpy as np
 
 
-def weighted_mse_loss(pred, target, weight=None):
+def weighted_mse_loss(
+    pred: torch.Tensor, target: Union[torch.Tensor, np.ndarray], weight=None
+) -> torch.Tensor:
     weight = 1.0 if weight is None else weight[target].to(pred.dtype)
     return (weight * (pred - target.to(pred.dtype)).pow(2)).mean()
 
 
 class GNNEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels):
+    def __init__(self, hidden_channels: int, out_channels: int):
         super().__init__()
         self.conv1 = SAGEConv((-1, -1), hidden_channels)
         self.conv2 = SAGEConv((-1, -1), out_channels)
@@ -33,12 +36,12 @@ class GNNEncoder(torch.nn.Module):
 
 
 class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels):
+    def __init__(self, hidden_channels: int):
         super().__init__()
         self.lin1 = Linear(2 * hidden_channels, hidden_channels)
         self.lin2 = Linear(hidden_channels, 1)
 
-    def forward(self, z_dict, edge_label_index):
+    def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
         row, col = edge_label_index
         z = torch.cat([z_dict["customer"][row], z_dict["article"][col]], dim=-1)
 
@@ -48,7 +51,12 @@ class EdgeDecoder(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels, feature_info, metadata):
+    def __init__(
+        self,
+        hidden_channels: int,
+        feature_info: FeatureInfo,
+        metadata: tuple[list[str], list[tuple[str]]],
+    ):
         super().__init__()
         self.encoder = GNNEncoder(hidden_channels, hidden_channels)
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
@@ -76,7 +84,7 @@ class Model(torch.nn.Module):
         self.embedding_customers = ModuleList(embedding_customers)
         self.embedding_articles = ModuleList(embedding_articles)
 
-    def __embedding(self, x_dict):
+    def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
             x_dict["customer"].long(),
             x_dict["article"].long(),
@@ -93,26 +101,30 @@ class Model(torch.nn.Module):
 
         return x_dict
 
-    def initialize_encoder_input_size(self, x_dict, edge_index_dict):
+    def initialize_encoder_input_size(
+        self, x_dict: dict, edge_index_dict: dict
+    ) -> None:
         x_dict_new = self.__embedding(x_dict)
         self.encoder(x_dict_new, edge_index_dict)
 
-    def forward(self, x_dict, edge_index_dict, edge_label_index):
+    def forward(
+        self, x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor
+    ) -> torch.Tensor:
         x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
         return self.decoder(z_dict, edge_label_index)
 
 
-def train(data, model, optimizer):
+def train(data, model: Model, optimizer) -> tuple[float, Model]:
     model.train()
     optimizer.zero_grad()
-    pred = model(
+    pred: torch.Tensor = model(
         data.x_dict,
         data.edge_index_dict,
         data["customer", "article"].edge_label_index,
     )
     target = data["customer", "article"].edge_label
-    loss = weighted_mse_loss(pred, target, None)
+    loss: torch.Tensor = weighted_mse_loss(pred, target, None)
     loss.backward()
     optimizer.step()
     return float(loss), model
