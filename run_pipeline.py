@@ -1,13 +1,14 @@
-from data.types import DataLoaderConfig
+from data.types import DataLoaderConfig, FeatureInfo
 from data.data_loader import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 import torch
 from typing import Optional
 from config import config, Config
+from torch_geometric.data import HeteroData
 
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
+from torch.nn import Linear, Embedding, ModuleList
 
 from torch_geometric.nn import SAGEConv, to_hetero
 from tqdm import tqdm
@@ -47,13 +48,57 @@ class EdgeDecoder(torch.nn.Module):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, hidden_channels, metadata):
+    def __init__(self, hidden_channels, feature_info, metadata):
         super().__init__()
         self.encoder = GNNEncoder(hidden_channels, hidden_channels)
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(hidden_channels)
 
+        customer_info, article_info = feature_info
+        embedding_articles: list[Embedding] = []
+        embedding_customers: list[Embedding] = []
+
+        for i in range(article_info.num_feat):
+            embedding_customers.append(
+                Embedding(
+                    int(customer_info.num_cat[i] + 1),
+                    int(customer_info.embedding_size[i]),
+                )
+            )
+        for i in range(article_info.num_feat):
+            embedding_articles.append(
+                Embedding(
+                    int(article_info.num_cat[i] + 1),
+                    int(article_info.embedding_size[i]),
+                )
+            )
+
+        self.embedding_customers = ModuleList(embedding_customers)
+        self.embedding_articles = ModuleList(embedding_articles)
+
+    def __embedding(self, x_dict):
+        customer_features, article_features = (
+            x_dict["customer"].long(),
+            x_dict["article"].long(),
+        )
+        embedding_customers, embedding_articles = [], []
+        for i, embedding_layer in enumerate(self.embedding_customers):
+            embedding_customers.append(embedding_layer(customer_features[:, i]))
+
+        for i, embedding_layer in enumerate(self.embedding_articles):
+            embedding_articles.append(embedding_layer(article_features[:, i]))
+
+        x_dict["customer"] = torch.cat(embedding_customers, dim=0)
+        x_dict["article"] = torch.cat(embedding_articles, dim=0)
+
+        return x_dict
+
+    def initialize_encoder_input_size(self, x_dict, edge_index_dict):
+        x_dict_new = self.__embedding(x_dict)
+        self.encoder(x_dict_new, edge_index_dict)
+
     def forward(self, x_dict, edge_index_dict, edge_label_index):
+        x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
         return self.decoder(z_dict, edge_label_index)
 
@@ -85,6 +130,27 @@ def test(data, model):
     return float(rmse), model
 
 
+def get_feature_info(full_data: HeteroData) -> tuple[FeatureInfo, FeatureInfo]:
+    customer_features = full_data.x_dict["customer"]
+    article_features = full_data.x_dict["article"]
+
+    customer_num_cat, _ = torch.max(customer_features, dim=0)
+    article_num_cat, _ = torch.max(article_features, dim=0)
+
+    customer_feat_info, article_feat_info = FeatureInfo(
+        num_feat=customer_features.shape[1],
+        num_cat=customer_num_cat.tolist(),
+        embedding_size=[10] * customer_features.shape[1],
+    ), FeatureInfo(
+        num_feat=article_features.shape[1],
+        num_cat=article_num_cat.tolist(),
+        embedding_size=[10] * article_features.shape[1],
+    )
+
+    feature_info = (customer_feat_info, article_feat_info)
+    return feature_info
+
+
 def run_pipeline(config: Config):
     print("| Seeding everything...")
     seed_everything(5)
@@ -97,19 +163,25 @@ def run_pipeline(config: Config):
         test_loader,
         customer_id_map,
         article_id_map,
+        full_data,
     ) = create_datasets(
         DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32)
     )
     assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
 
     print("| Creating Model...")
-    model = Model(hidden_channels=32, metadata=train_loader.metadata()).to(device)
+    feature_info = get_feature_info(full_data)
+    model = Model(
+        hidden_channels=32, feature_info=feature_info, metadata=train_loader.metadata()
+    ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
     with torch.no_grad():
-        model.encoder(train_loader.x_dict, train_loader.edge_index_dict)
+        model.initialize_encoder_input_size(
+            train_loader.x_dict, train_loader.edge_index_dict
+        )
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)

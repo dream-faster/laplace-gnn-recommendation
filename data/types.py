@@ -43,3 +43,11 @@ class PreprocessingConfig:
 
     K: int
     data_size: Optional[int]
+    save_to_csv: Optional[bool]
+
+
+@dataclass
+class FeatureInfo:
+    num_feat: int
+    num_cat: list[int]
+    embedding_size: list[int]

@@ -9,6 +9,14 @@ import numpy as np
 from typing import Tuple
 
 
+def save_to_csv(
+    customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
+):
+    customers.to_csv("data/saved/customers.csv", index=False)
+    articles.to_csv("data/saved/articles.csv", index=False)
+    transactions.to_csv("data/saved/transactions.csv", index=False)
+
+
 def preprocess(config: PreprocessingConfig):
     print("| Loading customers...")
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
@@ -147,9 +155,6 @@ def preprocess(config: PreprocessingConfig):
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles, "article_id", 0
     )
-    print("| Removing unused columns...")
-    customers.drop(["customer_id"], axis=1, inplace=True)
-    articles.drop(["article_id"], axis=1, inplace=True)
 
     print("| Parsing transactions...")
     transactions_to_article_id = (
@@ -160,6 +165,13 @@ def preprocess(config: PreprocessingConfig):
         .apply(lambda x: customer_id_map_reverse[x])
         .to_numpy()
     )
+
+    if config.save_to_csv:
+        save_to_csv(customers, articles, transactions)
+
+    print("| Removing unused columns...")
+    customers.drop(["customer_id"], axis=1, inplace=True)
+    articles.drop(["article_id"], axis=1, inplace=True)
 
     customers = torch.tensor(customers.reset_index().to_numpy(), dtype=torch.float)
     assert torch.isnan(customers).any() == False
@@ -224,6 +236,8 @@ only_users_and_articles_nodes = PreprocessingConfig(
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
     data_size=100,
+    save_to_csv=False
+    
 )
 
 if __name__ == "__main__":
