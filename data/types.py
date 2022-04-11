@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 ArticleIdMap = dict
 CustomerIdMap = dict
@@ -33,6 +33,8 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
+    type: Literal['heterogeneous', 'homogeneous']
+
     customer_features: List[UserColumn]
     # customer_nodes: List[UserColumn]
 
@@ -41,6 +43,7 @@ class PreprocessingConfig:
 
     article_non_categorical_features: List[ArticleColumn]
 
+    load_image_embedding: bool
     K: int
     data_size: Optional[int]
     save_to_csv: Optional[bool]
