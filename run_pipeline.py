@@ -21,36 +21,12 @@ def weighted_mse_loss(pred, target, weight=None):
 
 
 class GNNEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, feature_info):
+    def __init__(self, hidden_channels, out_channels):
         super().__init__()
-
-        customer_info, article_info = feature_info
-        embedding_modules: list[Embedding] = []
-
-        for i in range(customer_info.num_feat):
-            embedding_modules.append(
-                Embedding(
-                    int(customer_info.num_cat[i]), int(customer_info.embedding_size[i])
-                )
-            )
-
-        for i in range(article_info.num_feat):
-            embedding_modules.append(
-                Embedding(
-                    int(customer_info.num_cat[i]), int(customer_info.embedding_size[i])
-                )
-            )
-
-        self.embedding = ModuleList(embedding_modules)
         self.conv1 = SAGEConv((-1, -1), hidden_channels)
         self.conv2 = SAGEConv((-1, -1), out_channels)
 
     def forward(self, x, edge_index):
-        embeddings = []
-        for i, l in enumerate(self.embedding):
-            embeddings.append(self.embedding[i](x))
-        x = torch.cat(embeddings)
-
         x = self.conv1(x, edge_index).relu()
         x = self.conv2(x, edge_index)
         return x
@@ -74,11 +50,48 @@ class EdgeDecoder(torch.nn.Module):
 class Model(torch.nn.Module):
     def __init__(self, hidden_channels, feature_info, metadata):
         super().__init__()
-        self.encoder = GNNEncoder(hidden_channels, hidden_channels, feature_info)
+        self.encoder = GNNEncoder(hidden_channels, hidden_channels)
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(hidden_channels)
 
+        customer_info, article_info = feature_info
+        embedding_articles: list[Embedding] = []
+        embedding_customers: list[Embedding] = []
+
+        for i in range(article_info.num_feat):
+            embedding_customers.append(
+                Embedding(
+                    int(customer_info.num_cat[i] + 1),
+                    int(customer_info.embedding_size[i]),
+                )
+            )
+        for i in range(article_info.num_feat):
+            embedding_articles.append(
+                Embedding(
+                    int(article_info.num_cat[i] + 1),
+                    int(article_info.embedding_size[i]),
+                )
+            )
+
+        self.embedding_customers = ModuleList(embedding_customers)
+        self.embedding_articles = ModuleList(embedding_articles)
+
     def forward(self, x_dict, edge_index_dict, edge_label_index):
+
+        customer_features, article_features = (
+            x_dict["customer"].long(),
+            x_dict["article"].long(),
+        )
+        embedding_customers, embedding_articles = [], []
+        for i, embedding_layer in enumerate(self.embedding_customers):
+            embedding_customers.append(embedding_layer(customer_features[:, i]))
+
+        for i, embedding_layer in enumerate(self.embedding_articles):
+            embedding_articles.append(embedding_layer(article_features[:, i]))
+
+        x_dict["customer"] = torch.cat(embedding_customers, dim=0)
+        x_dict["article"] = torch.cat(embedding_articles, dim=0)
+
         z_dict = self.encoder(x_dict, edge_index_dict)
         return self.decoder(z_dict, edge_label_index)
 
