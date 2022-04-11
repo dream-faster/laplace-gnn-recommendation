@@ -108,14 +108,7 @@ def create_datasets(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
-    return (
-        train_split,
-        val_split,
-        test_split,
-        customer_id_map,
-        article_id_map,
-        data
-    )
+    return (train_split, val_split, test_split, customer_id_map, article_id_map, data)
 
 
 def read_json(filename: str):
