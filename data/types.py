@@ -5,9 +5,6 @@ from typing import Literal, Optional, List, Union
 ArticleIdMap = dict
 CustomerIdMap = dict
 
-heterogenous: str = "heterogenous"
-homogenous: str = "homogenous"
-
 
 class UserColumn(Enum):
     PostalCode = "postal_code"
@@ -28,8 +25,8 @@ class ArticleColumn(Enum):
 
 
 class PipelineConst(Enum):
-    heterogenous = heterogenous
-    homogenous = homogenous
+    heterogenous = "heterogenous"
+    homogenous = "homogenous"
 
 
 @dataclass
@@ -41,7 +38,7 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
-    type: Literal[heterogenous, homogenous]
+    type: PipelineConst
 
     customer_features: List[UserColumn]
     # customer_nodes: List[UserColumn]

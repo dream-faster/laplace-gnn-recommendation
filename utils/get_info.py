@@ -10,7 +10,7 @@ def __homogenous_features(full_data: HeteroData) -> FeatureInfo:
     #     num_cat=article_num_cat.tolist(),
     #     embedding_size=[10] * article_features.shape[1],
     # )
-    pass
+    return FeatureInfo()
 
 
 def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, FeatureInfo]:
@@ -39,5 +39,5 @@ def get_feature_info(
     if type == "heterogenous":
         return __heterogenous_features(full_data)
 
-    if type == "homogenous":
+    elif type == "homogenous":
         return __heterogenous_features(full_data)
