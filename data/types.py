@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, Optional, List, Union
+from typing import Optional, List, Union
 
 ArticleIdMap = dict
 CustomerIdMap = dict
@@ -24,9 +24,14 @@ class ArticleColumn(Enum):
     ImgEmbedding = "img_embedding"
 
 
-class PipelineConst(Enum):
+class GraphType(Enum):
     heterogenous = "heterogenous"
     homogenous = "homogenous"
+
+
+class DataType(Enum):
+    pyg = "pyg"
+    dgl = "dgl"
 
 
 @dataclass
@@ -38,7 +43,7 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
-    type: PipelineConst
+    type: GraphType
 
     customer_features: List[UserColumn]
     # customer_nodes: List[UserColumn]
@@ -52,7 +57,7 @@ class PreprocessingConfig:
     K: int
     data_size: Optional[int]
     save_to_csv: Optional[bool]
-    data_type: Literal["pyg", "dgl"]
+    data_type: DataType
 
 
 @dataclass

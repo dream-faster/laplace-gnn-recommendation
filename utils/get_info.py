@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import HeteroData, Data
-from data.types import FeatureInfo, PipelineConst
+from data.types import FeatureInfo, GraphType
 from typing import Union, Optional
 
 
@@ -36,17 +36,17 @@ def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, Feature
 
 
 def get_feature_info(
-    full_data: Union[HeteroData, Data], type: PipelineConst
+    full_data: Union[HeteroData, Data], type: GraphType
 ) -> Optional[Union[tuple[FeatureInfo, FeatureInfo], FeatureInfo]]:
     assert type in [
-        PipelineConst.homogenous,
-        PipelineConst.heterogenous,
+        GraphType.homogenous,
+        GraphType.heterogenous,
     ], "Invalid type"
 
-    if type == PipelineConst.heterogenous:
+    if type == GraphType.heterogenous:
         return __heterogenous_features(full_data)
 
-    elif type == PipelineConst.homogenous:
+    elif type == GraphType.homogenous:
         return __homogenous_features(full_data)
 
     return None
