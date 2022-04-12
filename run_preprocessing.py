@@ -161,7 +161,9 @@ def preprocess(config: PreprocessingConfig):
     )
     articles = articles[~articles["article_id"].isin(disjoint_articles)]
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
-        articles, "article_id", 0 if config.type == "homogeneous" else len(customers)
+        articles,
+        "article_id",
+        len(customers) if config.type == GraphType.homogenous else 0,
     )
 
     print("| Parsing transactions...")
@@ -251,14 +253,20 @@ def create_data_dgl(
     else:
         import dgl
 
-        data = dgl.graph(
-            (
-                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
-                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
-            )
+        data = dgl.heterograph(
+            {
+                ("customer", "buys", "article"): (
+                    torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
+                    torch.as_tensor(transactions_to_article_id, dtype=torch.long),
+                )
+            },
+            num_nodes_dict={
+                "customer": customers.shape[0],
+                "article": articles.shape[0],
+            },
         )
-        data.ndata["customer"] = customers
-        data.ndata["article"] = articles
+        data.nodes["customer"].data["features"] = customers
+        data.nodes["article"].data["features"] = articles
         return data
 
 
