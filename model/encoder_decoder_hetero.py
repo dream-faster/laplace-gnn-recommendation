@@ -24,8 +24,11 @@ class EdgeDecoder(torch.nn.Module):
         self.lin2 = Linear(hidden_channels, 1)
 
     def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
-        row, col = edge_label_index
-        z = torch.cat([z_dict["customer"][row], z_dict["article"][col]], dim=-1)
+        customer_index, article_index = edge_label_index
+        z = torch.cat(
+            [z_dict["customer"][customer_index], z_dict["article"][article_index]],
+            dim=-1,
+        )
 
         z = self.lin1(z).relu()
         z = self.lin2(z)

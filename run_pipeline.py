@@ -31,7 +31,8 @@ def select_properties(
             data.x_dict,
             data.edge_index_dict,
             data["customer", "article"].edge_label_index,
-        ), data["customer", "article"].edge_label.float()
+            data["customer", "article"].edge_label.float(),
+        )
     else:  # config.type == PipelineConst.homogenous:
         return (
             data.x,
@@ -73,6 +74,7 @@ def test(data: Union[HeteroData, Data], model: Module, config: Config):
 
 
 def run_pipeline(config: Config):
+    print(f"--- Type: {config.type} ---")
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
