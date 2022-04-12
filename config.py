@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
+from data.types import PipelineConst
 
 
 @dataclass
@@ -12,8 +13,8 @@ class Config:
     save_emb_dir: Optional[
         str
     ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
-
+    type: Union[PipelineConst.heterogenous, PipelineConst.homogenous]  # type of graph we use
 
 config = Config(
-    epochs=1500, k=12, num_layers=3, batch_size=1, embedding_dim=64, save_emb_dir=None
+    epochs=1500, k=12, num_layers=3, batch_size=1, embedding_dim=64, save_emb_dir=None, type=PipelineConst.homogenous
 )
