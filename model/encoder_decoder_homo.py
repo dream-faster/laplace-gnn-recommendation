@@ -21,11 +21,11 @@ class GNNEncoder(torch.nn.Module):
 class EdgeDecoder(torch.nn.Module):
     def __init__(self, hidden_channels: int):
         super().__init__()
-        self.lin1 = Linear(2 * hidden_channels, hidden_channels)
+        self.lin1 = Linear(hidden_channels, hidden_channels)
         self.lin2 = Linear(hidden_channels, 1)
 
     def forward(self, z: Tensor, edge_label_index: Tensor) -> torch.Tensor:
-        z = z[torch.flatten(edge_label_index)]
+        z = z[edge_label_index[0]]  # torch.flatten(edge_label_index)]
 
         z = self.lin1(z).relu()
         z = self.lin2(z)
@@ -67,7 +67,7 @@ class Encoder_Decoder_Model_Homo(torch.nn.Module):
             self.embedding_customers = ModuleList(embedding_customers)
             self.embedding_articles = ModuleList(embedding_articles)
 
-    def __embedding(self, x_dict: dict) -> dict:
+    def __embedding(self, x_dict: Tensor) -> Tensor:
         customer_features, article_features = (
             x_dict["customer"].long(),
             x_dict["article"].long(),
@@ -92,7 +92,7 @@ class Encoder_Decoder_Model_Homo(torch.nn.Module):
         self.encoder(x, edge_index)
 
     def forward(
-        self, x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor
+        self, x_dict: Tensor, edge_index_dict: Tensor, edge_label_index: Tensor
     ) -> torch.Tensor:
         if self.embedding:
             x_dict = self.__embedding(x_dict)

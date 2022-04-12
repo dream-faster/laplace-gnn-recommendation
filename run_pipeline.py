@@ -49,13 +49,13 @@ def train(
 
     x, edge_index, edge_label_index, edge_label = select_properties(data, config)
 
-    pred: torch.Tensor = model(
+    pred: Tensor = model(
         x,
         edge_index,
         edge_label_index,
     )
     target = edge_label
-    loss: torch.Tensor = weighted_mse_loss(pred, target, None)
+    loss: Tensor = weighted_mse_loss(pred, target, None)
     loss.backward()
     optimizer.step()
     return float(loss), model

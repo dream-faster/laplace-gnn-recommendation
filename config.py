@@ -33,7 +33,7 @@ config = Config(
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=GraphType.heterogenous,
+    type=GraphType.homogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
@@ -55,5 +55,5 @@ only_users_and_articles_nodes = PreprocessingConfig(
     K=0,
     data_size=100,
     save_to_csv=False,
-    data_type=DataType.dgl,
+    data_type=DataType.pyg,
 )
