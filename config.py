@@ -20,6 +20,7 @@ class Config:
         str
     ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
     type: GraphType  # type of graph we use
+    dataloader: bool
 
 
 config = Config(
@@ -30,6 +31,7 @@ config = Config(
     embedding_dim=64,
     save_emb_dir=None,
     type=GraphType.homogenous,
+    dataloader=True,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

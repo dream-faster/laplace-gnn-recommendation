@@ -20,7 +20,6 @@ def create_dataloaders_homo(
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
-    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
     # from torch_geometric.datasets import MovieLens
     # import os.path as osp
@@ -67,6 +66,7 @@ def create_dataloaders_homo(
         ),
         customer_id_map,
         article_id_map,
+        data,
     )
 
 
@@ -95,6 +95,8 @@ def create_datasets_homo(
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
+
+    assert torch.max(train_split.edge_stores[0].edge_index) <= train_split.num_nodes
 
     return (train_split, val_split, test_split, customer_id_map, article_id_map, data)
 
