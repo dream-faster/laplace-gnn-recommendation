@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import HeteroData
-from data.types import FeatureInfo
+from data.types import FeatureInfo, PipelineConst
 from typing import Union
 
 
@@ -34,10 +34,10 @@ def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, Feature
 
 
 def get_feature_info(
-    full_data: HeteroData, type: str
+    full_data: HeteroData, type: PipelineConst
 ) -> Union[tuple[FeatureInfo, FeatureInfo], FeatureInfo]:
-    if type == "heterogenous":
+    if type == PipelineConst.heterogenous:
         return __heterogenous_features(full_data)
 
-    elif type == "homogenous":
-        return __heterogenous_features(full_data)
+    elif type == PipelineConst.homogenous:
+        return __homogenous_features(full_data)
