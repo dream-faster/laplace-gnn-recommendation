@@ -1,5 +1,5 @@
 from data.types import DataLoaderConfig, FeatureInfo
-from data.data_loader_hetero import create_dataloaders, create_datasets
+from data.data_loader_homo import create_dataloaders, create_datasets
 from torch_geometric import seed_everything
 import torch
 from config import config, Config
@@ -23,9 +23,9 @@ def train(data, model: Module, optimizer: Optimizer) -> tuple[float, Module]:
     pred: torch.Tensor = model(
         data.x_dict,
         data.edge_index_dict,
-        data["customer", "article"].edge_label_index,
+        data.edge_label_index,
     )
-    target = data["customer", "article"].edge_label
+    target = data.edge_label
     loss: torch.Tensor = weighted_mse_loss(pred, target, None)
     loss.backward()
     optimizer.step()
@@ -35,11 +35,9 @@ def train(data, model: Module, optimizer: Optimizer) -> tuple[float, Module]:
 @torch.no_grad()
 def test(data, model):
     model.eval()
-    pred = model(
-        data.x_dict, data.edge_index_dict, data["customer", "article"].edge_label_index
-    )
+    pred = model(data.x_dict, data.edge_index_dict, data.edge_label_index)
     pred = pred.clamp(min=0, max=5)
-    target = data["customer", "article"].edge_label.float()
+    target = data.edge_label.float()
     rmse = F.mse_loss(pred, target).sqrt()
     return float(rmse), model
 

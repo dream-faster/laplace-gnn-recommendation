@@ -13,7 +13,7 @@ from torch.optim import Optimizer
 from tqdm import tqdm
 import math
 
-from model.encoder_decoder_model import Encoder_Decoder_Model
+from model.encoder_decoder_hetero import Encoder_Decoder_Model
 from utils.loss_functions import weighted_mse_loss
 
 
