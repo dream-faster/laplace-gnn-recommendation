@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from typing import Optional, Union
-from data.types import GraphType, PreprocessingConfig, UserColumn, ArticleColumn
+from data.types import (
+    GraphType,
+    PreprocessingConfig,
+    UserColumn,
+    ArticleColumn,
+    DataType,
+)
 
 
 @dataclass
@@ -49,5 +55,5 @@ only_users_and_articles_nodes = PreprocessingConfig(
     K=0,
     data_size=100,
     save_to_csv=False,
-    data_type="pyg"
+    data_type=DataType.dgl,
 )
