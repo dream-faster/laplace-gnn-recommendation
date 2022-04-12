@@ -1,16 +1,18 @@
 import torch
-from torch_geometric.data import HeteroData
+from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo, PipelineConst
-from typing import Union
+from typing import Union, Optional
 
 
-def __homogenous_features(full_data: HeteroData) -> FeatureInfo:
-    # FeatureInfo(
-    #     num_feat=article_features.shape[1],
-    #     num_cat=article_num_cat.tolist(),
-    #     embedding_size=[10] * article_features.shape[1],
-    # )
-    return FeatureInfo()
+def __homogenous_features(full_data: Data) -> FeatureInfo:
+
+    data = full_data.x
+
+    return FeatureInfo(
+        num_feat=data.shape[1],
+        num_cat=torch.max(data, dim=0)[0].tolist(),
+        embedding_size=[10] * data.shape[1],
+    )
 
 
 def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, FeatureInfo]:
@@ -34,10 +36,17 @@ def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, Feature
 
 
 def get_feature_info(
-    full_data: HeteroData, type: PipelineConst
-) -> Union[tuple[FeatureInfo, FeatureInfo], FeatureInfo]:
+    full_data: Union[HeteroData, Data], type: PipelineConst
+) -> Optional[Union[tuple[FeatureInfo, FeatureInfo], FeatureInfo]]:
+    assert type in [
+        PipelineConst.homogenous,
+        PipelineConst.heterogenous,
+    ], "Invalid type"
+
     if type == PipelineConst.heterogenous:
         return __heterogenous_features(full_data)
 
     elif type == PipelineConst.homogenous:
         return __homogenous_features(full_data)
+
+    return None

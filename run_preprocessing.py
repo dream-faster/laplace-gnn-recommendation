@@ -1,7 +1,7 @@
 from re import X
 import pandas as pd
 from tqdm import tqdm
-from data.types import PreprocessingConfig, UserColumn, ArticleColumn, PipelineConstants
+from data.types import PreprocessingConfig, UserColumn, ArticleColumn, PipelineConst
 import torch
 from torch_geometric.data import HeteroData, Data
 import json
@@ -229,7 +229,7 @@ def create_ids_and_maps(
 
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=PipelineConstants.homogenous,
+    type=PipelineConst.heterogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
