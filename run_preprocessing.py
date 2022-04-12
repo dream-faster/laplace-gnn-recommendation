@@ -1,8 +1,9 @@
+from re import X
 import pandas as pd
 from tqdm import tqdm
 from data.types import PreprocessingConfig, UserColumn, ArticleColumn
 import torch
-from torch_geometric.data import HeteroData
+from torch_geometric.data import HeteroData, Data
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
@@ -36,16 +37,17 @@ def preprocess(config: PreprocessingConfig):
         transactions_per_article, on="article_id", how="outer"
     ).fillna(0.0)
 
-    print("| Loading article image embeddings...")
-    articles_image_embeddings = torch.load(
-        "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
-    )
-    articles["img_embedding"] = articles.apply(
-        lambda article: articles_image_embeddings.get(
-            int(article["article_id"]), torch.zeros(512)
-        ),
-        axis=1,
-    )
+    if config.load_image_embedding:
+        print("| Loading article image embeddings...")
+        articles_image_embeddings = torch.load(
+            "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
+        )
+        articles["img_embedding"] = articles.apply(
+            lambda article: articles_image_embeddings.get(
+                int(article["article_id"]), torch.zeros(512)
+            ),
+            axis=1,
+        )
 
     # print("| Loading article text embeddings...")
     # articles_text_embeddings = torch.load(
@@ -153,7 +155,7 @@ def preprocess(config: PreprocessingConfig):
     )
     articles = articles[~articles["article_id"].isin(disjoint_articles)]
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
-        articles, "article_id", 0
+        articles, "article_id", 0 if config.type == "homogeneous" else len(customers)
     )
 
     print("| Parsing transactions...")
@@ -180,13 +182,23 @@ def preprocess(config: PreprocessingConfig):
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
-    data = HeteroData()
-    data["customer"].x = customers
-    data["article"].x = articles
-    data["customer", "buys", "article"].edge_index = torch.as_tensor(
-        (transactions_to_customer_id, transactions_to_article_id),
-        dtype=torch.long,
-    )
+    if config.type == "homogeneous":
+        data = Data(
+            x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
+            edge_index=torch.as_tensor(
+                (transactions_to_customer_id, transactions_to_article_id),
+                dtype=torch.long,
+            ),
+        )
+
+    else:
+        data = HeteroData()
+        data["customer"].x = customers
+        data["article"].x = articles
+        data["customer", "buys", "article"].edge_index = torch.as_tensor(
+            (transactions_to_customer_id, transactions_to_article_id),
+            dtype=torch.long,
+        )
 
     print("| Saving the graph...")
     torch.save(data, "data/derived/graph.pt")
@@ -217,6 +229,7 @@ def create_ids_and_maps(
 
 
 only_users_and_articles_nodes = PreprocessingConfig(
+    type="homogeneous",
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
@@ -234,10 +247,10 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
+    load_image_embedding=False,
     K=0,
     data_size=100,
-    save_to_csv=False
-    
+    save_to_csv=False,
 )
 
 if __name__ == "__main__":
