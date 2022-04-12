@@ -1,13 +1,14 @@
 from re import X
 import pandas as pd
 from tqdm import tqdm
-from data.types import PreprocessingConfig, UserColumn, ArticleColumn, PipelineConstants
+from data.types import PreprocessingConfig, UserColumn, ArticleColumn, PipelineConst
 import torch
 from torch_geometric.data import HeteroData, Data
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
 from typing import Tuple
+from config import only_users_and_articles_nodes
 
 
 def save_to_csv(
@@ -19,6 +20,7 @@ def save_to_csv(
 
 
 def preprocess(config: PreprocessingConfig):
+    print(f"--- Type: {config.type} ---")
     print("| Loading customers...")
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     customers = customers[[c.value for c in config.customer_features] + ["customer_id"]]
@@ -182,7 +184,7 @@ def preprocess(config: PreprocessingConfig):
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
-    if config.type == "homogeneous":
+    if config.type == PipelineConst.homogenous:
         data = Data(
             x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
             edge_index=torch.as_tensor(
@@ -227,31 +229,6 @@ def create_ids_and_maps(
     df["index"] = df.index
     return df, mapping_forward, mapping_reverse
 
-
-only_users_and_articles_nodes = PreprocessingConfig(
-    type=PipelineConstants.homogenous,
-    customer_features=[
-        UserColumn.PostalCode,
-        UserColumn.FN,
-        UserColumn.Age,
-        UserColumn.ClubMemberStatus,
-        UserColumn.FashionNewsFrequency,
-        UserColumn.Active,
-    ],
-    # customer_nodes=[],
-    article_features=[
-        ArticleColumn.ProductCode,
-        ArticleColumn.ProductTypeNo,
-        ArticleColumn.GraphicalAppearanceNo,
-        ArticleColumn.ColourGroupCode,
-    ],
-    # article_nodes=[],
-    article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    load_image_embedding=False,
-    K=0,
-    data_size=100,
-    save_to_csv=False,
-)
 
 if __name__ == "__main__":
     preprocess(only_users_and_articles_nodes)

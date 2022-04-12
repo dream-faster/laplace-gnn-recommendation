@@ -8,7 +8,7 @@ import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader
 
 
-def create_dataloaders(
+def create_dataloaders_homo(
     config: DataLoaderConfig,
 ) -> Tuple[
     NeighborLoader,
@@ -70,7 +70,7 @@ def create_dataloaders(
     )
 
 
-def create_datasets(
+def create_datasets_homo(
     config: DataLoaderConfig,
 ) -> Tuple[Data, Data, Data, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")

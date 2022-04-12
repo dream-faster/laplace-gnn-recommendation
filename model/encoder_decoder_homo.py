@@ -1,8 +1,9 @@
 import torch
+from torch import Tensor
 from data.types import DataLoaderConfig, FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList
-from torch_geometric.nn import SAGEConv, to_hetero
-from torch_geometric.data import HeteroData
+from torch_geometric.nn import SAGEConv
+from torch_geometric.data import Data
 
 
 class GNNEncoder(torch.nn.Module):
@@ -23,30 +24,24 @@ class EdgeDecoder(torch.nn.Module):
         self.lin1 = Linear(2 * hidden_channels, hidden_channels)
         self.lin2 = Linear(hidden_channels, 1)
 
-    def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
-        customer_index, article_index = edge_label_index
-        z = torch.cat(
-            [z_dict["customer"][customer_index], z_dict["article"][article_index]],
-            dim=-1,
-        )
+    def forward(self, z: Tensor, edge_label_index: Tensor) -> torch.Tensor:
+        z = z[torch.flatten(edge_label_index)]
 
         z = self.lin1(z).relu()
         z = self.lin2(z)
         return z.view(-1)
 
 
-class Encoder_Decoder_Model_Hetero(torch.nn.Module):
+class Encoder_Decoder_Model_Homo(torch.nn.Module):
     def __init__(
         self,
         hidden_channels: int,
         feature_info: FeatureInfo,
-        metadata: tuple[list[str], list[tuple[str]]],
         embedding: bool = False,
     ):
         super().__init__()
         self.embedding: bool = embedding
         self.encoder = GNNEncoder(hidden_channels, hidden_channels)
-        self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(hidden_channels)
 
         if self.embedding:
@@ -89,13 +84,12 @@ class Encoder_Decoder_Model_Hetero(torch.nn.Module):
 
         return x_dict
 
-    def initialize_encoder_input_size(self, data: HeteroData) -> None:
-        x_dict, edge_index_dict = data.x_dict, data.edge_index_dict
-
+    def initialize_encoder_input_size(self, data: Data) -> None:
+        x, edge_index = data.x, data.edge_index
         if self.embedding:
-            x_dict = self.__embedding(x_dict)
+            x = self.__embedding(x)
 
-        self.encoder(x_dict, edge_index_dict)
+        self.encoder(x, edge_index)
 
     def forward(
         self, x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor

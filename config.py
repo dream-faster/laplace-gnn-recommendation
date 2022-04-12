@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Union
-from data.types import PipelineConst
+from data.types import PipelineConst, PreprocessingConfig, UserColumn, ArticleColumn
 
 
 @dataclass
@@ -13,8 +13,40 @@ class Config:
     save_emb_dir: Optional[
         str
     ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
-    type: Union[PipelineConst.heterogenous, PipelineConst.homogenous]  # type of graph we use
+    type: PipelineConst  # type of graph we use
+
 
 config = Config(
-    epochs=1500, k=12, num_layers=3, batch_size=1, embedding_dim=64, save_emb_dir=None, type=PipelineConst.homogenous
+    epochs=1500,
+    k=12,
+    num_layers=3,
+    batch_size=1,
+    embedding_dim=64,
+    save_emb_dir=None,
+    type=PipelineConst.homogenous,
+)
+
+only_users_and_articles_nodes = PreprocessingConfig(
+    type=PipelineConst.homogenous,
+    customer_features=[
+        UserColumn.PostalCode,
+        UserColumn.FN,
+        UserColumn.Age,
+        UserColumn.ClubMemberStatus,
+        UserColumn.FashionNewsFrequency,
+        UserColumn.Active,
+    ],
+    # customer_nodes=[],
+    article_features=[
+        ArticleColumn.ProductCode,
+        ArticleColumn.ProductTypeNo,
+        ArticleColumn.GraphicalAppearanceNo,
+        ArticleColumn.ColourGroupCode,
+    ],
+    # article_nodes=[],
+    article_non_categorical_features=[ArticleColumn.ImgEmbedding],
+    load_image_embedding=False,
+    K=0,
+    data_size=100,
+    save_to_csv=False,
 )
