@@ -33,7 +33,7 @@ config = Config(
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=GraphType.homogenous,
+    type=GraphType.heterogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,

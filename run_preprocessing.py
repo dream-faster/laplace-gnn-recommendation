@@ -1,6 +1,12 @@
 import pandas as pd
 from tqdm import tqdm
-from data.types import PreprocessingConfig, UserColumn, ArticleColumn, GraphType
+from data.types import (
+    DataType,
+    PreprocessingConfig,
+    UserColumn,
+    ArticleColumn,
+    GraphType,
+)
 import torch
 import json
 from utils.labelencoder import encode_labels
@@ -182,7 +188,9 @@ def preprocess(config: PreprocessingConfig):
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
-    create_func = create_data_dgl if config.data_type == "dgl" else create_data_pyg
+    create_func = (
+        create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
+    )
     data = create_func(
         config.type,
         customers,
