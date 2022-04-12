@@ -184,7 +184,7 @@ def preprocess(config: PreprocessingConfig):
     print("| Creating PyG Data...")
     if config.type == "homogeneous":
         data = Data(
-            x=torch.cat([customers, articles], dim=1),
+            x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
             edge_index=torch.as_tensor(
                 (transactions_to_customer_id, transactions_to_article_id),
                 dtype=torch.long,
