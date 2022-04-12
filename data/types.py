@@ -5,9 +5,6 @@ from typing import Literal, Optional, List, Union
 ArticleIdMap = dict
 CustomerIdMap = dict
 
-heterogenous: str = "heterogenous"
-homogenous: str = "homogenous"
-
 
 class UserColumn(Enum):
     PostalCode = "postal_code"
