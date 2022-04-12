@@ -1,9 +1,7 @@
-from re import X
 import pandas as pd
 from tqdm import tqdm
-from data.types import PreprocessingConfig, UserColumn, ArticleColumn, PipelineConst
+from data.types import PreprocessingConfig, UserColumn, ArticleColumn, GraphType
 import torch
-from torch_geometric.data import HeteroData, Data
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
@@ -184,23 +182,14 @@ def preprocess(config: PreprocessingConfig):
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
-    if config.type == PipelineConst.homogenous:
-        data = Data(
-            x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
-            edge_index=torch.as_tensor(
-                (transactions_to_customer_id, transactions_to_article_id),
-                dtype=torch.long,
-            ),
-        )
-
-    else:
-        data = HeteroData()
-        data["customer"].x = customers
-        data["article"].x = articles
-        data["customer", "buys", "article"].edge_index = torch.as_tensor(
-            (transactions_to_customer_id, transactions_to_article_id),
-            dtype=torch.long,
-        )
+    create_func = create_data_dgl if config.data_type == "dgl" else create_data_pyg
+    data = create_func(
+        config.type,
+        customers,
+        articles,
+        transactions_to_customer_id,
+        transactions_to_article_id,
+    )
 
     print("| Saving the graph...")
     torch.save(data, "data/derived/graph.pt")
@@ -212,11 +201,57 @@ def preprocess(config: PreprocessingConfig):
         json.dump(article_id_map_forward, fp)
 
 
-# TODO: remove this when format stabilizes
-def create_prefixed_values_df(df: pd.DataFrame, prefix_mapping: dict):
-    for key, value in tqdm(prefix_mapping.items()):
-        df[key] = df[key].apply(lambda x: value + str(x))
-    return df
+def create_data_pyg(
+    graph_type: GraphType,
+    customers: torch.Tensor,
+    articles: torch.Tensor,
+    transactions_to_customer_id: np.ndarray,
+    transactions_to_article_id: np.ndarray,
+):
+    if graph_type == GraphType.homogenous:
+        from torch_geometric.data import Data
+
+        return Data(
+            x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
+            edge_index=torch.as_tensor(
+                (transactions_to_customer_id, transactions_to_article_id),
+                dtype=torch.long,
+            ),
+        )
+    else:
+        from torch_geometric.data import HeteroData
+
+        data = HeteroData()
+        data["customer"].x = customers
+        data["article"].x = articles
+        data["customer", "buys", "article"].edge_index = torch.as_tensor(
+            (transactions_to_customer_id, transactions_to_article_id),
+            dtype=torch.long,
+        )
+        return data
+
+
+def create_data_dgl(
+    graph_type: GraphType,
+    customers: torch.Tensor,
+    articles: torch.Tensor,
+    transactions_to_customer_id: np.ndarray,
+    transactions_to_article_id: np.ndarray,
+):
+    if graph_type == GraphType.homogenous:
+        raise Exception("DGL - Homogoenous not supported")
+    else:
+        import dgl
+
+        data = dgl.graph(
+            (
+                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
+                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
+            )
+        )
+        data.ndata["customer"] = customers
+        data.ndata["article"] = articles
+        return data
 
 
 def create_ids_and_maps(

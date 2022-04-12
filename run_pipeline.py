@@ -1,4 +1,3 @@
-from regex import E
 from tqdm import tqdm
 import math
 from typing import Union, Tuple
@@ -18,7 +17,7 @@ from model.encoder_decoder_hetero import Encoder_Decoder_Model_Hetero
 from model.encoder_decoder_homo import Encoder_Decoder_Model_Homo
 from utils.loss_functions import weighted_mse_loss
 from utils.get_info import get_feature_info
-from data.types import DataLoaderConfig, FeatureInfo, PipelineConst
+from data.types import DataLoaderConfig, FeatureInfo, GraphType
 from data.data_loader_homo import create_dataloaders_homo, create_datasets_homo
 from data.data_loader_hetero import create_dataloaders_hetero, create_datasets_hetero
 
@@ -26,14 +25,14 @@ from data.data_loader_hetero import create_dataloaders_hetero, create_datasets_h
 def select_properties(
     data: Union[HeteroData, Data], config: Config
 ) -> Union[tuple[dict, dict, dict, Tensor], tuple[Tensor, Tensor, Tensor, Tensor]]:
-    if config.type == PipelineConst.heterogenous:
+    if config.type == GraphType.heterogenous:
         return (
             data.x_dict,
             data.edge_index_dict,
             data["customer", "article"].edge_label_index,
             data["customer", "article"].edge_label.float(),
         )
-    else:  # config.type == PipelineConst.homogenous:
+    else:  # config.type == GraphType.homogenous:
         return (
             data.x,
             data.edge_index,
@@ -80,7 +79,7 @@ def run_pipeline(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("| Creating Datasets...")
-    if config.type == PipelineConst.homogenous:
+    if config.type == GraphType.homogenous:
         loader = create_datasets_homo
     else:
         loader = create_datasets_hetero
@@ -97,7 +96,7 @@ def run_pipeline(config: Config):
 
     print("| Creating Model...")
     feature_info = get_feature_info(full_data, config.type)
-    if config.type == PipelineConst.heterogenous:
+    if config.type == GraphType.heterogenous:
         model = Encoder_Decoder_Model_Hetero(
             hidden_channels=32,
             feature_info=feature_info,

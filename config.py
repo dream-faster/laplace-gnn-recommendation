@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from typing import Optional, Union
-from data.types import PipelineConst, PreprocessingConfig, UserColumn, ArticleColumn
+from data.types import (
+    GraphType,
+    PreprocessingConfig,
+    UserColumn,
+    ArticleColumn,
+    DataType,
+)
 
 
 @dataclass
@@ -13,7 +19,7 @@ class Config:
     save_emb_dir: Optional[
         str
     ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
-    type: PipelineConst  # type of graph we use
+    type: GraphType  # type of graph we use
 
 
 config = Config(
@@ -23,11 +29,11 @@ config = Config(
     batch_size=1,
     embedding_dim=64,
     save_emb_dir=None,
-    type=PipelineConst.homogenous,
+    type=GraphType.homogenous,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=PipelineConst.homogenous,
+    type=GraphType.homogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
@@ -49,4 +55,5 @@ only_users_and_articles_nodes = PreprocessingConfig(
     K=0,
     data_size=100,
     save_to_csv=False,
+    data_type=DataType.dgl,
 )
