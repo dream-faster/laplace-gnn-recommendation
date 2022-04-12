@@ -74,7 +74,8 @@ def test(data: Union[HeteroData, Data], model: Module, config: Config):
 
 
 def run_pipeline(config: Config):
-    print(f"--- Type: {config.type} ---")
+    print(f"--- Pipline Type: {config.type} ---")
+
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -94,7 +95,13 @@ def run_pipeline(config: Config):
         full_data,
     ) = loader(DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=32))
     assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
-
+    print(
+        "--- Data Type: {} ---".format(
+            PipelineConst.heterogenous
+            if type(full_data) == HeteroData
+            else PipelineConst.homogenous
+        )
+    )
     print("| Creating Model...")
     feature_info = get_feature_info(full_data, config.type)
     if config.type == PipelineConst.heterogenous:
