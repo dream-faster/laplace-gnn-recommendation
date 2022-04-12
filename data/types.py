@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Union
 
 ArticleIdMap = dict
 CustomerIdMap = dict
+
+heterogenous: str = "heterogenous"
+homogenous: str = "homogenous"
 
 
 class UserColumn(Enum):
@@ -24,6 +27,11 @@ class ArticleColumn(Enum):
     ImgEmbedding = "img_embedding"
 
 
+class PipelineConst(Enum):
+    heterogenous = heterogenous
+    homogenous = homogenous
+
+
 @dataclass
 class DataLoaderConfig:
     batch_size: int
@@ -33,7 +41,7 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
-    type: Literal['heterogeneous', 'homogeneous']
+    type: Literal[heterogenous, homogenous]
 
     customer_features: List[UserColumn]
     # customer_nodes: List[UserColumn]

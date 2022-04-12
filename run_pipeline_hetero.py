@@ -15,6 +15,7 @@ from torch.optim import Optimizer
 
 from model.encoder_decoder_hetero import Encoder_Decoder_Model
 from utils.loss_functions import weighted_mse_loss
+from utils.get_info import get_feature_info
 
 
 def train(data, model: Module, optimizer: Optimizer) -> tuple[float, Module]:
@@ -44,27 +45,6 @@ def test(data, model):
     return float(rmse), model
 
 
-def get_feature_info(full_data: HeteroData) -> tuple[FeatureInfo, FeatureInfo]:
-    customer_features = full_data.x_dict["customer"]
-    article_features = full_data.x_dict["article"]
-
-    customer_num_cat, _ = torch.max(customer_features, dim=0)
-    article_num_cat, _ = torch.max(article_features, dim=0)
-
-    customer_feat_info, article_feat_info = FeatureInfo(
-        num_feat=customer_features.shape[1],
-        num_cat=customer_num_cat.tolist(),
-        embedding_size=[10] * customer_features.shape[1],
-    ), FeatureInfo(
-        num_feat=article_features.shape[1],
-        num_cat=article_num_cat.tolist(),
-        embedding_size=[10] * article_features.shape[1],
-    )
-
-    feature_info = (customer_feat_info, article_feat_info)
-    return feature_info
-
-
 def run_pipeline(config: Config):
     print("| Seeding everything...")
     seed_everything(5)
@@ -84,7 +64,7 @@ def run_pipeline(config: Config):
     assert torch.max(train_loader.edge_stores[0].edge_index) <= train_loader.num_nodes
 
     print("| Creating Model...")
-    feature_info = get_feature_info(full_data)
+    feature_info = get_feature_info(full_data, config.type)
     model = Encoder_Decoder_Model(
         hidden_channels=32, feature_info=feature_info, metadata=train_loader.metadata()
     ).to(device)
