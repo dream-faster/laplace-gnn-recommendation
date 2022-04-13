@@ -22,14 +22,12 @@ def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, Feature
     customer_feat_info, article_feat_info = FeatureInfo(
         num_feat=customer_features.shape[1],
         num_cat=customer_num_cat,
-        # embedding_size=[10] * customer_features.shape[1],
         embedding_size=[
             __embedding_size_selector(max_cat) for max_cat in customer_num_cat
         ],
     ), FeatureInfo(
         num_feat=article_features.shape[1],
         num_cat=article_num_cat,
-        # embedding_size=[10] * article_features.shape[1],
         embedding_size=[
             __embedding_size_selector(max_cat) for max_cat in article_num_cat
         ],
