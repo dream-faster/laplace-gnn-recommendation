@@ -32,7 +32,7 @@ def run_pipeline(config: Config):
     feature_info = get_feature_info(full_data, config.type)
 
     model = Encoder_Decoder_Model(
-        hidden_channels=32,
+        hidden_channels=config.hidden_layer_size,
         feature_info=feature_info,
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
@@ -45,7 +45,7 @@ def run_pipeline(config: Config):
         model.initialize_encoder_input_size(next(iter(train_loader)))
 
     print("| Defining Optimizer...")
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     print("| Training Model...")
     loop_obj = tqdm(range(0, config.epochs))
