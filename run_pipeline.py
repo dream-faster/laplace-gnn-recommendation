@@ -1,36 +1,14 @@
 from tqdm import tqdm
-import math
-from typing import Callable, Union, Tuple
-
 import torch
 
 from torch_geometric import seed_everything
-from torch_geometric.data import HeteroData, Data
-
 
 from config import config, Config
-from model.encoder_decoder_hetero import Encoder_Decoder_Model_Hetero
-from model.encoder_decoder_homo import Encoder_Decoder_Model_Homo
+from model.encoder_decoder import Encoder_Decoder_Model
 
 from utils.get_info import get_feature_info
-from data.types import DataLoaderConfig, FeatureInfo, GraphType
-from data.data_loader_homo import create_dataloaders_homo, create_datasets_homo
-from data.data_loader_hetero import create_dataloaders_hetero, create_datasets_hetero
-
-from single_epoch import epoch_with_dataloader, epoch_without_dataloader
-
-
-def select_loader_epochloop(config: Config) -> tuple[Callable, Callable]:
-    if config.type == GraphType.homogenous:
-        if config.dataloader:
-            return create_dataloaders_homo, epoch_with_dataloader
-        else:
-            return create_datasets_homo, epoch_without_dataloader
-    else:
-        if config.dataloader:
-            return create_dataloaders_hetero, epoch_with_dataloader
-        else:
-            return create_datasets_hetero, epoch_without_dataloader
+from data.data_loader import create_dataloaders
+from single_epoch import epoch_with_dataloader
 
 
 def run_pipeline(config: Config):
@@ -40,7 +18,7 @@ def run_pipeline(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("| Creating Datasets...")
-    loader, epoch_loop = select_loader_epochloop(config)
+    loader, epoch_loop = create_dataloaders, epoch_with_dataloader
     (
         train_loader,
         val_loader,
@@ -50,37 +28,21 @@ def run_pipeline(config: Config):
         full_data,
     ) = loader(config.dataloader_config)
 
-    print(
-        "--- Data Type: {} ---".format(
-            GraphType.heterogenous
-            if type(full_data) == HeteroData
-            else GraphType.homogenous
-        )
-    )
     print("| Creating Model...")
     feature_info = get_feature_info(full_data, config.type)
-    if config.type == GraphType.heterogenous:
-        model = Encoder_Decoder_Model_Hetero(
-            hidden_channels=32,
-            feature_info=feature_info,
-            metadata=next(iter(train_loader)).metadata(),
-            embedding=True,
-        ).to(device)
-    else:
-        model = Encoder_Decoder_Model_Homo(
-            in_channels=8,
-            out_channels=1,
-            hidden_channels=57,
-        ).to(device)
+
+    model = Encoder_Decoder_Model(
+        hidden_channels=32,
+        feature_info=feature_info,
+        metadata=next(iter(train_loader)).metadata(),
+        embedding=True,
+    ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
     with torch.no_grad():
-        if config.dataloader:
-            model.initialize_encoder_input_size(next(iter(train_loader)))
-        else:
-            model.initialize_encoder_input_size(train_loader)
+        model.initialize_encoder_input_size(next(iter(train_loader)))
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -89,7 +51,7 @@ def run_pipeline(config: Config):
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
         loss, val_rmse, test_rmse = epoch_loop(
-            model, optimizer, train_loader, val_loader, test_loader, config
+            model, optimizer, train_loader, val_loader, test_loader
         )
         torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 

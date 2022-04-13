@@ -35,7 +35,7 @@ class EdgeDecoder(torch.nn.Module):
         return z.view(-1)
 
 
-class Encoder_Decoder_Model_Hetero(torch.nn.Module):
+class Encoder_Decoder_Model(torch.nn.Module):
     def __init__(
         self,
         hidden_channels: int,
