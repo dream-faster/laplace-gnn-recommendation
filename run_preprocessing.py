@@ -175,13 +175,12 @@ def preprocess(config: PreprocessingConfig):
             "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
         )
 
-        # for key in ["derived_name", "derived_look", "derived_category"]:
         for index, article in tqdm(articles.iterrows()):
             per_article_text_embedding = torch.cat(
                 (
                     per_article_text_embedding,
                     text_embeddings[int(article["article_id"])]
-                    .get("derived_look", torch.zeros(512))
+                    .get(config.text_embedding_colname, torch.zeros(512))
                     .unsqueeze(0),
                 ),
                 axis=0,
