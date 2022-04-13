@@ -12,7 +12,6 @@ from single_epoch import epoch_with_dataloader
 
 
 def run_pipeline(config: Config):
-    print(f"--- Pipeline Type: {config.type} ---")
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,7 +28,7 @@ def run_pipeline(config: Config):
     ) = loader(config.dataloader_config)
 
     print("| Creating Model...")
-    feature_info = get_feature_info(full_data, config.type)
+    feature_info = get_feature_info(full_data)
 
     model = Encoder_Decoder_Model(
         hidden_channels=32,

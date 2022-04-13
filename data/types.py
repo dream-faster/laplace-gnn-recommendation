@@ -24,11 +24,6 @@ class ArticleColumn(Enum):
     ImgEmbedding = "img_embedding"
 
 
-class GraphType(Enum):
-    heterogenous = "heterogenous"
-    homogenous = "homogenous"
-
-
 class DataType(Enum):
     pyg = "pyg"
     dgl = "dgl"
@@ -43,8 +38,6 @@ class DataLoaderConfig:
 
 @dataclass
 class PreprocessingConfig:
-    type: GraphType
-
     customer_features: List[UserColumn]
     article_features: List[ArticleColumn]
 

@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Optional, Union
 from data.types import (
     DataLoaderConfig,
-    GraphType,
     PreprocessingConfig,
     UserColumn,
     ArticleColumn,
@@ -16,7 +15,6 @@ class Config:
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
     # num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
     embedding_dim: int  # dimension to use for the customer/article embeddings
-    type: GraphType  # type of graph we use
     dataloader: bool
     save_model: bool
     dataloader_config: DataLoaderConfig
@@ -27,7 +25,6 @@ config = Config(
     k=12,
     # num_layers=3,
     embedding_dim=64,
-    type=GraphType.heterogenous,
     dataloader=True,
     save_model=False,
     dataloader_config=DataLoaderConfig(
@@ -36,7 +33,6 @@ config = Config(
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=GraphType.heterogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
