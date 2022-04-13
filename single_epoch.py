@@ -42,7 +42,7 @@ def test(data: Union[HeteroData, Data], model: Module) -> float:
     x, edge_index, edge_label_index, edge_label = select_properties(data)
 
     model.eval()
-    out = model(x, edge_index, edge_label_index).view(-1).sigmoid()
+    out = model(x, edge_index, edge_label_index).view(-1)
 
     return roc_auc_score(edge_label.cpu().numpy(), out.cpu().numpy())
 
