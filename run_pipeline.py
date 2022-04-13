@@ -64,7 +64,7 @@ def run_pipeline(config: Config):
             hidden_channels=32,
             feature_info=feature_info,
             metadata=next(iter(train_loader)).metadata(),
-            embedding=False,
+            embedding=True,
         ).to(device)
     else:
         model = Encoder_Decoder_Model_Homo(
