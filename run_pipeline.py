@@ -50,7 +50,6 @@ def run_pipeline(config: Config):
         full_data,
     ) = loader(
         DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=config.batch_size)
-    )
 
     print(
         "--- Data Type: {} ---".format(
