@@ -1,40 +1,35 @@
 from torch_geometric.transforms import RandomLinkSplit
-from torch_geometric.data import Data
+from torch_geometric.data import HeteroData
 from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
 import torch
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
-from torch_geometric.loader import LinkNeighborLoader
-from torch_geometric.utils import negative_sampling
+from torch_geometric.loader import NeighborLoader
 
 
-def shuffle_data(data: Data) -> Data:
-    new_edge_order = torch.randperm(data.edge_label.size(0))
-    data.edge_label = data.edge_label[new_edge_order]
-    data.edge_label_index = data.edge_label_index[:, new_edge_order]
-    return data
-
-
-def create_dataloaders_homo(
+def create_dataloaders_hetero(
     config: DataLoaderConfig,
 ) -> Tuple[
-    LinkNeighborLoader,
-    LinkNeighborLoader,
-    LinkNeighborLoader,
+    NeighborLoader,
+    NeighborLoader,
+    NeighborLoader,
     CustomerIdMap,
     ArticleIdMap,
 ]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
+    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
-        add_negative_train_samples=True,
+        add_negative_train_samples=False,
         num_val=config.val_split,
         num_test=config.test_split,
-        neg_sampling_ratio=0.5,
+        neg_sampling_ratio=0,
+        edge_types=[("customer", "buys", "article")],
+        rev_edge_types=[("article", "rev_buys", "customer")],
     )
     train_split, val_split, test_split = transform(data)
 
@@ -47,57 +42,38 @@ def create_dataloaders_homo(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
-    train_split = shuffle_data(train_split)
-    val_split = shuffle_data(val_split)
-    test_split = shuffle_data(test_split)
-
-    train_loader = LinkNeighborLoader(
-        train_split,
-        batch_size=config.batch_size,
-        num_neighbors=[10, 10],
-        # shuffle=True, # This is not yet implemented in the source code
-        directed=False,
-        edge_label_index=train_split.edge_label_index,
-        edge_label=train_split.edge_label,
-    )
-
-    val_loader = LinkNeighborLoader(
-        val_split,
-        batch_size=config.batch_size,
-        num_neighbors=[10, 10],
-        # shuffle=True, # This is not yet implemented in the source code
-        directed=False,
-        edge_label_index=val_split.edge_label_index,
-        edge_label=val_split.edge_label,
-    )
-
-    test_loader = LinkNeighborLoader(
-        test_split,
-        batch_size=config.batch_size,
-        num_neighbors=[10, 10],
-        # shuffle=True, # This is not yet implemented in the source code
-        directed=False,
-        edge_label_index=test_split.edge_label_index,
-        edge_label=test_split.edge_label,
-    )
-
     return (
-        train_loader,
-        val_loader,
-        test_loader,
+        NeighborLoader(
+            train_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
+        NeighborLoader(
+            val_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
+        NeighborLoader(
+            test_split,
+            batch_size=config.batch_size,
+            num_neighbors=[10, 10],
+            shuffle=True,
+        ),
         customer_id_map,
         article_id_map,
-        data,
     )
 
 
-def create_datasets_homo(
+def create_datasets_hetero(
     config: DataLoaderConfig,
-) -> Tuple[Data, Data, Data, CustomerIdMap, ArticleIdMap]:
+) -> Tuple[HeteroData, HeteroData, HeteroData, CustomerIdMap, ArticleIdMap]:
     data = torch.load("data/derived/graph.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     undirected_transformer = T.ToUndirected()
     data = undirected_transformer(data)
+    del data["article", "rev_buys", "customer"].edge_label  # Remove "reverse" label.
 
     transform = RandomLinkSplit(
         is_undirected=True,
@@ -105,6 +81,8 @@ def create_datasets_homo(
         num_val=config.val_split,
         num_test=config.test_split,
         neg_sampling_ratio=0,
+        edge_types=[("customer", "buys", "article")],
+        rev_edge_types=[("article", "rev_buys", "customer")],
     )
     train_split, val_split, test_split = transform(data)
 

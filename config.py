@@ -30,12 +30,12 @@ config = Config(
     batch_size=1,
     embedding_dim=64,
     save_emb_dir=None,
-    type=GraphType.homogenous,
+    type=GraphType.heterogenous,
     dataloader=True,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=GraphType.homogenous,
+    type=GraphType.heterogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
@@ -55,7 +55,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     load_image_embedding=False,
     K=0,
-    data_size=100,
+    data_size=500,
     save_to_csv=False,
     data_type=DataType.pyg,
 )

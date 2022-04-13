@@ -63,8 +63,8 @@ def run_pipeline(config: Config):
         model = Encoder_Decoder_Model_Hetero(
             hidden_channels=32,
             feature_info=feature_info,
-            metadata=train_loader.metadata(),
-            embedding=True,
+            metadata=next(iter(train_loader)).metadata(),
+            embedding=False,
         ).to(device)
     else:
         model = Encoder_Decoder_Model_Homo(
@@ -76,11 +76,11 @@ def run_pipeline(config: Config):
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
-    # with torch.no_grad():
-    # if config.dataloader:
-    #     model.initialize_encoder_input_size(next(iter(train_loader)))
-    # else:
-    #     model.initialize_encoder_input_size(train_loader)
+    with torch.no_grad():
+        if config.dataloader:
+            model.initialize_encoder_input_size(next(iter(train_loader)))
+        else:
+            model.initialize_encoder_input_size(train_loader)
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)

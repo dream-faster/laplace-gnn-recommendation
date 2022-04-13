@@ -22,8 +22,8 @@ def select_properties(
         return (
             data.x_dict,
             data.edge_index_dict,
-            data["customer", "article"].edge_label_index,
-            data["customer", "article"].edge_label.float(),
+            data[("customer", "buys", "article")].edge_label_index,
+            data[("customer", "buys", "article")].edge_label.float(),
         )
     else:  # config.type == GraphType.homogenous:
         return (
@@ -41,22 +41,26 @@ def train(
     config: Config,
 ) -> tuple[float, Module]:
 
+    x, edge_index, edge_label_index, edge_label = select_properties(train_data, config)
     criterion = torch.nn.BCEWithLogitsLoss()
-    z = model.encode(train_data.x, train_data.edge_index)
-    out = model.decode(z, train_data.edge_label_index).view(-1)
-    loss = criterion(out, train_data.edge_label)
+
+    z = model.encoder(x, edge_index)
+    out = model.decoder(z, edge_label_index).view(-1)
+    loss = criterion(out, edge_label)
     loss.backward()
     optimizer.step()
     return loss
 
 
 @torch.no_grad()
-def test(data: Union[HeteroData, Data], model: Module):
-    model.eval()
-    z = model.encode(data.x, data.edge_index)
-    out = model.decode(z, data.edge_label_index).view(-1).sigmoid()
+def test(data: Union[HeteroData, Data], model: Module, config: Config) -> float:
+    x, edge_index, edge_label_index, edge_label = select_properties(data, config)
 
-    return roc_auc_score(data.edge_label.cpu().numpy(), out.cpu().numpy())
+    model.eval()
+    z = model.encoder(x, edge_index)
+    out = model.decoder(z, edge_label_index).view(-1).sigmoid()
+
+    return roc_auc_score(edge_label.cpu().numpy(), out.cpu().numpy())
 
 
 def epoch_with_dataloader(
@@ -67,14 +71,18 @@ def epoch_with_dataloader(
     test_loader,
     config: Config,
 ):
+
     for data in iter(train_loader):
         loss = train(data, model, optimizer, config)
     for data in iter(train_loader):
-        train_rmse = test(data, model)
-    for data in iter(val_loader):
-        val_rmse = test(data, model)
-    for data in iter(test_loader):
-        test_rmse = test(data, model)
+        train_rmse = test(data, model, config)
+    # for data in iter(val_loader):
+    #     val_rmse = test(data, model, config)
+    # for data in iter(test_loader):
+    #     test_rmse = test(data, model, config)
+
+    val_rmse = test(val_loader, model, config)
+    test_rmse = test(test_loader, model, config)
 
     return loss, train_rmse, val_rmse, test_rmse
 
