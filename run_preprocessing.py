@@ -235,7 +235,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     K=0,
-    data_size=100,
+    data_size=10000,
     save_to_csv=False
     
 )

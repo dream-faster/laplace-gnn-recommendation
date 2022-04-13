@@ -5,14 +5,12 @@ import torch.nn.functional as F
 from torch.nn import Linear
 from torch_geometric.loader import LinkNeighborLoader
 import torch_geometric.transforms as T
-from hm_dataset import HMDataset
 from torch_geometric.nn import SAGEConv, to_hetero
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-dataset = HMDataset("./data")
-data = dataset[0]  # .to(device)
+data = torch.load("data/derived/graph.pt")
 data["article"].x = data["article"].x.float()
 data["customer"].x = data["customer"].x.float()
 data[("customer", "buys", "article")].edge_index = data[
@@ -43,24 +41,6 @@ train_loader = LinkNeighborLoader(
     edge_label=train_data[("customer", "buys", "article")].edge_label,
     directed=False,
     replace=False,
-    shuffle=True,
-)
-val_loader = LinkNeighborLoader(
-    val_data,
-    num_neighbors=[-1],
-    batch_size=64,
-    edge_label_index=("customer", "buys", "article"),
-    directed=False,
-    replace=True,
-    shuffle=True,
-)
-test_loader = LinkNeighborLoader(
-    test_data,
-    num_neighbors=[-1],
-    batch_size=64,
-    edge_label_index=("customer", "buys", "article"),
-    directed=False,
-    replace=True,
     shuffle=True,
 )
 
@@ -125,7 +105,7 @@ def train(train_data):
         train_data["customer", "article"].edge_label_index,
     )
     target = train_data["customer", "article"].edge_label
-    loss = F.mse_loss(pred, target)
+    loss = F.binary_cross_entropy_with_logits(pred, target)
     loss.backward()
     optimizer.step()
     return float(loss)
@@ -142,27 +122,23 @@ def test(data):
     )
     pred = pred.clamp(min=0, max=1)
     target = data["customer", "article"].edge_label.float()
-    rmse = F.mse_loss(pred, target).sqrt()
-    return float(rmse)
+    loss = torch.nn.BCEWithLogitsLoss()(pred, target)
+    return float(loss)
 
 
 num_epochs = 301
 for epoch in range(1, num_epochs):
-    train_iter = iter(train_loader)
-    # for batch in tqdm(train_loader):
-    prog = tqdm(range(5000))
-    for _ in prog:
-        batch = next(train_iter)
+    acc_loss = 0
+    iteration = 0
+    for batch in train_loader:
+        iteration += 1
         loss = train(batch)
-        train_rmse = test(batch)
-        prog.set_description(f"train_rmse: {train_rmse:.4f} ")
-    for batch in tqdm(val_loader):
-        val_rmse = test(val_data)
-    for batch in tqdm(test_loader):
-        test_rmse = test(batch)
+    train_loss = acc_loss / iteration
+    val_loss = test(val_data)
+    test_loss = test(test_data)
     if epoch % math.floor(num_epochs / 3) == 0:
         torch.save(model.state_dict(), f"./model/saved/link_pred_{epoch:03d}.pt")
     print(
-        f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
-        f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
+        f"Epoch: {epoch:03d}, Train: {train_loss:.4f}, "
+        f"Val: {val_loss:.4f}, Test: {test_loss:.4f}"
     )
