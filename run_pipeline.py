@@ -48,8 +48,7 @@ def run_pipeline(config: Config):
         customer_id_map,
         article_id_map,
         full_data,
-    ) = loader(
-        DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=config.batch_size)
+    ) = loader(config.dataloader_config)
 
     print(
         "--- Data Type: {} ---".format(
@@ -92,17 +91,7 @@ def run_pipeline(config: Config):
         loss, train_rmse, val_rmse, test_rmse = epoch_loop(
             model, optimizer, train_loader, val_loader, test_loader, config
         )
-
-        loop_obj.set_postfix_str(
-            f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
-            f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
-        )
-        if epoch % math.floor(config.epochs / 3) == 0:
-            torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
-            print(
-                f"Epoch: {epoch:03d}, Loss: {loss:.4f}, Train: {train_rmse:.4f}, "
-                f"Val: {val_rmse:.4f}, Test: {test_rmse:.4f}"
-            )
+        torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 
 
 if __name__ == "__main__":

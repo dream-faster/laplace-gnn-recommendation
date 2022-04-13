@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 from data.types import (
+    DataLoaderConfig,
     GraphType,
     PreprocessingConfig,
     UserColumn,
@@ -13,25 +14,26 @@ from data.types import (
 class Config:
     epochs: int  # number of training epochs
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
-    num_layers: int  # number of LightGCN layers (i.e., number of hops to consider during propagation)
-    batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
+    # num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
     embedding_dim: int  # dimension to use for the customer/article embeddings
-    save_emb_dir: Optional[
-        str
-    ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
     type: GraphType  # type of graph we use
     dataloader: bool
+    save_model: bool
+    dataloader_config: DataLoaderConfig
 
 
 config = Config(
-    epochs=1500,
+    epochs=1,
     k=12,
-    num_layers=3,
+    # num_layers=3,
     batch_size=32,
     embedding_dim=64,
-    save_emb_dir=None,
     type=GraphType.heterogenous,
     dataloader=True,
+    save_model=False,
+    dataloader_config=DataLoaderConfig(
+        test_split=0.015, val_split=0.015, batch_size=512
+    ),
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

@@ -71,11 +71,12 @@ def epoch_with_dataloader(
     test_loader,
     config: Config,
 ):
-
-    for data in iter(train_loader):
+    loop_obj = tqdm(iter(train_loader))
+    for data in loop_obj:
         loss = train(data, model, optimizer, config)
-    for data in iter(train_loader):
-        train_rmse = test(data, model, config)
+        loop_obj.set_postfix_str(f"Loss: {loss:.4f}")
+    # for data in iter(train_loader): there's no way we can loop through the train dataset again, one epoch takes ages
+    #     train_rmse = test(data, model, config)
     # for data in iter(val_loader):
     #     val_rmse = test(data, model, config)
     # for data in iter(test_loader):
@@ -84,7 +85,7 @@ def epoch_with_dataloader(
     val_rmse = test(val_loader, model, config)
     test_rmse = test(test_loader, model, config)
 
-    return loss, train_rmse, val_rmse, test_rmse
+    return loss, val_rmse, test_rmse
 
 
 def epoch_without_dataloader(

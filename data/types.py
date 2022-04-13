@@ -36,7 +36,7 @@ class DataType(Enum):
 
 @dataclass
 class DataLoaderConfig:
-    batch_size: int
+    batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
     val_split: float
     test_split: float
 
