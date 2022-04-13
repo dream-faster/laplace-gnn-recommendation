@@ -44,8 +44,7 @@ def train(
     x, edge_index, edge_label_index, edge_label = select_properties(train_data, config)
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    z = model.encoder(x, edge_index)
-    out = model.decoder(z, edge_label_index).view(-1)
+    out = model(x, edge_index, edge_label_index).view(-1)
     loss = criterion(out, edge_label)
     loss.backward()
     optimizer.step()
@@ -57,8 +56,9 @@ def test(data: Union[HeteroData, Data], model: Module, config: Config) -> float:
     x, edge_index, edge_label_index, edge_label = select_properties(data, config)
 
     model.eval()
-    z = model.encoder(x, edge_index)
-    out = model.decoder(z, edge_label_index).view(-1).sigmoid()
+    # z = model.encoder(x, edge_index)
+    # out = model.decoder(z, edge_label_index).view(-1).sigmoid()
+    out = model(x, edge_index, edge_label_index).view(-1).sigmoid()
 
     return roc_auc_score(edge_label.cpu().numpy(), out.cpu().numpy())
 
