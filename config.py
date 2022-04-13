@@ -55,7 +55,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
     load_image_embedding=False,
     K=0,
-    data_size=None,
+    data_size=360,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
