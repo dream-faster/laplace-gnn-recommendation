@@ -5,15 +5,15 @@ import torch
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import LinkNeighborLoader
 
 
 def create_dataloaders_homo(
     config: DataLoaderConfig,
 ) -> Tuple[
-    NeighborLoader,
-    NeighborLoader,
-    NeighborLoader,
+    LinkNeighborLoader,
+    LinkNeighborLoader,
+    LinkNeighborLoader,
     CustomerIdMap,
     ArticleIdMap,
 ]:
@@ -46,23 +46,26 @@ def create_dataloaders_homo(
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
     return (
-        NeighborLoader(
+        LinkNeighborLoader(
             train_split,
             batch_size=config.batch_size,
             num_neighbors=[10, 10],
             shuffle=True,
+            directed=False,
         ),
-        NeighborLoader(
+        LinkNeighborLoader(
             val_split,
             batch_size=config.batch_size,
             num_neighbors=[10, 10],
             shuffle=True,
+            directed=False,
         ),
-        NeighborLoader(
+        LinkNeighborLoader(
             test_split,
             batch_size=config.batch_size,
             num_neighbors=[10, 10],
             shuffle=True,
+            directed=False,
         ),
         customer_id_map,
         article_id_map,

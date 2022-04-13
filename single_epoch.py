@@ -11,6 +11,8 @@ from torch_geometric.data import HeteroData, Data
 from data.types import GraphType
 from tqdm import tqdm
 import torch.nn.functional as F
+from torch_geometric.utils import negative_sampling
+from sklearn.metrics import roc_auc_score
 
 
 def select_properties(
@@ -33,34 +35,48 @@ def select_properties(
 
 
 def train(
-    data: Union[HeteroData, Data], model: Module, optimizer: Optimizer, config: Config
+    train_data: Union[HeteroData, Data],
+    model: Module,
+    optimizer: Optimizer,
+    config: Config,
 ) -> tuple[float, Module]:
-    model.train()
-    optimizer.zero_grad()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
-    x, edge_index, edge_label_index, edge_label = select_properties(data, config)
+    z = model.encode(train_data.x, train_data.edge_index)
 
-    pred: Tensor = model(
-        x,
-        edge_index,
-        edge_label_index,
+    # We perform a new round of negative sampling for every training epoch:
+    neg_edge_index = negative_sampling(
+        edge_index=train_data.edge_index,
+        num_nodes=train_data.num_nodes,
+        num_neg_samples=train_data.edge_label_index.size(1),
+        method="sparse",
     )
-    target = edge_label
-    loss: Tensor = weighted_mse_loss(pred, target, None)
+
+    edge_label_index = torch.cat(
+        [train_data.edge_label_index, neg_edge_index],
+        dim=-1,
+    )
+    edge_label = torch.cat(
+        [
+            train_data.edge_label.new_ones(train_data.edge_label_index.size(1)),
+            train_data.edge_label.new_zeros(neg_edge_index.size(1)),
+        ],
+        dim=0,
+    )
+
+    out = model.decode(z, edge_label_index).view(-1)
+    loss = criterion(out, edge_label)
     loss.backward()
     optimizer.step()
-    return float(loss), model
+    return loss
 
 
 @torch.no_grad()
-def test(data: Union[HeteroData, Data], model: Module, config: Config):
+def test(data: Union[HeteroData, Data], model: Module):
     model.eval()
-    x, edge_index, edge_label_index, edge_label = select_properties(data, config)
-    pred = model(x, edge_index, edge_label_index)
-    pred = pred.clamp(min=0, max=5)
-    target = edge_label
-    rmse = F.mse_loss(pred, target).sqrt()
-    return float(rmse), model
+    z = model.encode(data.x, data.edge_index)
+    out = model.decode(z, data.edge_label_index).view(-1).sigmoid()
+    return roc_auc_score(data.edge_label.cpu().numpy(), out.cpu().numpy())
 
 
 def epoch_with_dataloader(
@@ -72,13 +88,13 @@ def epoch_with_dataloader(
     config: Config,
 ):
     for data in iter(train_loader):
-        loss, model = train(data, model, optimizer, config)
+        loss = train(data, model, optimizer, config)
     for data in iter(train_loader):
-        train_rmse, model = test(data, model, config)
+        train_rmse = test(data, model)
     for data in iter(val_loader):
-        val_rmse, model = test(data, model, config)
+        val_rmse = test(data, model)
     for data in iter(test_loader):
-        test_rmse, model = test(data, model, config)
+        test_rmse = test(data, model)
 
     return loss, train_rmse, val_rmse, test_rmse
 
