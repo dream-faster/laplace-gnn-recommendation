@@ -48,7 +48,9 @@ def run_pipeline(config: Config):
         customer_id_map,
         article_id_map,
         full_data,
-    ) = loader(DataLoaderConfig(test_split=0.001, val_split=0.001, batch_size=32))
+    ) = loader(
+        DataLoaderConfig(test_split=0.01, val_split=0.01, batch_size=config.batch_size)
+    )
 
     print(
         "--- Data Type: {} ---".format(
