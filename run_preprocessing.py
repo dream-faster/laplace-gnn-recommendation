@@ -43,31 +43,6 @@ def preprocess(config: PreprocessingConfig):
         transactions_per_article, on="article_id", how="outer"
     ).fillna(0.0)
 
-    if config.load_image_embedding:
-        print("| Loading article image embeddings...")
-        articles_image_embeddings = torch.load(
-            "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
-        )
-        articles["img_embedding"] = articles.apply(
-            lambda article: articles_image_embeddings.get(
-                int(article["article_id"]), torch.zeros(512)
-            ),
-            axis=1,
-        )
-
-    # print("| Loading article text embeddings...")
-    # articles_text_embeddings = torch.load(
-    #     "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
-    # )
-    # # for key in articles_text_embeddings[108775015].keys():
-    # for key in ["derived_name", "derived_look", "derived_category"]:
-    #     articles[key] = articles.apply(
-    #         lambda article: articles_text_embeddings[int(article["article_id"])].get(
-    #             key, torch.zeros(512)
-    #         ),
-    #         axis=1,
-    #     )
-
     articles = articles[[c.value for c in config.article_features] + ["article_id"]]
 
     # There's currently a problem with k-core graph calculation: we'd need to re-map the edge indices after the nodes are removed and assumed a new ids.
@@ -176,17 +151,58 @@ def preprocess(config: PreprocessingConfig):
         .to_numpy()
     )
 
-    if config.save_to_csv:
-        save_to_csv(customers, articles, transactions)
+    per_article_img_embedding = torch.zeros((0, 512))
+    if config.load_image_embedding:
+        print("| Adding image embeddings...")
+        image_embeddings = torch.load(
+            "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
+        )
+        for index, article in tqdm(articles.iterrows()):
+            per_article_img_embedding = torch.cat(
+                (
+                    per_article_img_embedding,
+                    image_embeddings.get(
+                        int(article["article_id"]), torch.zeros(512)
+                    ).unsqueeze(0),
+                ),
+                axis=0,
+            )
+
+    per_article_text_embedding = torch.zeros((0, 512))
+    if config.load_text_embedding:
+        print("| Adding text embeddings...")
+        text_embeddings = torch.load(
+            "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
+        )
+
+        # for key in ["derived_name", "derived_look", "derived_category"]:
+        for index, article in tqdm(articles.iterrows()):
+            per_article_text_embedding = torch.cat(
+                (
+                    per_article_text_embedding,
+                    text_embeddings[int(article["article_id"])]
+                    .get("derived_look", torch.zeros(512))
+                    .unsqueeze(0),
+                ),
+                axis=0,
+            )
 
     print("| Removing unused columns...")
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
-    customers = torch.tensor(customers.reset_index().to_numpy(), dtype=torch.float)
+    if config.save_to_csv:
+        save_to_csv(customers, articles, transactions)
+
+    print("| Converting to tensors...")
+    customers = torch.tensor(customers.to_numpy(), dtype=torch.long)
     assert torch.isnan(customers).any() == False
 
-    articles = torch.tensor(articles.reset_index().to_numpy(), dtype=torch.float)
+    articles = torch.tensor(articles.to_numpy(), dtype=torch.long)
+    if config.load_image_embedding:
+        articles = torch.cat((articles, per_article_img_embedding), axis=1)
+    if config.load_text_embedding:
+        articles = torch.cat((articles, per_article_text_embedding), axis=1)
     assert torch.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
