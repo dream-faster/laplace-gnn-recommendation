@@ -9,40 +9,11 @@ from torch_geometric.loader import LinkNeighborLoader
 from torch_geometric.utils import negative_sampling
 
 
-def shuffle_data(loader) -> Data:
-    data = loader.data
+def shuffle_data(data: Data) -> Data:
     new_edge_order = torch.randperm(data.edge_label.size(0))
     data.edge_label = data.edge_label[new_edge_order]
     data.edge_label_index = data.edge_label_index[:, new_edge_order]
-    return loader
-
-
-def negative_sampling_util(loader) -> Data:
-    # We perform a new round of negative sampling for every training epoch:
-    data = loader.data
-    neg_edge_index = negative_sampling(
-        edge_index=data.edge_index,
-        num_nodes=data.num_nodes,
-        num_neg_samples=data.edge_label_index.size(1),
-        method="sparse",
-    )
-
-    edge_label_index = torch.cat(
-        [data.edge_label_index, neg_edge_index],
-        dim=-1,
-    )
-    edge_label = torch.cat(
-        [
-            data.edge_label.new_ones(data.edge_label_index.size(1)),
-            data.edge_label.new_zeros(neg_edge_index.size(1)),
-        ],
-        dim=0,
-    )
-
-    data.edge_label = edge_label
-    data.edge_label_index = edge_label_index
-
-    return loader
+    return data
 
 
 def create_dataloaders_homo(
@@ -76,44 +47,34 @@ def create_dataloaders_homo(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
-    train_loader = shuffle_data(
-        LinkNeighborLoader(
-            train_split,
-            batch_size=config.batch_size,
-            num_neighbors=[10, 10],
-            # shuffle=True, # This is not yet implemented in the source code
-            directed=False,
-            edge_label_index=train_split.edge_label_index,
-            edge_label=train_split.edge_label,
-        )
+    train_loader = LinkNeighborLoader(
+        shuffle_data(train_split),
+        batch_size=config.batch_size,
+        num_neighbors=[10, 10],
+        # shuffle=True, # This is not yet implemented in the source code
+        directed=False,
+        edge_label_index=train_split.edge_label_index,
+        edge_label=train_split.edge_label,
     )
 
-    val_loader = shuffle_data(
-        negative_sampling_util(
-            LinkNeighborLoader(
-                val_split,
-                batch_size=config.batch_size,
-                num_neighbors=[10, 10],
-                # shuffle=True, # This is not yet implemented in the source code
-                directed=False,
-                edge_label_index=train_split.edge_label_index,
-                edge_label=train_split.edge_label,
-            )
-        )
+    val_loader = LinkNeighborLoader(
+        shuffle_data(val_split),
+        batch_size=config.batch_size,
+        num_neighbors=[10, 10],
+        # shuffle=True, # This is not yet implemented in the source code
+        directed=False,
+        edge_label_index=val_split.edge_label_index,
+        edge_label=val_split.edge_label,
     )
 
-    test_loader = shuffle_data(
-        negative_sampling_util(
-            LinkNeighborLoader(
-                test_split,
-                batch_size=config.batch_size,
-                num_neighbors=[10, 10],
-                # shuffle=True, # This is not yet implemented in the source code
-                directed=False,
-                edge_label_index=train_split.edge_label_index,
-                edge_label=train_split.edge_label,
-            )
-        )
+    test_loader = LinkNeighborLoader(
+        shuffle_data(test_split),
+        batch_size=config.batch_size,
+        num_neighbors=[10, 10],
+        # shuffle=True, # This is not yet implemented in the source code
+        directed=False,
+        edge_label_index=test_split.edge_label_index,
+        edge_label=test_split.edge_label,
     )
 
     return (

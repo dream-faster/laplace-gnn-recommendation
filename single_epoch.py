@@ -40,8 +40,8 @@ def train(
     optimizer: Optimizer,
     config: Config,
 ) -> tuple[float, Module]:
-    criterion = torch.nn.BCEWithLogitsLoss()
 
+    criterion = torch.nn.BCEWithLogitsLoss()
     z = model.encode(train_data.x, train_data.edge_index)
     out = model.decode(z, train_data.edge_label_index).view(-1)
     loss = criterion(out, train_data.edge_label)
