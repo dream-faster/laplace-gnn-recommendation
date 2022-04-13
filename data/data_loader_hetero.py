@@ -95,6 +95,8 @@ def create_datasets_hetero(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
+    assert torch.max(train_split.edge_stores[0].edge_index) <= train_split.num_nodes
+
     return (train_split, val_split, test_split, customer_id_map, article_id_map, data)
 
 

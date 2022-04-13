@@ -20,6 +20,7 @@ class Config:
         str
     ]  # path to save multi-scale embeddings during test(). If None, will not save any embeddings
     type: GraphType  # type of graph we use
+    dataloader: bool
 
 
 config = Config(
@@ -30,10 +31,11 @@ config = Config(
     embedding_dim=64,
     save_emb_dir=None,
     type=GraphType.homogenous,
+    dataloader=True,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
-    type=GraphType.heterogenous,
+    type=GraphType.homogenous,
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
@@ -55,5 +57,5 @@ only_users_and_articles_nodes = PreprocessingConfig(
     K=0,
     data_size=100,
     save_to_csv=False,
-    data_type=DataType.dgl,
+    data_type=DataType.pyg,
 )
