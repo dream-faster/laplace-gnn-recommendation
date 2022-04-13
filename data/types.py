@@ -46,14 +46,15 @@ class PreprocessingConfig:
     type: GraphType
 
     customer_features: List[UserColumn]
-    # customer_nodes: List[UserColumn]
-
     article_features: List[ArticleColumn]
-    # article_nodes: List[ArticleColumn]
 
     article_non_categorical_features: List[ArticleColumn]
 
     load_image_embedding: bool
+    load_text_embedding: bool
+    text_embedding_colname: Optional[
+        str
+    ]  # ["derived_name", "derived_look", "derived_category"]
     K: int
     data_size: Optional[int]
     save_to_csv: Optional[bool]
