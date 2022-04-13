@@ -194,10 +194,10 @@ def preprocess(config: PreprocessingConfig):
         save_to_csv(customers, articles, transactions)
 
     print("| Converting to tensors...")
-    customers = torch.tensor(customers.to_numpy(), dtype=torch.long)
+    customers = torch.tensor(customers.to_numpy(), dtype=torch.float)
     assert torch.isnan(customers).any() == False
 
-    articles = torch.tensor(articles.to_numpy(), dtype=torch.long)
+    articles = torch.tensor(articles.to_numpy(), dtype=torch.float)
     if config.load_image_embedding:
         articles = torch.cat((articles, per_article_img_embedding), axis=1)
     if config.load_text_embedding:
