@@ -26,7 +26,6 @@ config = Config(
     epochs=1,
     k=12,
     # num_layers=3,
-    batch_size=32,
     embedding_dim=64,
     type=GraphType.heterogenous,
     dataloader=True,
