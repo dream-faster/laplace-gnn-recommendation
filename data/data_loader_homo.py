@@ -47,8 +47,12 @@ def create_dataloaders_homo(
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
 
+    train_split = shuffle_data(train_split)
+    val_split = shuffle_data(val_split)
+    test_split = shuffle_data(test_split)
+
     train_loader = LinkNeighborLoader(
-        shuffle_data(train_split),
+        train_split,
         batch_size=config.batch_size,
         num_neighbors=[10, 10],
         # shuffle=True, # This is not yet implemented in the source code
@@ -58,7 +62,7 @@ def create_dataloaders_homo(
     )
 
     val_loader = LinkNeighborLoader(
-        shuffle_data(val_split),
+        val_split,
         batch_size=config.batch_size,
         num_neighbors=[10, 10],
         # shuffle=True, # This is not yet implemented in the source code
@@ -68,7 +72,7 @@ def create_dataloaders_homo(
     )
 
     test_loader = LinkNeighborLoader(
-        shuffle_data(test_split),
+        test_split,
         batch_size=config.batch_size,
         num_neighbors=[10, 10],
         # shuffle=True, # This is not yet implemented in the source code

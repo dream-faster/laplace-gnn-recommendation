@@ -30,7 +30,7 @@ config = Config(
     batch_size=1,
     embedding_dim=64,
     save_emb_dir=None,
-    type=GraphType.homogenous,
+    type=GraphType.heterogenous,
     dataloader=True,
 )
 
