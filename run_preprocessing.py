@@ -5,7 +5,6 @@ from data.types import (
     PreprocessingConfig,
     UserColumn,
     ArticleColumn,
-    GraphType,
 )
 import torch
 import json
@@ -24,7 +23,6 @@ def save_to_csv(
 
 
 def preprocess(config: PreprocessingConfig):
-    print(f"--- Type: {config.type} ---")
     print("| Loading customers...")
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     customers = customers[[c.value for c in config.customer_features] + ["customer_id"]]
@@ -138,7 +136,7 @@ def preprocess(config: PreprocessingConfig):
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles,
         "article_id",
-        len(customers) if config.type == GraphType.homogenous else 0,
+        0,
     )
 
     print("| Parsing transactions...")
@@ -209,7 +207,6 @@ def preprocess(config: PreprocessingConfig):
         create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
     )
     data = create_func(
-        config.type,
         customers,
         articles,
         transactions_to_customer_id,
@@ -227,62 +224,48 @@ def preprocess(config: PreprocessingConfig):
 
 
 def create_data_pyg(
-    graph_type: GraphType,
     customers: torch.Tensor,
     articles: torch.Tensor,
     transactions_to_customer_id: np.ndarray,
     transactions_to_article_id: np.ndarray,
 ):
-    if graph_type == GraphType.homogenous:
-        from torch_geometric.data import Data
 
-        return Data(
-            x=torch.cat([customers, torch.nn.functional.pad(articles, (0, 2))], dim=0),
-            edge_index=torch.as_tensor(
-                (transactions_to_customer_id, transactions_to_article_id),
-                dtype=torch.long,
-            ),
-        )
-    else:
-        from torch_geometric.data import HeteroData
+    from torch_geometric.data import HeteroData
 
-        data = HeteroData()
-        data["customer"].x = customers
-        data["article"].x = articles
-        data["customer", "buys", "article"].edge_index = torch.as_tensor(
-            (transactions_to_customer_id, transactions_to_article_id),
-            dtype=torch.long,
-        )
-        return data
+    data = HeteroData()
+    data["customer"].x = customers
+    data["article"].x = articles
+    data["customer", "buys", "article"].edge_index = torch.as_tensor(
+        (transactions_to_customer_id, transactions_to_article_id),
+        dtype=torch.long,
+    )
+    return data
 
 
 def create_data_dgl(
-    graph_type: GraphType,
     customers: torch.Tensor,
     articles: torch.Tensor,
     transactions_to_customer_id: np.ndarray,
     transactions_to_article_id: np.ndarray,
 ):
-    if graph_type == GraphType.homogenous:
-        raise Exception("DGL - Homogoenous not supported")
-    else:
-        import dgl
 
-        data = dgl.heterograph(
-            {
-                ("customer", "buys", "article"): (
-                    torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
-                    torch.as_tensor(transactions_to_article_id, dtype=torch.long),
-                )
-            },
-            num_nodes_dict={
-                "customer": customers.shape[0],
-                "article": articles.shape[0],
-            },
-        )
-        data.nodes["customer"].data["features"] = customers
-        data.nodes["article"].data["features"] = articles
-        return data
+    import dgl
+
+    data = dgl.heterograph(
+        {
+            ("customer", "buys", "article"): (
+                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
+                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
+            )
+        },
+        num_nodes_dict={
+            "customer": customers.shape[0],
+            "article": articles.shape[0],
+        },
+    )
+    data.nodes["customer"].data["features"] = customers
+    data.nodes["article"].data["features"] = articles
+    return data
 
 
 def create_ids_and_maps(
