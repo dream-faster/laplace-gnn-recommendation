@@ -41,7 +41,7 @@ class Encoder_Decoder_Model(torch.nn.Module):
         hidden_channels: int,
         feature_info: FeatureInfo,
         metadata: tuple[list[str], list[tuple[str]]],
-        embedding: bool = False,
+        embedding: bool,
     ):
         super().__init__()
         self.embedding: bool = embedding
@@ -54,20 +54,15 @@ class Encoder_Decoder_Model(torch.nn.Module):
             embedding_articles: list[Embedding] = []
             embedding_customers: list[Embedding] = []
 
-            for i in range(article_info.num_feat):
-                embedding_customers.append(
-                    Embedding(
+            embedding_customers = [Embedding(
                         int(customer_info.num_cat[i] + 1),
                         int(customer_info.embedding_size[i]),
-                    )
-                )
-            for i in range(article_info.num_feat):
-                embedding_articles.append(
-                    Embedding(
+                    ) for i in range(customer_info.num_feat)]
+
+            embedding_articles = [Embedding(
                         int(article_info.num_cat[i] + 1),
                         int(article_info.embedding_size[i]),
-                    )
-                )
+                    )for i in range(article_info.num_feat)]
 
             self.embedding_customers = ModuleList(embedding_customers)
             self.embedding_articles = ModuleList(embedding_articles)
@@ -84,8 +79,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         for i, embedding_layer in enumerate(self.embedding_articles):
             embedding_articles.append(embedding_layer(article_features[:, i]))
 
-        x_dict["customer"] = torch.cat(embedding_customers, dim=0)
-        x_dict["article"] = torch.cat(embedding_articles, dim=0)
+        x_dict["customer"] = torch.cat(embedding_customers, dim=1)
+        x_dict["article"] = torch.cat(embedding_articles, dim=1)
 
         return x_dict
 
