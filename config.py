@@ -31,7 +31,7 @@ config = Config(
     dataloader=True,
     save_model=False,
     dataloader_config=DataLoaderConfig(
-        test_split=0.001, val_split=0.001, batch_size=512
+        test_split=0.015, val_split=0.015, batch_size=512
     ),
 )
 
