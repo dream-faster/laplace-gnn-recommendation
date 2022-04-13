@@ -20,7 +20,7 @@ from data.data_loader_hetero import create_dataloaders_hetero, create_datasets_h
 from single_epoch import epoch_with_dataloader, epoch_without_dataloader
 
 
-def select_loader_epochloop_model(config: Config) -> tuple[Callable, Callable]:
+def select_loader_epochloop(config: Config) -> tuple[Callable, Callable]:
     if config.type == GraphType.homogenous:
         if config.dataloader:
             return create_dataloaders_homo, epoch_with_dataloader
@@ -40,7 +40,7 @@ def run_pipeline(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("| Creating Datasets...")
-    loader, epoch_loop = select_loader_epochloop_model(config)
+    loader, epoch_loop = select_loader_epochloop(config)
     (
         train_loader,
         val_loader,
@@ -70,7 +70,7 @@ def run_pipeline(config: Config):
         model = Encoder_Decoder_Model_Homo(
             in_channels=8,
             out_channels=1,
-            hidden_channels=32,
+            hidden_channels=57,
         ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
