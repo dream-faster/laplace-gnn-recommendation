@@ -54,15 +54,21 @@ class Encoder_Decoder_Model(torch.nn.Module):
             embedding_articles: list[Embedding] = []
             embedding_customers: list[Embedding] = []
 
-            embedding_customers = [Embedding(
-                        int(customer_info.num_cat[i] + 1),
-                        int(customer_info.embedding_size[i]),
-                    ) for i in range(customer_info.num_feat)]
+            embedding_customers = [
+                Embedding(
+                    int(customer_info.num_cat[i] + 1),
+                    int(customer_info.embedding_size[i]),
+                )
+                for i in range(customer_info.num_feat)
+            ]
 
-            embedding_articles = [Embedding(
-                        int(article_info.num_cat[i] + 1),
-                        int(article_info.embedding_size[i]),
-                    )for i in range(article_info.num_feat)]
+            embedding_articles = [
+                Embedding(
+                    int(article_info.num_cat[i] + 1),
+                    int(article_info.embedding_size[i]),
+                )
+                for i in range(article_info.num_feat)
+            ]
 
             self.embedding_customers = ModuleList(embedding_customers)
             self.embedding_articles = ModuleList(embedding_articles)
