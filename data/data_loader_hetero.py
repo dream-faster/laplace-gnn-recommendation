@@ -18,12 +18,7 @@ def shuffle_data(data: HeteroData) -> HeteroData:
     data[("customer", "buys", "article")].edge_label_index = data[
         ("customer", "buys", "article")
     ].edge_label_index[:, new_edge_order]
-    # data["customer", "article"].edge_label = data["customer", "article"].edge_label[
-    #     new_edge_order
-    # ]
-    # data["customer", "article"].edge_label_index = data[
-    #     "customer", "article"
-    # ].edge_label_index[:, new_edge_order]
+
     return data
 
 
@@ -64,7 +59,7 @@ def create_dataloaders_hetero(
             "customer",
             "buys",
             "article",
-        ),  # train_data[("customer", "buys", "article")].edge_label_index,
+        ),
         edge_label=train_split[("customer", "buys", "article")].edge_label,
         directed=False,
         replace=False,
