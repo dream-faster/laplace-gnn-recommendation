@@ -53,7 +53,7 @@ def create_dataloaders_hetero(
 
     train_loader = LinkNeighborLoader(
         train_split,
-        num_neighbors=[10, 10, 10],
+        num_neighbors=[10, 10],
         batch_size=config.batch_size,
         edge_label_index=(
             "customer",

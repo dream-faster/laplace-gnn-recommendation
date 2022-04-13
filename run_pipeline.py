@@ -88,7 +88,7 @@ def run_pipeline(config: Config):
     print("| Training Model...")
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        loss, train_rmse, val_rmse, test_rmse = epoch_loop(
+        loss, val_rmse, test_rmse = epoch_loop(
             model, optimizer, train_loader, val_loader, test_loader, config
         )
         torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")

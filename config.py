@@ -23,7 +23,7 @@ class Config:
 
 
 config = Config(
-    epochs=1,
+    epochs=100,
     k=12,
     # num_layers=3,
     embedding_dim=64,
