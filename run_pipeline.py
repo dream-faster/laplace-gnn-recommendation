@@ -49,8 +49,7 @@ def run_pipeline(config: Config):
         article_id_map,
         full_data,
     ) = loader(
-        DataLoaderConfig(test_split=0.01, val_split=0.01, batch_size=config.batch_size)
-    )
+        DataLoaderConfig(test_split=0.15, val_split=0.15, batch_size=config.batch_size)
 
     print(
         "--- Data Type: {} ---".format(
@@ -66,7 +65,7 @@ def run_pipeline(config: Config):
             hidden_channels=32,
             feature_info=feature_info,
             metadata=next(iter(train_loader)).metadata(),
-            embedding=False,
+            embedding=True,
         ).to(device)
     else:
         model = Encoder_Decoder_Model_Homo(
