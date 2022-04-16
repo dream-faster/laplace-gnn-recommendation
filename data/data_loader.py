@@ -53,8 +53,8 @@ def create_dataloaders(
 
     train_loader = LinkNeighborLoader(
         train_split,
-        num_neighbors=[3, 3],
-        batch_size=config.batch_size,
+        num_neighbors=[3],
+        batch_size=15,  # config.batch_size,
         edge_label_index=(
             "customer",
             "buys",

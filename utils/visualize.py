@@ -1,3 +1,4 @@
+from distutils.util import convert_path
 import networkx as nx
 import matplotlib.pyplot as plt
 from torch_geometric.data import Data, HeteroData
@@ -7,135 +8,134 @@ import torch
 
 from typing import Union, Optional
 
-val_map = {"0": 1.0, "1": 0.35}
+
+val_map = {"customer": 1.0, "article": 0.35}
 
 
 def select_layout(G: Union[nx.DiGraph, nx.Graph], node_types: Optional[list]):
-    # pos = nx.bipartite_layout(
-    #     G,
-    #     nodes=[
-    #         node if node_type == 0 else None
-    #         for node, node_type in zip(G.nodes(), node_types.tolist())
-    #     ],
-    # )
+    one_category_nodes = [
+        node if node_type == "customer" else None
+        for node, node_type in zip(G.nodes(), node_types)
+    ]
+
+    pos = nx.bipartite_layout(G, nodes=one_category_nodes)
     # pos = nx.kamada_kawai_layout(G)
     # pos = nx.planar_layout(G)
     # pos = nx.shell_layout(G)
     # pos = nx.spectral_layout(G)
-
     # pos = nx.circular_layout(G)
-    pos = nx.spiral_layout(G)
+    # pos = nx.spiral_layout(G)
     # pos = nx.spring_layout(G)
     return pos
 
 
 def get_edges(
-    G: HeteroData,
+    data: HeteroData,
 ) -> tuple[list[tuple[int, int]], list[tuple[int, int]], list[tuple[int, int]]]:
-    _, edge_types = G.metadata()
+    _, edge_types = data.metadata()
 
-    edge_dicts = [G[edge_type] for edge_type in edge_types]
+    edge_dicts = [data[edge_type] for edge_type in edge_types]
 
-    # all_edges = edge_dicts[0].edge_index
-    all_edges = torch.concat([edge_dict.edge_index for edge_dict in edge_dicts], dim=1)
+    all_edges = edge_dicts[0].edge_index.detach().clone()
+    edge_label = edge_dicts[0].edge_label.detach().clone()
+    edge_label_index = edge_dicts[0].edge_label_index.detach().clone()
 
-    edge_label_index = edge_dicts[0].edge_label_index
-    # edge_label_index = torch.concat(
-    #     [edge_dict.edge_label_index for edge_dict in edge_dicts], dim=1
-    # )
-
-    edge_label = edge_dicts[0].edge_label
-    # edge_label = torch.concat([edge_dict.edge_label for edge_dict in edge_dicts], dim=1)
+    len_customer_indexes = torch.max(all_edges, dim=1)[0][0].item() + 1
+    edge_label_index[1] = torch.add(edge_label_index[1], len_customer_indexes)
+    all_edges[1] = torch.add(all_edges[1], len_customer_indexes)
 
     negative_edges_sampled: Tensor = edge_label_index[:, edge_label == 0]
     positive_edges_sampled: Tensor = edge_label_index[:, edge_label == 1]
 
     return (
-        negative_edges_sampled.t().tolist(),
-        positive_edges_sampled.t().tolist(),
-        all_edges.t().tolist(),
+        negative_edges_sampled.t().contiguous().tolist(),
+        positive_edges_sampled.t().contiguous().tolist(),
+        all_edges.t().contiguous().tolist(),
     )
+
+
+def manual_graph(data: Union[Data, HeteroData]) -> Union[nx.Graph, nx.DiGraph]:
+    G = nx.DiGraph()
+    negative_edges, positive_edges, all_edges = get_edges(data)
+
+    customer_nodes = data["customer"].x
+    article_nodes = data["article"].x
+
+    [
+        G.add_node(i, x=x.tolist(), node_type="customer")
+        for i, x in enumerate(customer_nodes)
+    ]
+    [
+        G.add_node(i + len(customer_nodes), x=x.tolist(), node_type="article")
+        for i, x in enumerate(article_nodes)
+    ]
+
+    G.add_edges_from([edge_pair for edge_pair in all_edges])
+
+    return G, negative_edges, positive_edges
 
 
 def visualize_graph(data: Union[Data, HeteroData]) -> None:
     fig = plt.figure(1, figsize=(25, 14), dpi=60)
 
-    negative_edges, positive_edges, all_edges = get_edges(data)
-    # Convert Graph to NetworkX
-    if type(data) == HeteroData:
-        features = data.collect("x")
-        graph = data.to_homogeneous()
+    """ Convert Graph to NetworkX Manually """
+    G, negative_edges, positive_edges = manual_graph(data)
 
-    node_types = graph.node_type
+    """ Create list of node types to be able to color nodes """
+    node_types = [node[1]["node_type"] for node in G.nodes(data=True)]
+    values = [val_map.get(node_type, 0.25) for node_type in node_types]
 
-    G = to_networkx(graph)
-
-    values = [val_map.get(str(node_type.item()), 0.25) for node_type in node_types]
-
-    # Specify layout
+    """ Specify node layout """
     pos = select_layout(G, node_types)
 
+    """ Add nodes """
     nx.draw_networkx_nodes(
-        G, pos, cmap=plt.get_cmap("PiYG"), node_color=values, node_size=165
+        G,
+        pos,
+        cmap=plt.get_cmap("PiYG"),
+        node_color=values,
+        node_size=165,
     )
-    nx.draw_networkx_labels(G, pos, font_size=7, font_color="white")
 
+    """ Add labels """
+    nx.draw_networkx_labels(
+        G,
+        pos,
+        labels={i: str(i) + "\n" + k for i, k in enumerate(node_types)},
+        font_size=12,
+        font_color="black",
+    )
+
+    """ Add all edges """
     # First we have to draw all edges otherwise it overrides the edges after
     nx.draw_networkx_edges(
         G,
         pos,
-        edgelist=all_edges,
+        edgelist=G.edges(),
         edge_color="grey",
+        # connectionstyle="arc3, rad = 0.1",
         arrows=True,
         style="solid",
         alpha=0.20,
     )
+
+    """ Add sampled edges """
     nx.draw_networkx_edges(
-        G, pos, edgelist=negative_edges, edge_color="r", arrows=True, style="dashed"
+        G,
+        pos,
+        edgelist=negative_edges,
+        edge_color="r",
+        connectionstyle="arc3, rad = 0.01",
+        arrows=True,
+        style="dashed",
     )
     nx.draw_networkx_edges(
-        G, pos, edgelist=positive_edges, edge_color="g", arrows=True, style="solid"
+        G,
+        pos,
+        edgelist=positive_edges,
+        edge_color="g",
+        connectionstyle="arc3, rad = -0.01",
+        arrows=True,
+        style="solid",
     )
     plt.show()
-
-
-def visualize_graph_example() -> None:
-
-    G = nx.DiGraph()
-    G.add_edges_from(
-        [
-            ("A", "B"),
-            ("A", "C"),
-            ("D", "B"),
-            ("E", "C"),
-            ("E", "F"),
-            ("B", "H"),
-            ("B", "G"),
-            ("B", "F"),
-            ("C", "G"),
-        ]
-    )
-
-    val_map = {"A": 1.0, "D": 0.5714285714285714, "H": 0.0}
-
-    values = [val_map.get(node, 0.25) for node in G.nodes()]
-
-    # Specify the edges you want here
-    red_edges = [("A", "C"), ("E", "C")]
-    edge_colours = ["black" if not edge in red_edges else "red" for edge in G.edges()]
-    black_edges = [edge for edge in G.edges() if edge not in red_edges]
-
-    # Need to create a layout when doing
-    # separate calls to draw nodes and edges
-    pos = nx.spring_layout(G)
-    nx.draw_networkx_nodes(
-        G, pos, cmap=plt.get_cmap("jet"), node_color=values, node_size=500
-    )
-    nx.draw_networkx_labels(G, pos)
-    nx.draw_networkx_edges(G, pos, edgelist=red_edges, edge_color="r", arrows=True)
-    nx.draw_networkx_edges(G, pos, edgelist=black_edges, arrows=False)
-    plt.show()
-
-
-if __name__ == "__main__":
-    visualize_graph_example()
