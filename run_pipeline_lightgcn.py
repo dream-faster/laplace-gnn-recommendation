@@ -20,25 +20,20 @@ Our implementation was inspired by the following documentation and repositories:
 """
 
 # import required modules
-import random
-from tqdm import tqdm
+
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 
 import torch
-from torch import nn, optim, Tensor
-
-from torch_sparse import SparseTensor, matmul
+from torch import optim
 
 from torch_geometric.utils import structured_negative_sampling
-from torch_geometric.data import download_url, extract_zip
 
 
 from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.movie_loader import create_dataloaders, sample_mini_batch
+from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.lightgcn_metrics import (
     get_metrics,
     bpr_loss,
@@ -121,7 +116,20 @@ def train():
         movie_mapping,
         num_users,
         num_movies,
-    ) = create_dataloaders(movie_path, rating_path)
+    ) = create_dataloaders_lightgcn()
+    # (
+    #     train_sparse_edge_index,
+    #     val_sparse_edge_index,
+    #     test_sparse_edge_index,
+    #     train_edge_index,
+    #     val_edge_index,
+    #     test_edge_index,
+    #     edge_index,
+    #     user_mapping,
+    #     movie_mapping,
+    #     num_users,
+    #     num_movies,
+    # ) = create_dataloaders(movie_path, rating_path)
     # define contants
     ITERATIONS = 10000
     BATCH_SIZE = 1024
