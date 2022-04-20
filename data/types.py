@@ -34,6 +34,9 @@ class DataLoaderConfig:
     batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
     val_split: float
     test_split: float
+    num_neighbors: int  # sample n neighbors for each node for num_neighbors_it iterations
+    num_neighbors_it: int
+    num_workers: int  # number of workers to use for data loading
 
 
 @dataclass
