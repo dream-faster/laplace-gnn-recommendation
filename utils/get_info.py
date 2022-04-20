@@ -1,7 +1,7 @@
 import torch
 from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo
-from typing import Union
+from typing import Union, Tuple
 from config import embedding_range_dict
 
 
@@ -38,6 +38,6 @@ def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, Feature
 
 def get_feature_info(
     full_data: Union[HeteroData, Data]
-) -> tuple[FeatureInfo, FeatureInfo]:
+) -> Tuple[FeatureInfo, FeatureInfo]:
 
     return __heterogenous_features(full_data)
