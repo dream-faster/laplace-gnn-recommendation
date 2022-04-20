@@ -6,7 +6,7 @@ from torch_geometric.utils import to_networkx
 from torch import Tensor
 import torch
 
-from typing import Union, Optional
+from typing import Tuple, Union, Optional, List
 
 
 val_map = {"customer": 1.0, "article": 0.35}
@@ -31,7 +31,7 @@ def select_layout(G: Union[nx.DiGraph, nx.Graph], node_types: Optional[list]):
 
 def get_edges(
     data: HeteroData,
-) -> tuple[list[tuple[int, int]], list[tuple[int, int]], list[tuple[int, int]]]:
+) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]], List[Tuple[int, int]]]:
     _, edge_types = data.metadata()
 
     edge_dicts = [data[edge_type] for edge_type in edge_types]

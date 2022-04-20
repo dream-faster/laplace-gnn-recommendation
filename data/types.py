@@ -60,5 +60,5 @@ class PreprocessingConfig:
 @dataclass
 class FeatureInfo:
     num_feat: int
-    num_cat: list[int]
-    embedding_size: list[int]
+    num_cat: List[int]
+    embedding_size: List[int]

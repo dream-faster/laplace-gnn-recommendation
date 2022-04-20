@@ -3,6 +3,7 @@ from data.types import DataLoaderConfig, FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
+from typing import List, Tuple
 
 
 class GNNEncoder(torch.nn.Module):
@@ -44,7 +45,7 @@ class Encoder_Decoder_Model(torch.nn.Module):
         self,
         hidden_channels: int,
         feature_info: FeatureInfo,
-        metadata: tuple[list[str], list[tuple[str]]],
+        metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
     ):
         super().__init__()
@@ -55,8 +56,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
         if self.embedding:
             customer_info, article_info = feature_info
-            embedding_articles: list[Embedding] = []
-            embedding_customers: list[Embedding] = []
+            embedding_articles: List[Embedding] = []
+            embedding_customers: List[Embedding] = []
 
             embedding_customers = [
                 Embedding(
