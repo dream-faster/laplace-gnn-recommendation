@@ -53,41 +53,49 @@ def create_dataloaders(
 
     train_loader = LinkNeighborLoader(
         train_split,
-        num_neighbors=[3],
+        num_neighbors=[config.num_neighbors] * config.num_neighbors_it,
         batch_size=config.batch_size,
         edge_label_index=(
-            "customer",
-            "buys",
-            "article",
+            ("customer", "buys", "article"),
+            train_split[("customer", "buys", "article")].edge_label_index,
         ),
         edge_label=train_split[("customer", "buys", "article")].edge_label,
         directed=False,
         replace=False,
         # shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=True,
     )
-    # train_loader.metadata = (train_data.metadata(),)
-    val_loader = val_split
-    # LinkNeighborLoader(
-    #     val_split,
-    #     num_neighbors=[-1],
-    #     batch_size=config.batch_size,
-    #     edge_label_index=("customer", "buys", "article"),
-    #     edge_label=val_split[("customer", "buys", "article")].edge_label,
-    #     directed=False,
-    #     replace=False,
-    #     # shuffle=True,
-    # )
-    test_loader = test_split
-    # LinkNeighborLoader(
-    #     test_split,
-    #     num_neighbors=[-1],
-    #     batch_size=config.batch_size,
-    #     edge_label_index=("customer", "buys", "article"),
-    #     edge_label=test_split[("customer", "buys", "article")].edge_label,
-    #     directed=False,
-    #     replace=False,
-    #     # shuffle=True,
-    # )
+    val_loader = LinkNeighborLoader(
+        val_split,
+        num_neighbors=[64] * 2,
+        batch_size=config.batch_size,
+        edge_label_index=(
+            ("customer", "buys", "article"),
+            val_split[("customer", "buys", "article")].edge_label_index,
+        ),
+        edge_label=val_split[("customer", "buys", "article")].edge_label,
+        directed=False,
+        replace=False,
+        # shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=True,
+    )
+    test_loader = LinkNeighborLoader(
+        test_split,
+        num_neighbors=[64] * 2,
+        batch_size=config.batch_size,
+        edge_label_index=(
+            ("customer", "buys", "article"),
+            test_split[("customer", "buys", "article")].edge_label_index,
+        ),
+        edge_label=test_split[("customer", "buys", "article")].edge_label,
+        directed=False,
+        replace=False,
+        # shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=True,
+    )
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
