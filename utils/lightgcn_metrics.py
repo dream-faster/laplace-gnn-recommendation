@@ -204,7 +204,7 @@ def get_metrics(model, edge_index, exclude_edge_indices, k):
     user_embedding = model.users_emb.weight
     item_embedding = model.items_emb.weight
 
-    # get ratings between every user and item - shape is num users x num movies
+    # get ratings between every user and item - shape is num users x num articles
     rating = torch.matmul(user_embedding, item_embedding.T)
 
     for exclude_edge_index in exclude_edge_indices:

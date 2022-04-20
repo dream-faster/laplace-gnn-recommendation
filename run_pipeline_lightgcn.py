@@ -1,26 +1,3 @@
-# Commented out IPython magic to ensure Python compatibility.
-# # Install required packages.
-# %%capture
-# !pip install torch-scatter -f https://data.pyg.org/whl/torch-1.10.0+cu111.html
-# !pip install torch-sparse -f https://data.pyg.org/whl/torch-1.10.0+cu111.html
-# !pip install torch-geometric
-# !pip install -q git+https://github.com/snap-stanford/deepsnap.git
-# !pip install -U -q PyDrive
-
-"""# Implementing a Recommender System using LightGCN
-
-In this colab, we explain how to set up a graph recommender system using the [LighGCN](https://arxiv.org/abs/2002.02126) model. Specifically, we apply LightGCN to a movie recommendation task using [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/).
-
-We use the [MovieLens](https://grouplens.org/datasets/movielens/) (*small*) dataset which has 100,000 ratings applied to 9,000 movies by 600 users. 
-
-Our implementation was inspired by the following documentation and repositories:
-- https://github.com/gusye1234/LightGCN-PyTorch
-- https://www.kaggle.com/dipanjandas96/lightgcn-pytorch-from-scratch
-- https://pytorch-geometric.readthedocs.io/en/latest/notes/load_csv.html
-"""
-
-# import required modules
-
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -32,7 +9,6 @@ from torch_geometric.utils import structured_negative_sampling
 
 from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
-from data.movie_loader import create_dataloaders, sample_mini_batch
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.lightgcn_metrics import (
     get_metrics,
@@ -41,9 +17,6 @@ from utils.lightgcn_metrics import (
     NDCGatK_r,
     get_user_positive_items,
 )
-
-movie_path = "./data/movie/ml-latest-small/movies.csv"
-rating_path = "./data/movie/ml-latest-small/ratings.csv"
 
 
 # wrapper function to evaluate model
@@ -113,25 +86,13 @@ def train():
         test_edge_index,
         edge_index,
         user_mapping_index,
-        movie_mapping_index,
+        article_mapping_index,
         user_mapping_id,
-        movie_mapping_id,
+        article_mapping_id,
         num_users,
-        num_movies,
+        num_articles,
     ) = create_dataloaders_lightgcn()
-    # (
-    #     train_sparse_edge_index,
-    #     val_sparse_edge_index,
-    #     test_sparse_edge_index,
-    #     train_edge_index,
-    #     val_edge_index,
-    #     test_edge_index,
-    #     edge_index,
-    #     user_mapping,
-    #     movie_mapping,
-    #     num_users,
-    #     num_movies,
-    # ) = create_dataloaders(movie_path, rating_path)
+
     # define contants
     ITERATIONS = 10000
     BATCH_SIZE = 1024
@@ -145,7 +106,7 @@ def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
-    model = LightGCN(num_users, num_movies)
+    model = LightGCN(num_users, num_articles)
     model = model.to(device)
     model.train()
 
@@ -256,9 +217,6 @@ def train():
     """# Make New Recommendatios for a Given User"""
 
     model.eval()
-    df = pd.read_csv(movie_path)
-    movieid_title = pd.Series(df.title.values, index=df.movieId).to_dict()
-    # movieid_genres = pd.Series(df.genres.values, index=df.movieId).to_dict()
 
     user_pos_items = get_user_positive_items(edge_index)
 
@@ -269,18 +227,18 @@ def train():
 
         values, indices = torch.topk(scores, k=len(user_pos_items[user]) + num_recs)
 
-        movies = [
+        articles = [
             index.cpu().item() for index in indices if index in user_pos_items[user]
         ][:num_recs]
-        movie_ids = [
-            list(movie_mapping_index.keys())[
-                list(movie_mapping_index.values()).index(movie)
+        article_ids = [
+            list(article_mapping_index.keys())[
+                list(article_mapping_index.values()).index(article)
             ]
-            for movie in movies
+            for article in articles
         ]
-        titles = [movie_mapping_id[str(id)] for id in movie_ids]
+        titles = [article_mapping_id[str(id)] for id in article_ids]
 
-        print(f"Here are some movies that user {user_id} rated highly")
+        print(f"Here are some articles that user {user_id} rated highly")
         for i in range(num_recs):
             print(f"title: {titles[i]}")
 

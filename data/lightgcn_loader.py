@@ -20,23 +20,12 @@ from model.lightgcn import LightGCN
 import json
 
 """# Loading the Dataset
-
-We load the dataset and set ratings >=4 on a 0.5 ~ 5 scale as an edge between users and movies.
-
 We split the edges of the graph using a 80/10/10 train/validation/test split.
 """
 
 
 def split(edge_index):
-    # edge_index = load_edge_csv(
-    #     rating_path,
-    #     src_index_col="userId",
-    #     src_mapping=user_mapping,
-    #     dst_index_col="movieId",
-    #     dst_mapping=movie_mapping,
-    #     link_index_col="rating",
-    #     rating_threshold=4,
-    # )
+
     # split the edges of the graph using a 80/10/10 train/validation/test split
 
     num_interactions = edge_index.shape[1]
@@ -84,11 +73,7 @@ def create_dataloaders_lightgcn():
     customer_index_map = index_based_mapping(customer_id_map)
     article_index_map = index_based_mapping(article_id_map)
 
-    # user_mapping = load_node_csv(rating_path, index_col="userId")
-    # movie_mapping = load_node_csv(movie_path, index_col="movieId")
-    # num_users, num_movies = len(user_mapping), len(movie_mapping)
-
-    num_users, num_movies = len(customer_id_map), len(article_id_map)
+    num_users, num_articles = len(customer_id_map), len(article_id_map)
 
     edge_index = both_indexes_from_zero(data.edge_index)
     train_edge_index, val_edge_index, test_edge_index, edge_index = split(edge_index)
@@ -97,17 +82,17 @@ def create_dataloaders_lightgcn():
     train_sparse_edge_index = SparseTensor(
         row=train_edge_index[0],
         col=train_edge_index[1],
-        sparse_sizes=(num_users + num_movies, num_users + num_movies),
+        sparse_sizes=(num_users + num_articles, num_users + num_articles),
     )
     val_sparse_edge_index = SparseTensor(
         row=val_edge_index[0],
         col=val_edge_index[1],
-        sparse_sizes=(num_users + num_movies, num_users + num_movies),
+        sparse_sizes=(num_users + num_articles, num_users + num_articles),
     )
     test_sparse_edge_index = SparseTensor(
         row=test_edge_index[0],
         col=test_edge_index[1],
-        sparse_sizes=(num_users + num_movies, num_users + num_movies),
+        sparse_sizes=(num_users + num_articles, num_users + num_articles),
     )
 
     return (
@@ -123,7 +108,7 @@ def create_dataloaders_lightgcn():
         customer_id_map,
         article_id_map,
         num_users,
-        num_movies,
+        num_articles,
     )
 
 
