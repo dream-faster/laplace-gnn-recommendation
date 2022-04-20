@@ -260,7 +260,11 @@ def create_data_dgl(
             ("customer", "buys", "article"): (
                 torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
                 torch.as_tensor(transactions_to_article_id, dtype=torch.long),
-            )
+            ),
+            ("article", "rev_buys", "customer"): (
+                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
+                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
+            ),
         },
         num_nodes_dict={
             "customer": customers.shape[0],
@@ -269,6 +273,7 @@ def create_data_dgl(
     )
     data.nodes["customer"].data["features"] = customers
     data.nodes["article"].data["features"] = articles
+
     return data
 
 

@@ -529,7 +529,7 @@ class Fashion_LinkPrediction(LinkPredictionDataset):
             dataset = FashionDataset(name=dataset_name, raw_dir="")
             g = dataset[0]
             self.target_link = [("customer", "buys", "article")]
-            self.target_link_r = [("article", "reverse-buy", "customer")]
+            self.target_link_r = [("article", "rev_buys", "customer")]
         self.g = g
 
 
