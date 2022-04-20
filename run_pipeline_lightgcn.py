@@ -112,8 +112,10 @@ def train():
         val_edge_index,
         test_edge_index,
         edge_index,
-        user_mapping,
-        movie_mapping,
+        user_mapping_index,
+        movie_mapping_index,
+        user_mapping_id,
+        movie_mapping_id,
         num_users,
         num_movies,
     ) = create_dataloaders_lightgcn()
@@ -256,12 +258,12 @@ def train():
     model.eval()
     df = pd.read_csv(movie_path)
     movieid_title = pd.Series(df.title.values, index=df.movieId).to_dict()
-    movieid_genres = pd.Series(df.genres.values, index=df.movieId).to_dict()
+    # movieid_genres = pd.Series(df.genres.values, index=df.movieId).to_dict()
 
     user_pos_items = get_user_positive_items(edge_index)
 
     def make_predictions(user_id, num_recs):
-        user = user_mapping[user_id]
+        user = user_mapping_index[user_id]
         e_u = model.users_emb.weight[user]
         scores = model.items_emb.weight @ e_u
 
@@ -271,31 +273,16 @@ def train():
             index.cpu().item() for index in indices if index in user_pos_items[user]
         ][:num_recs]
         movie_ids = [
-            list(movie_mapping.keys())[list(movie_mapping.values()).index(movie)]
+            list(movie_mapping_index.keys())[
+                list(movie_mapping_index.values()).index(movie)
+            ]
             for movie in movies
         ]
-        titles = [movieid_title[id] for id in movie_ids]
-        genres = [movieid_genres[id] for id in movie_ids]
+        titles = [movie_mapping_id[str(id)] for id in movie_ids]
 
         print(f"Here are some movies that user {user_id} rated highly")
         for i in range(num_recs):
-            print(f"title: {titles[i]}, genres: {genres[i]} ")
-
-        print()
-
-        movies = [
-            index.cpu().item() for index in indices if index not in user_pos_items[user]
-        ][:num_recs]
-        movie_ids = [
-            list(movie_mapping.keys())[list(movie_mapping.values()).index(movie)]
-            for movie in movies
-        ]
-        titles = [movieid_title[id] for id in movie_ids]
-        genres = [movieid_genres[id] for id in movie_ids]
-
-        print(f"Here are some suggested movies for user {user_id}")
-        for i in range(num_recs):
-            print(f"title: {titles[i]}, genres: {genres[i]} ")
+            print(f"title: {titles[i]}")
 
     USER_ID = 1
     NUM_RECS = 10

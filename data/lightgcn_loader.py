@@ -68,11 +68,21 @@ def both_indexes_from_zero(edge_index):
     return new_edge_index
 
 
+def index_based_mapping(id_based_mapping):
+    index_based_mapping = dict()
+    for index in range(len(id_based_mapping)):
+        index_based_mapping[index] = index
+
+    return index_based_mapping
+
+
 def create_dataloaders_lightgcn():
     data = torch.load("data/derived/graph.pt").to_homogeneous()
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
+    customer_index_map = index_based_mapping(customer_id_map)
+    article_index_map = index_based_mapping(article_id_map)
 
     # user_mapping = load_node_csv(rating_path, index_col="userId")
     # movie_mapping = load_node_csv(movie_path, index_col="movieId")
@@ -108,6 +118,8 @@ def create_dataloaders_lightgcn():
         val_edge_index,
         test_edge_index,
         edge_index,
+        customer_index_map,
+        article_index_map,
         customer_id_map,
         article_id_map,
         num_users,
