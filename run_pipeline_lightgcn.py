@@ -10,7 +10,7 @@ from torch_geometric.utils import structured_negative_sampling
 from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
-from utils.lightgcn_metrics import (
+from utils.metrics import (
     get_metrics,
     bpr_loss,
     RecallPrecision_ATk,
