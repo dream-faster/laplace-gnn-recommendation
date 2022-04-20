@@ -24,24 +24,20 @@ class Config:
     hidden_layer_size: int
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
     # num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
-
-    # embedding_dim: int  # dimension to use for the customer/article embeddings
-
     learning_rate: float
-
-    dataloader: bool
     save_model: bool
     dataloader_config: DataLoaderConfig
+    eval_every: int  # (LightGCN) evaluation to run every n epoch
+    lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
+    Lambda: float  # (LightGCN)
 
 
-config = Config(
+link_pred_config = Config(
     epochs=100,
     k=12,
     # num_layers=3,
     hidden_layer_size=128,
     learning_rate=0.01,
-    # embedding_dim=64,
-    dataloader=True,
     save_model=False,
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
@@ -51,6 +47,30 @@ config = Config(
         num_neighbors_it=2,
         num_workers=1,
     ),
+    eval_every=1,
+    lr_decay_every=1,
+    Lambda=1e-6,
+)
+
+
+lightgcn_config = Config(
+    epochs=100,
+    k=12,
+    # num_layers=3,
+    hidden_layer_size=128,
+    learning_rate=1e-3,
+    save_model=False,
+    dataloader_config=DataLoaderConfig(
+        test_split=0.1,
+        val_split=0.1,
+        batch_size=12,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+        num_neighbors=64,  # -1 takes all neighbors
+        num_neighbors_it=2,
+        num_workers=1,
+    ),
+    eval_every=1,
+    lr_decay_every=1,
+    Lambda=1e-6,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

@@ -3,7 +3,7 @@ import torch
 
 from torch_geometric import seed_everything
 
-from config import config, Config
+from config import link_pred_config, Config
 from model.encoder_decoder import Encoder_Decoder_Model
 
 from utils.get_info import get_feature_info
@@ -56,4 +56,4 @@ def run_pipeline(config: Config):
 
 
 if __name__ == "__main__":
-    run_pipeline(config)
+    run_pipeline(link_pred_config)
