@@ -6,7 +6,6 @@ from torch import optim
 
 from torch_geometric.utils import structured_negative_sampling
 
-
 from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
@@ -17,6 +16,8 @@ from utils.metrics import (
     NDCGatK_r,
     get_user_positive_items,
 )
+
+from config import Config, lightgcn_config
 
 
 # wrapper function to evaluate model
@@ -70,13 +71,7 @@ def evaluation(
     return loss, recall, precision, ndcg
 
 
-def train():
-    """# Training
-
-    Your test set performance should be in line with the following (*K=20*):
-
-    *Recall@K: 0.13, Precision@K: 0.045, NDCG@K: 0.10*
-    """
+def train(config: Config):
     (
         train_sparse_edge_index,
         val_sparse_edge_index,
@@ -93,24 +88,15 @@ def train():
         num_articles,
     ) = create_dataloaders_lightgcn()
 
-    # define contants
-    ITERATIONS = 10000
-    BATCH_SIZE = 1024
-    LR = 1e-3
-    ITERS_PER_EVAL = 200
-    ITERS_PER_LR_DECAY = 200
-    K = 20
-    LAMBDA = 1e-6
-
     # setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
-    model = LightGCN(num_users, num_articles)
+    model = LightGCN(num_users, num_articles, embedding_dim=64, K=3)
     model = model.to(device)
     model.train()
 
-    optimizer = optim.Adam(model.parameters(), lr=LR)
+    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
 
     edge_index = edge_index.to(device)
@@ -124,7 +110,7 @@ def train():
     train_losses = []
     val_losses = []
 
-    for iter in range(ITERATIONS):
+    for iter in range(config.epochs):
         # forward propagation
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
@@ -132,7 +118,7 @@ def train():
 
         # mini batching
         user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(
-            BATCH_SIZE, train_edge_index
+            config.dataloader_config.batch_size, train_edge_index
         )
         user_indices, pos_item_indices, neg_item_indices = (
             user_indices.to(device),
@@ -160,34 +146,34 @@ def train():
             pos_items_emb_0,
             neg_items_emb_final,
             neg_items_emb_0,
-            LAMBDA,
+            config.Lambda,
         )
 
         optimizer.zero_grad()
         train_loss.backward()
         optimizer.step()
 
-        if iter % ITERS_PER_EVAL == 0:
+        if iter % config.eval_every == 0:
             model.eval()
             val_loss, recall, precision, ndcg = evaluation(
                 model,
                 val_edge_index,
                 val_sparse_edge_index,
                 [train_edge_index],
-                K,
-                LAMBDA,
+                config.k,
+                config.Lambda,
             )
             print(
-                f"[Iteration {iter}/{ITERATIONS}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{K}: {round(recall, 5)}, val_precision@{K}: {round(precision, 5)}, val_ndcg@{K}: {round(ndcg, 5)}"
+                f"[Iteration {iter}/{config.epochs}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{config.k}: {round(recall, 5)}, val_precision@{config.k}: {round(precision, 5)}, val_ndcg@{config.k}: {round(ndcg, 5)}"
             )
             train_losses.append(train_loss.item())
             val_losses.append(val_loss)
             model.train()
 
-        if iter % ITERS_PER_LR_DECAY == 0 and iter != 0:
+        if iter % config.lr_decay_every == 0 and iter != 0:
             scheduler.step()
 
-    iters = [iter * ITERS_PER_EVAL for iter in range(len(train_losses))]
+    iters = [iter * config.eval_every for iter in range(len(train_losses))]
     plt.plot(iters, train_losses, label="train")
     plt.plot(iters, val_losses, label="validation")
     plt.xlabel("iteration")
@@ -206,8 +192,8 @@ def train():
         test_edge_index,
         test_sparse_edge_index,
         [train_edge_index, val_edge_index],
-        K,
-        LAMBDA,
+        config.k,
+        config.Lambda,
     )
 
     print(
@@ -249,4 +235,4 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    train(lightgcn_config)

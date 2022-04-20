@@ -10,7 +10,7 @@ class LightGCN(MessagePassing):
     """LightGCN Model as proposed in https://arxiv.org/abs/2002.02126"""
 
     def __init__(
-        self, num_users, num_items, embedding_dim=64, K=3, add_self_loops=False
+        self, num_users, num_items, embedding_dim: int, K: int, add_self_loops=False
     ):
         """Initializes LightGCN Model
 
