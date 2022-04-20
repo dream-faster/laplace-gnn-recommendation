@@ -41,7 +41,9 @@ def evaluation(
     users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
         sparse_edge_index
     )
-    edges = structured_negative_sampling(edge_index, contains_neg_self_loops=False)
+    edges = structured_negative_sampling(
+        edge_index, num_nodes=torch.max(edge_index[1]), contains_neg_self_loops=False
+    )
     user_indices, pos_item_indices, neg_item_indices = edges[0], edges[1], edges[2]
     users_emb_final, users_emb_0 = (
         users_emb_final[user_indices],
