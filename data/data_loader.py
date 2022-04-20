@@ -47,10 +47,6 @@ def create_dataloaders(
     )(data)
     # when neg_sampling_ratio > 0 and add_negative_train_samples=True only then you will have negative edges
 
-    train_split = shuffle_data(train_split)
-    val_split = shuffle_data(val_split)
-    test_split = shuffle_data(test_split)
-
     train_loader = LinkNeighborLoader(
         train_split,
         num_neighbors=[config.num_neighbors] * config.num_neighbors_it,
@@ -62,7 +58,7 @@ def create_dataloaders(
         edge_label=train_split[("customer", "buys", "article")].edge_label,
         directed=False,
         replace=False,
-        # shuffle=True,
+        shuffle=True,
         num_workers=config.num_workers,
         pin_memory=True,
     )
@@ -77,7 +73,7 @@ def create_dataloaders(
         edge_label=val_split[("customer", "buys", "article")].edge_label,
         directed=False,
         replace=False,
-        # shuffle=True,
+        shuffle=True,
         num_workers=config.num_workers,
         pin_memory=True,
     )
@@ -92,7 +88,7 @@ def create_dataloaders(
         edge_label=test_split[("customer", "buys", "article")].edge_label,
         directed=False,
         replace=False,
-        # shuffle=True,
+        shuffle=True,
         num_workers=config.num_workers,
         pin_memory=True,
     )
