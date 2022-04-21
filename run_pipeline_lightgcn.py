@@ -43,7 +43,7 @@ def evaluation(
     )
     edges = structured_negative_sampling(
         edge_index.to("cpu"),
-        num_nodes=torch.max(edge_index[1]),
+        num_nodes=torch.max(edge_index[1]).to("cpu"),
         contains_neg_self_loops=False,
     )
     user_indices, pos_item_indices, neg_item_indices = edges[0], edges[1], edges[2]
