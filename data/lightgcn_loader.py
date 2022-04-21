@@ -123,7 +123,9 @@ def sample_mini_batch(batch_size, edge_index):
     Returns:
         tuple: user indices, positive item indices, negative item indices
     """
-    edges = structured_negative_sampling(edge_index, num_nodes=torch.max(edge_index[1]))
+    edges = structured_negative_sampling(
+        edge_index.to("cpu"), num_nodes=torch.max(edge_index[1])
+    )
     edges = torch.stack(edges, dim=0)
     indices = random.choices([i for i in range(edges[0].shape[0])], k=batch_size)
     batch = edges[:, indices]
