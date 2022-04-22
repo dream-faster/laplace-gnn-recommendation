@@ -12,7 +12,7 @@ def __embedding_size_selector(max_category: int):
     return embedding_range_dict["10000"]
 
 
-def __heterogenous_features(full_data: HeteroData) -> tuple[FeatureInfo, FeatureInfo]:
+def __heterogenous_features(full_data: HeteroData) -> Tuple[FeatureInfo, FeatureInfo]:
     customer_features = full_data.x_dict["customer"]
     article_features = full_data.x_dict["article"]
 

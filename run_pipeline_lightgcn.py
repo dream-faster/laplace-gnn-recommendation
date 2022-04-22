@@ -42,7 +42,9 @@ def evaluation(
         sparse_edge_index
     )
     edges = structured_negative_sampling(
-        edge_index, num_nodes=torch.max(edge_index[1]), contains_neg_self_loops=False
+        edge_index.to("cpu"),
+        num_nodes=torch.max(edge_index[1]).to("cpu"),
+        contains_neg_self_loops=False,
     )
     user_indices, pos_item_indices, neg_item_indices = edges[0], edges[1], edges[2]
     users_emb_final, users_emb_0 = (
@@ -94,7 +96,12 @@ def train(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
-    model = LightGCN(num_users, num_articles, embedding_dim=64, K=3)
+    model = LightGCN(
+        num_users,
+        num_articles,
+        embedding_dim=config.hidden_layer_size,
+        K=config.num_layers,
+    )
     model = model.to(device)
     model.train()
 
@@ -199,7 +206,7 @@ def train(config: Config):
     )
 
     print(
-        f"[test_loss: {round(test_loss, 5)}, test_recall@{K}: {round(test_recall, 5)}, test_precision@{K}: {round(test_precision, 5)}, test_ndcg@{K}: {round(test_ndcg, 5)}"
+        f"[test_loss: {round(test_loss, 5)}, test_recall@{config.k}: {round(test_recall, 5)}, test_precision@{config.k}: {round(test_precision, 5)}, test_ndcg@{config.k}: {round(test_ndcg, 5)}"
     )
 
     """# Make New Recommendatios for a Given User"""
@@ -230,10 +237,7 @@ def train(config: Config):
         for i in range(num_recs):
             print(f"title: {titles[i]}")
 
-    USER_ID = 1
-    NUM_RECS = 10
-
-    make_predictions(USER_ID, NUM_RECS)
+    # make_predictions(1, 10)
 
 
 if __name__ == "__main__":

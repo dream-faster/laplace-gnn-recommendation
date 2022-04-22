@@ -23,7 +23,7 @@ class Config:
     epochs: int  # number of training epochs
     hidden_layer_size: int
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
-    # num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
+    num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
     learning_rate: float
     save_model: bool
     dataloader_config: DataLoaderConfig
@@ -35,7 +35,7 @@ class Config:
 link_pred_config = Config(
     epochs=100,
     k=12,
-    # num_layers=3,
+    num_layers=3,  # Not wired up
     hidden_layer_size=128,
     learning_rate=0.01,
     save_model=False,
@@ -54,22 +54,22 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
-    epochs=100,
+    epochs=10000,
     k=12,
-    # num_layers=3,
-    hidden_layer_size=128,
+    num_layers=3,  # Number of LightGCN steps
+    hidden_layer_size=32,
     learning_rate=1e-3,
     save_model=False,
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
         val_split=0.1,
-        batch_size=12,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
-        num_neighbors=64,  # -1 takes all neighbors
-        num_neighbors_it=2,
+        batch_size=128,
+        num_neighbors=0,  # IGNORE for LightGCN
+        num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
     ),
-    eval_every=1,
-    lr_decay_every=1,
+    eval_every=100,
+    lr_decay_every=100,
     Lambda=1e-6,
 )
 
@@ -95,7 +95,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=50000,
+    data_size=1000000,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
