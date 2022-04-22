@@ -96,7 +96,9 @@ def train(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
-    model = LightGCN(num_users, num_articles, embedding_dim=64, K=3)
+    model = LightGCN(
+        num_users, num_articles, embedding_dim=config.hidden_layer_size, K=3
+    )
     model = model.to(device)
     model.train()
 
