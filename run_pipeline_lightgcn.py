@@ -201,7 +201,7 @@ def train(config: Config):
     )
 
     print(
-        f"[test_loss: {round(test_loss, 5)}, test_recall@{K}: {round(test_recall, 5)}, test_precision@{K}: {round(test_precision, 5)}, test_ndcg@{K}: {round(test_ndcg, 5)}"
+        f"[test_loss: {round(test_loss, 5)}, test_recall@{config.k}: {round(test_recall, 5)}, test_precision@{config.k}: {round(test_precision, 5)}, test_ndcg@{config.k}: {round(test_ndcg, 5)}"
     )
 
     """# Make New Recommendatios for a Given User"""
@@ -232,10 +232,7 @@ def train(config: Config):
         for i in range(num_recs):
             print(f"title: {titles[i]}")
 
-    USER_ID = 1
-    NUM_RECS = 10
-
-    make_predictions(USER_ID, NUM_RECS)
+    # make_predictions(1, 10)
 
 
 if __name__ == "__main__":

@@ -63,13 +63,13 @@ lightgcn_config = Config(
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
         val_split=0.1,
-        batch_size=12,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
-        num_neighbors=64,  # -1 takes all neighbors
-        num_neighbors_it=2,
+        batch_size=12800,
+        num_neighbors=0,  # -1 takes all neighbors
+        num_neighbors_it=0,
         num_workers=1,
     ),
-    eval_every=1,
-    lr_decay_every=1,
+    eval_every=100,
+    lr_decay_every=100,
     Lambda=1e-6,
 )
 
