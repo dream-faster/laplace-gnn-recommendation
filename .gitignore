@@ -138,3 +138,7 @@ data/saved/**
 data/Planetoid/
 
 data/movie/
+
+pinsage/data/derived/
+
+pinsage/data/original/
