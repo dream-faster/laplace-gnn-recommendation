@@ -97,7 +97,10 @@ def train(config: Config):
     print(f"Using device {device}.")
 
     model = LightGCN(
-        num_users, num_articles, embedding_dim=config.hidden_layer_size, K=3
+        num_users,
+        num_articles,
+        embedding_dim=config.hidden_layer_size,
+        K=config.num_layers,
     )
     model = model.to(device)
     model.train()

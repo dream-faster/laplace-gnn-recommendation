@@ -189,8 +189,8 @@ def get_metrics(model, edge_index, exclude_edge_indices, k):
     Returns:
         tuple: recall @ k, precision @ k, ndcg @ k
     """
-    user_embedding = model.users_emb.weight
-    item_embedding = model.items_emb.weight
+    user_embedding = model.users_emb.weight.to("cpu")
+    item_embedding = model.items_emb.weight.to("cpu")
 
     # get ratings between every user and item - shape is num users x num articles
     rating = torch.matmul(user_embedding, item_embedding.T)
