@@ -4,6 +4,8 @@ from torch import nn
 from torch import Tensor
 import torch
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
+from typing import Union, Optional
+from torch_geometric.data import Data, HeteroData
 
 # defines LightGCN model
 class LightGCN(MessagePassing):
@@ -78,3 +80,12 @@ class LightGCN(MessagePassing):
     def message_and_aggregate(self, adj_t: SparseTensor, x: Tensor) -> Tensor:
         # computes \tilde{A} @ x
         return matmul(adj_t, x)
+
+    def infer(self, data: Optional[Union[Data, HeteroData]]) -> Tensor:
+        user_embedding = self.users_emb.weight.to("cpu")
+        item_embedding = self.items_emb.weight.to("cpu")
+
+        # get ratings between every user and item - shape is num users x num articles
+        ratings = torch.matmul(user_embedding, item_embedding.T)
+
+        return ratings

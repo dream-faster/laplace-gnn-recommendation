@@ -231,3 +231,57 @@ def get_metrics(model, edge_index, exclude_edge_indices, k):
     ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
 
     return recall, precision, ndcg
+
+
+# wrapper function to get evaluation metrics
+def get_metrics_universal(model_output, edge_index, exclude_edge_indices, k):
+    """Computes the evaluation metrics: recall, precision, and ndcg @ k
+
+    Args:
+        model (LighGCN): ANY model
+        edge_index (torch.Tensor): 2 by N list of edges for split to evaluate
+        exclude_edge_indices ([type]): 2 by N list of edges for split to discount from evaluation
+        k (int): determines the top k items to compute metrics on
+
+    Returns:
+        tuple: recall @ k, precision @ k, ndcg @ k
+    """
+
+    ratings = model_output
+
+    for exclude_edge_index in exclude_edge_indices:
+        # gets all the positive items for each user from the edge index
+        user_pos_items = get_user_positive_items(exclude_edge_index)
+        # get coordinates of all edges to exclude
+        exclude_users = []
+        exclude_items = []
+        for user, items in user_pos_items.items():
+            exclude_users.extend([user] * len(items))
+            exclude_items.extend(items)
+
+        # set ratings of excluded edges to large negative value
+        ratings[exclude_users, exclude_items] = -(1 << 10)
+
+    # get the top k recommended items for each user
+    _, top_K_items = torch.topk(ratings, k=k)
+
+    # get all unique users in evaluated split
+    users = edge_index[0].unique()
+
+    test_user_pos_items = get_user_positive_items(edge_index)
+
+    # convert test user pos items dictionary into a list
+    test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
+
+    # determine the correctness of topk predictions
+    r = []
+    for user in users:
+        ground_truth_items = test_user_pos_items[user.item()]
+        label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
+        r.append(label)
+    r = torch.Tensor(np.array(r).astype("float"))
+
+    recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
+    ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
+
+    return recall, precision, ndcg

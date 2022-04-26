@@ -4,6 +4,10 @@ from torch.nn import Linear, Embedding, ModuleList
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
 from typing import List, Tuple
+from torch import Tensor
+from typing import Union, Optional
+from torch_geometric.data import Data, HeteroData
+
 
 
 class GNNEncoder(torch.nn.Module):
@@ -110,3 +114,11 @@ class Encoder_Decoder_Model(torch.nn.Module):
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
         return self.decoder(z_dict, edge_label_index)
+
+
+    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
+        self.eval()
+        out = self.forward(x_dict, edge_index_dict, edge_label_index)
+        
+        return out
+        
