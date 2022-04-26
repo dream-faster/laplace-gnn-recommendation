@@ -214,7 +214,12 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Saving the graph...")
-    torch.save(data, "data/derived/graph.pt")
+    torch.save(
+        data,
+        "data/derived/graph_dgl.pt"
+        if config.data_type == DataType.dgl
+        else "data/derived/graph_pyg.pt",
+    )
 
     print("| Saving the node-to-id mapping...")
     with open("data/derived/customer_id_map_forward.json", "w") as fp:
