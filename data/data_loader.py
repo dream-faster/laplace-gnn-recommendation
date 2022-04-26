@@ -31,7 +31,7 @@ def create_dataloaders(
     CustomerIdMap,
     ArticleIdMap,
 ]:
-    data = torch.load("data/derived/graph.pt")
+    data = torch.load("data/derived/graph_pyg.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
 

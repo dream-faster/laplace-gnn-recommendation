@@ -60,12 +60,12 @@ def epoch_with_dataloader(
         loop_obj.set_postfix_str(f"Loss: {loss:.4f}")
     # for data in iter(train_loader): there's no way we can loop through the train dataset again, one epoch takes ages
     #     train_rmse = test(data, model)
-    # for data in iter(val_loader):
-    #     val_rmse = test(data, model)
-    # for data in iter(test_loader):
-    #     test_rmse = test(data, model)
+    for data in iter(val_loader):
+        val_rmse = test(data, model)
+    for data in iter(test_loader):
+        test_rmse = test(data, model)
 
-    val_rmse = test(val_loader, model)
-    test_rmse = test(test_loader, model)
+    # val_rmse = test(val_loader, model)
+    # test_rmse = test(test_loader, model)
 
     return loss, val_rmse, test_rmse
