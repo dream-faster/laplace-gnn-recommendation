@@ -3,8 +3,6 @@ from tqdm import tqdm
 from data.types import (
     DataType,
     PreprocessingConfig,
-    UserColumn,
-    ArticleColumn,
 )
 import torch
 import json
@@ -12,6 +10,8 @@ from utils.labelencoder import encode_labels
 import numpy as np
 from typing import Tuple
 from config import only_users_and_articles_nodes
+import numpy as np
+from utils.np import np_groupby_first_col
 
 
 def save_to_csv(
@@ -31,7 +31,7 @@ def preprocess(config: PreprocessingConfig):
     articles = pd.read_parquet("data/original/articles.parquet").fillna(0.0)
 
     print("| Loading transactions...")
-    transactions = pd.read_parquet("data/original/transactions_train.parquet")
+    transactions = pd.read_parquet("data/original/transactions_splitted.parquet")
     if config.data_size is not None:
         transactions = transactions[: config.data_size]
 
@@ -42,68 +42,6 @@ def preprocess(config: PreprocessingConfig):
     ).fillna(0.0)
 
     articles = articles[[c.value for c in config.article_features] + ["article_id"]]
-
-    # There's currently a problem with k-core graph calculation: we'd need to re-map the edge indices after the nodes are removed and assumed a new ids.
-    # if config.K > 0:
-    #     print("| Adding transactions to the graph...")
-    #     import networkit as nk
-
-    #     node_features = pd.concat([customers, articles], axis=0)
-
-    #     G = nk.Graph(n=node_features.shape[0])
-    #     edge_pairs = zip(
-    #         transactions["article_id"]
-    #         .apply(lambda x: article_id_map_reverse[x])
-    #         .to_numpy(),
-    #         transactions["customer_id"]
-    #         .apply(lambda x: customer_id_map_reverse[x])
-    #         .to_numpy(),
-    #     )
-    #     for edge in tqdm(edge_pairs):
-    #         G.addEdge(edge[0], edge[1])
-
-    #     print("| Calculating the K-core of the graph...")
-    #     original_node_count = len(node_features)
-    #     k_core_per_node = sorted(nk.centrality.CoreDecomposition(G).run().ranking())
-    #     nodes_to_remove = [row[0] for row in k_core_per_node if row[1] <= config.K]
-
-    #     print("     Processing the about-to-be removed nodes...")
-    #     # Remove the nodes from our records (node_features)
-    #     node_features_to_remove = node_features.take(nodes_to_remove)
-    #     node_features.drop(node_features.index[nodes_to_remove], axis=0, inplace=True)
-
-    #     print("     Calculating the values for the to-be-removed edges...")
-    #     # Remove the affected transactions (referring to missing nodes)
-    #     customer_ids_to_remove = node_features_to_remove["customer_id"].unique()
-    #     article_ids_to_remove = node_features_to_remove["article_id"].unique()
-
-    #     print("     Remove the now redundant transactions...")
-    #     transactions_to_remove_customers = transactions["customer_id"].isin(
-    #         customer_ids_to_remove
-    #     )
-    #     transactions_to_remove_articles = transactions["article_id"].isin(
-    #         article_ids_to_remove
-    #     )
-    #     transactions_to_remove = (
-    #         transactions_to_remove_customers | transactions_to_remove_articles
-    #     )
-    #     transactions = transactions[~transactions_to_remove]
-
-    #     print("     Remove the now redundant customers ...")
-    #     customer_rows_to_remove = customers["customer_id"].isin(
-    #         customer_ids_to_remove
-    #     )
-    #     customers = customers[~customer_rows_to_remove]
-
-    #     print("     Remove the now redundant articles ...")
-    #     article_rows_to_remove = articles["article_id"].isin(
-    #         article_ids_to_remove
-    #     )
-    #     articles = articles[~article_rows_to_remove]
-
-    #     print(
-    #         f"     Number of nodes in the K-core: {len(node_features)}, kept: {round(len(node_features) / original_node_count, 2) * 100 }%"
-    #     )
 
     print("| Encoding article features...")
     for column in tqdm(articles.columns):
@@ -140,13 +78,18 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Parsing transactions...")
-    transactions_to_article_id = (
-        transactions["article_id"].apply(lambda x: article_id_map_reverse[x]).to_numpy()
+    transactions["article_id"] = transactions["article_id"].apply(
+        lambda x: article_id_map_reverse[x]
     )
-    transactions_to_customer_id = (
-        transactions["customer_id"]
-        .apply(lambda x: customer_id_map_reverse[x])
-        .to_numpy()
+    transactions["customer_id"] = transactions["customer_id"].apply(
+        lambda x: customer_id_map_reverse[x]
+    )
+    transactions_train = transactions[transactions["train_mask"] == True]
+    transactions_val = pd.concat(
+        [transactions_train, transactions[transactions["val_mask"] == True]], axis=0
+    )
+    transactions_test = pd.concat(
+        [transactions_val, transactions[transactions["test_mask"] == True]], axis=0
     )
 
     per_article_img_embedding = torch.zeros((0, 512))
@@ -206,15 +149,50 @@ def preprocess(config: PreprocessingConfig):
     create_func = (
         create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
     )
-    data = create_func(
+    train_graph = create_func(
         customers,
         articles,
-        transactions_to_customer_id,
-        transactions_to_article_id,
+        transactions_train["customer_id"].to_numpy(),
+        transactions_train["article_id"].to_numpy(),
+    )
+    val_graph = create_func(
+        customers,
+        articles,
+        transactions_val["customer_id"].to_numpy(),
+        transactions_val["article_id"].to_numpy(),
+    )
+    test_graph = create_func(
+        customers,
+        articles,
+        transactions_test["customer_id"].to_numpy(),
+        transactions_test["article_id"].to_numpy(),
     )
 
     print("| Saving the graph...")
-    torch.save(data, "data/derived/graph.pt")
+    torch.save(train_graph, "data/derived/train_graph.pt")
+    torch.save(val_graph, "data/derived/val_graph.pt")
+    torch.save(test_graph, "data/derived/test_graph.pt")
+
+    edges_test = np_groupby_first_col(
+            transactions_test[["customer_id", "article_id"]]
+            .sort_values("customer_id")
+            .to_numpy()
+        )
+    torch.save(edges_test, "data/derived/edges_test.pt")
+
+    edges_val = np_groupby_first_col(
+            transactions_val[["customer_id", "article_id"]]
+            .sort_values("customer_id")
+            .to_numpy()
+        )
+    torch.save(edges_val, "data/derived/edges_val.pt")
+
+    edges_test = np_groupby_first_col(
+        transactions_test[["customer_id", "article_id"]]
+        .sort_values("customer_id")
+        .to_numpy()
+    )
+    torch.save(edges_test, "data/derived/edges_test.pt")
 
     print("| Saving the node-to-id mapping...")
     with open("data/derived/customer_id_map_forward.json", "w") as fp:

@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 
 
-def select_properties(data: Union[HeteroData, Data]) -> Tuple[dict, dict, dict, Tensor]:
+def select_properties(data: Union[HeteroData, Data]) -> Tuple[dict, dict, Tensor, Tensor]:
 
     return (
         data.x_dict,

@@ -22,7 +22,7 @@ dependencies:
   - pyright
   - pip
   - pip:
-    - torch-geometric
+    - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
     - torch-sparse
     - torch-scatter
 
