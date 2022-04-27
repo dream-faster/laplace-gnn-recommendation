@@ -1,18 +1,19 @@
-import pandas as pd
-from torch.utils.data import Dataset
 import torch
 import math
+from torch_geometric.data import HeteroData, InMemoryDataset
+
+#
 
 
-class GraphDataset(Dataset):
-    def __init__(self, edge_dir, graph_dir, transform=None, target_transform=None):
+class GraphDataset(InMemoryDataset):
+    def __init__(self, edge_dir, graph_dir):
         self.edges = torch.load(edge_dir)
         self.graph = torch.load(graph_dir)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.edges)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         positive_edges = torch.tensor(self.edges[idx])
         reversed_edges = positive_edges[torch.LongTensor([1, 0])]
         user_features = self.graph["customer"].x[idx]
@@ -26,24 +27,17 @@ class GraphDataset(Dataset):
         for i in range(len(positive_edges)):
             article_features[i] = self.graph["article"].x[i]
 
-        x_dict = dict(customer=user_features, article=article_features)
-
         cut = min(
             1, math.floor(len(positive_edges) / 3)
         )  # This could be problematic if num_edges for a user is less than 2
 
         # We need to add negative edges aswell.
+        data = HeteroData()
+        data["customer"].x = torch.unsqueeze(user_features, dim=0)
+        data["article"].x = article_features
+        data["customer", "buys", "article"].edge_index = positive_edges[cut:]
+        data["customer", "buys", "article"].edge_label_index = positive_edges[cut:]
 
-        edge_index_dict = dict()
-        edge_index_dict[("customer", "buys", "article")] = positive_edges[:cut]
-        edge_index_dict[("customer", "rev_buys", "article")] = reversed_edges[:cut]
-
-        edge_label_index = dict()
-        edge_label_index[("customer", "buys", "article")] = positive_edges[cut:]
-        edge_label_index[("customer", "rev_buys", "article")] = reversed_edges[cut:]
-
-        return {
-            "x_dict": x_dict,
-            "edge_index_dict": edge_index_dict,
-            "edge_label_index": edge_label_index,
-        }
+        data["customer", "rev_buys", "article"].edge_index = reversed_edges[cut:]
+        data["customer", "rev_buys", "article"].edge_label_index = reversed_edges[cut:]
+        return data

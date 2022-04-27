@@ -5,35 +5,11 @@ import torch
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
-from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
+from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
 from data.dataset import GraphDataset
-from torch.utils.data import DataLoader
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-class PadSequence:
-    def __call__(self, batch):
-        # Let's assume that each element in "batch" is a tuple (data, label).
-        # Sort the batch in the descending order
-        sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
-        # Get each sequence and pad it
-        sequences = [x[0] for x in sorted_batch]
-        sequences_padded = torch.nn.utils.rnn.pad_sequence(
-            sequences, batch_first=True, padding_value=-1.0
-        )
-        # Also need to store the length of each sequence
-        # This is later needed in order to unpad the sequences
-        lengths = torch.LongTensor([len(x) for x in sequences])
-        # Don't forget to grab the labels of the *sorted* batch
-
-        user_features = torch.stack([x[1] for x in sorted_batch], dim=0)
-        article_features = torch.stack([x[2] for x in sorted_batch], dim=0)
-        return sequences_padded, lengths, user_features, article_features
-
-
-def dummy_collate(batch):
-    return batch
 
 
 def create_dataloaders(
@@ -59,9 +35,7 @@ def create_dataloaders(
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     # data = T.ToUndirected()(data)
 
-    train_loader = DataLoader(
-        train_dataset, batch_size=2, shuffle=False, collate_fn=dummy_collate
-    )
+    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
     val_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
     test_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
 
