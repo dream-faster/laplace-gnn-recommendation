@@ -6,6 +6,7 @@ from torch.nn import Linear
 def get_SAGEConv_layers(
     num_layers: int, hidden_channels: int, out_channels: int
 ) -> nn.ModuleList:
+    assert num_layers > 1, "num_layers must be greater than 1"
     from torch_geometric.nn import SAGEConv
 
     conv_single_layer = SAGEConv(
