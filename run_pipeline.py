@@ -30,7 +30,7 @@ def run_pipeline(config: Config):
     model = Encoder_Decoder_Model(
         hidden_channels=config.hidden_layer_size,
         feature_info=get_feature_info(full_data),
-        metadata=next(iter(train_loader)).metadata(),
+        metadata=full_data.metadata(),
         embedding=True,
     ).to(device)
 

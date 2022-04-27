@@ -100,7 +100,7 @@ class Encoder_Decoder_Model(torch.nn.Module):
         return x_dict
 
     def initialize_encoder_input_size(self, data: HeteroData) -> None:
-        x_dict, edge_index_dict = data.x_dict, data.edge_index_dict
+        x_dict, edge_index_dict = data[0]["x_dict"], data[0]["edge_index_dict"]
 
         if self.embedding:
             x_dict = self.__embedding(x_dict)
