@@ -17,7 +17,6 @@ def run_pipeline(config: Config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("| Creating Datasets...")
-    loader, epoch_loop = create_dataloaders, epoch_with_dataloader
     (
         train_loader,
         val_loader,
@@ -25,7 +24,7 @@ def run_pipeline(config: Config):
         customer_id_map,
         article_id_map,
         full_data,
-    ) = loader(config.dataloader_config)
+    ) = create_dataloaders(config.dataloader_config)
 
     print("| Creating Model...")
     feature_info = get_feature_info(full_data)
@@ -49,7 +48,7 @@ def run_pipeline(config: Config):
     print("| Training Model...")
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        loss, val_rmse, test_rmse = epoch_loop(
+        loss, val_rmse, test_rmse = epoch_with_dataloader(
             model, optimizer, train_loader, val_loader, test_loader
         )
         torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
