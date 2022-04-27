@@ -6,7 +6,6 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
-from data.dataset import GraphDataset
 
 
 def shuffle_data(data: HeteroData) -> HeteroData:
@@ -32,24 +31,7 @@ def create_dataloaders(
     CustomerIdMap,
     ArticleIdMap,
 ]:
-    data_dir = "data/derived/"
-    train_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_train.pt", graph_dir=data_dir + "train_graph.pt"
-    )
-    val_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_val.pt", graph_dir=data_dir + "val_graph.pt"
-    )
-    test_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_test.pt", graph_dir=data_dir + "test_graph.pt"
-    )
-
-    train_data = torch.load("data/derived/train_graph.pt")
-    val_data = torch.load("data/derived/val_graph.pt")
-    test_data = torch.load("data/derived/test_graph.pt")
-
-    train_edges = torch.load("data/derived/edges_train.pt")
-    val_edges = torch.load("data/derived/edges_val.pt")
-    test_edges = torch.load("data/derived/edges_test.pt")
+    data = torch.load("data/derived/graph_pyg.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
 

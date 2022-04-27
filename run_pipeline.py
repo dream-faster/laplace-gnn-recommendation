@@ -27,11 +27,9 @@ def run_pipeline(config: Config):
     ) = create_dataloaders(config.dataloader_config)
 
     print("| Creating Model...")
-    feature_info = get_feature_info(full_data)
-
     model = Encoder_Decoder_Model(
         hidden_channels=config.hidden_layer_size,
-        feature_info=feature_info,
+        feature_info=get_feature_info(full_data),
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
     ).to(device)
