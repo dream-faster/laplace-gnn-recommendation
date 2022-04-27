@@ -11,6 +11,7 @@ import numpy as np
 from typing import Tuple
 from config import only_users_and_articles_nodes
 import numpy as np
+from utils.np import np_groupby_first_col
 
 
 def save_to_csv(
@@ -172,9 +173,26 @@ def preprocess(config: PreprocessingConfig):
     torch.save(val_graph, "data/derived/val_graph.pt")
     torch.save(test_graph, "data/derived/test_graph.pt")
 
-    transactions_test[["customer_id", "article_id"]].groupby("customer_id").to_parquet(
-        "data/derived/edges_.parquet"
+    edges_test = np_groupby_first_col(
+            transactions_test[["customer_id", "article_id"]]
+            .sort_values("customer_id")
+            .to_numpy()
+        )
+    torch.save(edges_test, "data/derived/edges_test.pt")
+
+    edges_val = np_groupby_first_col(
+            transactions_val[["customer_id", "article_id"]]
+            .sort_values("customer_id")
+            .to_numpy()
+        )
+    torch.save(edges_val, "data/derived/edges_val.pt")
+
+    edges_test = np_groupby_first_col(
+        transactions_test[["customer_id", "article_id"]]
+        .sort_values("customer_id")
+        .to_numpy()
     )
+    torch.save(edges_test, "data/derived/edges_test.pt")
 
     print("| Saving the node-to-id mapping...")
     with open("data/derived/customer_id_map_forward.json", "w") as fp:
