@@ -12,10 +12,17 @@ class GraphDataset(Dataset):
         return len(self.edges)
 
     def __getitem__(self, idx):
-        connected_articles = self.edges[idx]
+        connected_articles = torch.tensor(self.edges[idx])
         user_features = self.graph["customer"].x[idx]
 
-        for edge in connected_articles:
-            article_features = self.graph["article"].x[edge]
+        article_features = torch.empty(
+            size=(
+                len(connected_articles),
+                self.graph["article"].x[self.edges[0][0]].shape[0],
+            )
+        )
+        for i in range(len(connected_articles)):
+            article_features[i] = self.graph["article"].x[i]
 
         return connected_articles, user_features, article_features
+    

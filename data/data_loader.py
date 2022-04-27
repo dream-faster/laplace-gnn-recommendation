@@ -7,20 +7,9 @@ from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from data.dataset import GraphDataset
+from torch.utils.data import DataLoader
 
-
-def shuffle_data(data: HeteroData) -> HeteroData:
-    new_edge_order = torch.randperm(
-        data[("customer", "buys", "article")].edge_label.size(0)
-    )
-    data[("customer", "buys", "article")].edge_label = data[
-        ("customer", "buys", "article")
-    ].edge_label[new_edge_order]
-    data[("customer", "buys", "article")].edge_label_index = data[
-        ("customer", "buys", "article")
-    ].edge_label_index[:, new_edge_order]
-
-    return data
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def create_dataloaders(
@@ -43,73 +32,35 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_test.pt", graph_dir=data_dir + "test_graph.pt"
     )
 
-    train_data = torch.load("data/derived/train_graph.pt")
-    val_data = torch.load("data/derived/val_graph.pt")
-    test_data = torch.load("data/derived/test_graph.pt")
-
-    train_edges = torch.load("data/derived/edges_train.pt")
-    val_edges = torch.load("data/derived/edges_val.pt")
-    test_edges = torch.load("data/derived/edges_test.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
-    data = T.ToUndirected()(data)
+    # data = T.ToUndirected()(data)
 
-    # Perform a link-level split into training, validation, and test edges:
-    train_split, val_split, test_split = T.RandomLinkSplit(
-        num_val=config.val_split,
-        num_test=config.test_split,
-        neg_sampling_ratio=0.5,
-        add_negative_train_samples=True,
-        edge_types=[("customer", "buys", "article")],
-        rev_edge_types=[("article", "rev_buys", "customer")],
-        is_undirected=True,
-    )(data)
-    # when neg_sampling_ratio > 0 and add_negative_train_samples=True only then you will have negative edges
+    class PadSequence:
+        def __call__(self, batch):
+            # Let's assume that each element in "batch" is a tuple (data, label).
+            # Sort the batch in the descending order
+            sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
+            # Get each sequence and pad it
+            sequences = [x[0] for x in sorted_batch]
+            sequences_padded = torch.nn.utils.rnn.pad_sequence(
+                sequences, batch_first=True, padding_value=-1.0
+            )
+            # Also need to store the length of each sequence
+            # This is later needed in order to unpad the sequences
+            lengths = torch.LongTensor([len(x) for x in sequences])
+            # Don't forget to grab the labels of the *sorted* batch
 
-    train_loader = LinkNeighborLoader(
-        train_split,
-        num_neighbors=[config.num_neighbors] * config.num_neighbors_it,
-        batch_size=config.batch_size,
-        edge_label_index=(
-            ("customer", "buys", "article"),
-            train_split[("customer", "buys", "article")].edge_label_index,
-        ),
-        edge_label=train_split[("customer", "buys", "article")].edge_label,
-        directed=False,
-        replace=False,
-        shuffle=True,
-        num_workers=config.num_workers,
-        pin_memory=True,
+            user_features = torch.stack([x[1] for x in sorted_batch], dim=0)
+            article_features = torch.stack([x[2] for x in sorted_batch], dim=0)
+            return sequences_padded, lengths, user_features, article_features
+
+    train_loader = DataLoader(
+        train_dataset, batch_size=2, shuffle=False, collate_fn=PadSequence()
     )
-    val_loader = LinkNeighborLoader(
-        val_split,
-        num_neighbors=[64] * 2,
-        batch_size=config.batch_size,
-        edge_label_index=(
-            ("customer", "buys", "article"),
-            val_split[("customer", "buys", "article")].edge_label_index,
-        ),
-        edge_label=val_split[("customer", "buys", "article")].edge_label,
-        directed=False,
-        replace=False,
-        shuffle=True,
-        num_workers=config.num_workers,
-        pin_memory=True,
-    )
-    test_loader = LinkNeighborLoader(
-        test_split,
-        num_neighbors=[64] * 2,
-        batch_size=config.batch_size,
-        edge_label_index=(
-            ("customer", "buys", "article"),
-            test_split[("customer", "buys", "article")].edge_label_index,
-        ),
-        edge_label=test_split[("customer", "buys", "article")].edge_label,
-        directed=False,
-        replace=False,
-        shuffle=True,
-        num_workers=config.num_workers,
-        pin_memory=True,
-    )
+    val_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
+    test_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
+    next_item = next(iter(train_loader))
+    data = train_dataset.graph
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
