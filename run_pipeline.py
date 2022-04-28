@@ -31,7 +31,7 @@ def run_pipeline(config: Config):
         hidden_channels=config.hidden_layer_size,
         feature_info=get_feature_info(full_data),
         metadata=full_data.metadata(),
-        embedding=True,
+        embedding=False,
     ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number

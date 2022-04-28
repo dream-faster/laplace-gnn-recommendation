@@ -4,8 +4,6 @@ from torch_geometric.data import Data, HeteroData, InMemoryDataset
 from torch import Tensor
 from typing import Union
 
-#
-
 
 class GraphDataset(InMemoryDataset):
     def __init__(self, edge_dir, graph_dir):
@@ -29,9 +27,10 @@ class GraphDataset(InMemoryDataset):
         for i in range(len(all_edges)):
             article_features[i] = self.graph["article"].x[i]
 
+        # This could be problematic if num_edges for a user is less than 2
         samp_cut = max(
             1, math.floor(len(all_edges) / 3)
-        )  # This could be problematic if num_edges for a user is less than 2
+        )  
 
         positive_edges_flat = all_edges[:samp_cut]
         negative_edges_flat = self.__get_negative_edges(
