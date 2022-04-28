@@ -27,7 +27,7 @@ class GraphDataset(InMemoryDataset):
         for i in range(len(positive_edges)):
             article_features[i] = self.graph["article"].x[i]
 
-        cut = min(
+        cut = max(
             1, math.floor(len(positive_edges) / 3)
         )  # This could be problematic if num_edges for a user is less than 2
 
@@ -35,9 +35,15 @@ class GraphDataset(InMemoryDataset):
         data = HeteroData()
         data["customer"].x = torch.unsqueeze(user_features, dim=0)
         data["article"].x = article_features
-        data["customer", "buys", "article"].edge_index = positive_edges[cut:]
-        data["customer", "buys", "article"].edge_label_index = positive_edges[cut:]
+        data["customer", "buys", "article"].edge_index = positive_edges
+        data["customer", "buys", "article"].edge_label_index = positive_edges
+        data["customer", "buys", "article"].edge_label = torch.stack(
+            [torch.ones(cut), torch.zeros(len(positive_edges) - cut)], dim=1
+        )
 
-        data["customer", "rev_buys", "article"].edge_index = reversed_edges[cut:]
-        data["customer", "rev_buys", "article"].edge_label_index = reversed_edges[cut:]
+        data["customer", "rev_buys", "article"].edge_index = reversed_edges
+        data["customer", "rev_buys", "article"].edge_label_index = reversed_edges
+        data["customer", "buys", "article"].edge_label = torch.stack(
+            [torch.ones(cut), torch.zeros(len(positive_edges) - cut)], dim=1
+        )
         return data
