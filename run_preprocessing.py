@@ -56,21 +56,23 @@ def preprocess(config: PreprocessingConfig):
         if column != "customer_id":
             customers[column] = encode_labels(customers[column])
 
-    print("| Removing disjoint nodes...")
-    all_article_ids_referenced = set(transactions["article_id"].unique())
-    all_customer_ids_referenced = set(transactions["customer_id"].unique())
-    disjoint_customers = set(customers["customer_id"].unique()).difference(
-        all_customer_ids_referenced
-    )
-    disjoint_articles = set(articles["article_id"].unique()).difference(
-        all_article_ids_referenced
-    )
+    if False:
+        print("| Removing disjoint nodes...")
+        all_article_ids_referenced = set(transactions["article_id"].unique())
+        all_customer_ids_referenced = set(transactions["customer_id"].unique())
+        disjoint_customers = set(customers["customer_id"].unique()).difference(
+            all_customer_ids_referenced
+        )
+        disjoint_articles = set(articles["article_id"].unique()).difference(
+            all_article_ids_referenced
+        )
 
-    customers = customers[~customers["customer_id"].isin(disjoint_customers)]
+        customers = customers[~customers["customer_id"].isin(disjoint_customers)]
+        articles = articles[~articles["article_id"].isin(disjoint_articles)]
+
     customers, customer_id_map_forward, customer_id_map_reverse = create_ids_and_maps(
         customers, "customer_id", 0
     )
-    articles = articles[~articles["article_id"].isin(disjoint_articles)]
     articles, article_id_map_forward, article_id_map_reverse = create_ids_and_maps(
         articles,
         "article_id",
