@@ -173,26 +173,19 @@ def preprocess(config: PreprocessingConfig):
     torch.save(val_graph, "data/derived/val_graph.pt")
     torch.save(test_graph, "data/derived/test_graph.pt")
 
-    edges_test = np_groupby_first_col(
-            transactions_test[["customer_id", "article_id"]]
-            .sort_values("customer_id")
-            .to_numpy()
-        )
-    torch.save(edges_test, "data/derived/edges_test.pt")
-
-    edges_val = np_groupby_first_col(
-            transactions_val[["customer_id", "article_id"]]
-            .sort_values("customer_id")
-            .to_numpy()
-        )
-    torch.save(edges_val, "data/derived/edges_val.pt")
-
-    edges_test = np_groupby_first_col(
-        transactions_test[["customer_id", "article_id"]]
-        .sort_values("customer_id")
-        .to_numpy()
+    print("| Extracting edges per customer / per article...")
+    torch.save(extract_edges(transactions_train), "data/derived/edges_train.pt")
+    torch.save(
+        extract_reverse_edges(transactions_train), "data/derived/rev_edges_train.pt"
     )
-    torch.save(edges_test, "data/derived/edges_test.pt")
+
+    torch.save(extract_edges(transactions_val), "data/derived/edges_val.pt")
+    torch.save(extract_reverse_edges(transactions_val), "data/derived/rev_edges_val.pt")
+
+    torch.save(extract_edges(transactions_test), "data/derived/edges_test.pt")
+    torch.save(
+        extract_reverse_edges(transactions_test), "data/derived/rev_edges_test.pt"
+    )
 
     print("| Saving the node-to-id mapping...")
     with open("data/derived/customer_id_map_forward.json", "w") as fp:
@@ -259,6 +252,20 @@ def create_ids_and_maps(
     mapping_reverse = {v: k for k, v in mapping_forward.items()}
     df["index"] = df.index
     return df, mapping_forward, mapping_reverse
+
+
+def extract_edges(transactions: pd.DataFrame) -> np.ndarray:
+    return np_groupby_first_col(
+        transactions[["customer_id", "article_id"]]
+        .sort_values("customer_id")
+        .to_numpy()
+    )
+
+
+def extract_reverse_edges(transactions: pd.DataFrame) -> np.ndarray:
+    return np_groupby_first_col(
+        transactions[["article_id", "customer_id"]].sort_values("article_id").to_numpy()
+    )
 
 
 if __name__ == "__main__":
