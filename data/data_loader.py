@@ -34,9 +34,9 @@ def create_dataloaders(
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     # data = T.ToUndirected()(data)
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
-    val_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
-    test_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
+    val_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
+    test_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
 
     data = train_dataset.graph
     data = T.ToUndirected()(data)

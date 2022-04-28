@@ -49,14 +49,17 @@ class GraphDataset(InMemoryDataset):
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         edge_key = ("customer", "buys", "article")
         rev_edge_key = ("article", "rev_buys", "customer")
+        cut_ratio = 0.3
 
         """ Create Edges """
         # Define the whole graph and the subgraph
         all_edges = self.graph[edge_key].edge_index
         subgraph_edges = torch.tensor(self.edges[idx])
 
+        samp_cut = max(1, math.floor(len(subgraph_edges) * cut_ratio))
+
         # Sample positive edges from subgraph
-        subgraph_sample_positive = subgraph_edges[:1]
+        subgraph_sample_positive = subgraph_edges[:samp_cut]
 
         # Sample negative edges from the whole graph, filtering out subgraph edges (positive edges)
         sampled_edges_negative = get_negative_edges(
@@ -98,7 +101,7 @@ class GraphDataset(InMemoryDataset):
         )
 
         # Expand flat edge list with user's id to have shape [2, num_nodes]
-        id_tensor = torch.tensor([idx])
+        id_tensor = torch.tensor([0])
         all_sampled_edges_remapped = torch.stack(
             [
                 id_tensor.repeat(len(all_sampled_edges_remapped)),

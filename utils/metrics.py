@@ -112,9 +112,9 @@ def get_user_positive_items(edge_index):
         dict: dictionary of positive items for each user
     """
     user_pos_items = {}
-    for i in range(edge_index.shape[1]):
-        user = edge_index[0][i].item()
-        item = edge_index[1][i].item()
+    for i in range(edge_index[("customer", "buys", "article")].shape[1]):
+        user = edge_index[("customer", "buys", "article")][0][i].item()
+        item = edge_index[("customer", "buys", "article")][1][i].item()
         if user not in user_pos_items:
             user_pos_items[user] = []
         user_pos_items[user].append(item)
@@ -266,7 +266,8 @@ def get_metrics_universal(model_output, edge_index, exclude_edge_indices, k):
     _, top_K_items = torch.topk(ratings, k=k)
 
     # get all unique users in evaluated split
-    users = edge_index[0].unique()
+    users = edge_index[("customer", "buys", "article")][0].unique()
+    # users = edge_index[0].unique()
 
     test_user_pos_items = get_user_positive_items(edge_index)
 
