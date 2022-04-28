@@ -35,8 +35,8 @@ def create_dataloaders(
     # data = T.ToUndirected()(data)
 
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
-    val_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
-    test_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
+    val_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
+    test_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
 
     data = train_dataset.graph
     data = T.ToUndirected()(data)

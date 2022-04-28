@@ -5,6 +5,39 @@ from torch import Tensor
 from typing import Union, Optional
 
 
+def get_negative_edges(
+    filter_ids: Tensor,
+    potential_edges: Tensor,
+    num_negative_edges: int = 10,
+) -> Tensor:
+    # Get the biggest value available in articles (potential edges to sample from)
+    id_max = torch.max(potential_edges, dim=1)[0][1]
+
+    # Create list of potential negative edges, filter out positive edges
+    combined = torch.cat((torch.range(start=0, end=id_max), filter_ids))
+    uniques, counts = combined.unique(return_counts=True)
+    difference = uniques[counts == 1]
+
+    # Randomly sample negative edges
+    negative_edges = difference[torch.randperm(difference.nelement())][
+        :num_negative_edges
+    ]
+
+    return negative_edges
+
+
+def remap_indexes_to_zero(
+    all_edges: Tensor, buckets: Optional[Tensor] = None
+) -> Tensor:
+    all_edges_copy = all_edges.clone()
+
+    # If there are no buckets it should remap on itself
+    if buckets is None:
+        buckets = torch.unique(all_edges_copy)
+
+    return torch.bucketize(all_edges_copy, buckets)
+
+
 class GraphDataset(InMemoryDataset):
     def __init__(self, edge_dir, graph_dir):
         self.edges = torch.load(edge_dir)
@@ -17,7 +50,7 @@ class GraphDataset(InMemoryDataset):
         edge_key = ("customer", "buys", "article")
         rev_edge_key = ("article", "rev_buys", "customer")
 
-        """ Edges """
+        """ Create Edges """
         # Define the whole graph and the subgraph
         all_edges = self.graph[edge_key].edge_index
         subgraph_edges = torch.tensor(self.edges[idx])
@@ -26,7 +59,7 @@ class GraphDataset(InMemoryDataset):
         subgraph_sample_positive = subgraph_edges[:1]
 
         # Sample negative edges from the whole graph, filtering out subgraph edges (positive edges)
-        sampled_edges_negative = self.__get_negative_edges(
+        sampled_edges_negative = get_negative_edges(
             filter_ids=subgraph_edges,
             potential_edges=all_edges,
             num_negative_edges=len(subgraph_sample_positive),
@@ -50,16 +83,14 @@ class GraphDataset(InMemoryDataset):
 
         """ Remap and Prepare Edges """
         # Remap IDs
-        subgraph_edges_remapped = self.__remap_indexes_to_zero(
+        subgraph_edges_remapped = remap_indexes_to_zero(
             subgraph_edges, buckets=torch.unique(subgraph_edges)
         )
-        subgraph_sample_positive_remapped = self.__remap_indexes_to_zero(
+        subgraph_sample_positive_remapped = remap_indexes_to_zero(
             subgraph_sample_positive
         )
-        sampled_edges_negative_remapped = self.__remap_indexes_to_zero(
-            sampled_edges_negative
-        )
-        # Add
+        sampled_edges_negative_remapped = remap_indexes_to_zero(sampled_edges_negative)
+        #
         sampled_edges_negative_remapped += len(subgraph_edges)
 
         all_sampled_edges_remapped = torch.cat(
@@ -108,35 +139,3 @@ class GraphDataset(InMemoryDataset):
         data[rev_edge_key].edge_label_index = all_sampled_edges_remapped[reverse_key]
         data[rev_edge_key].edge_label = labels
         return data
-
-    def __get_negative_edges(
-        self,
-        filter_ids: Tensor,
-        potential_edges: Tensor,
-        num_negative_edges: int = 10,
-    ) -> Tensor:
-        # Get the biggest value available in articles (potential edges to sample from)
-        id_max = torch.max(potential_edges, dim=1)[0][1]
-
-        # Create list of potential negative edges, filter out positive edges
-        combined = torch.cat((torch.range(start=0, end=id_max), filter_ids))
-        uniques, counts = combined.unique(return_counts=True)
-        difference = uniques[counts == 1]
-
-        # Randomly sample negative edges
-        negative_edges = difference[torch.randperm(difference.nelement())][
-            :num_negative_edges
-        ]
-
-        return negative_edges
-
-    def __remap_indexes_to_zero(
-        self, all_edges: Tensor, buckets: Optional[Tensor] = None
-    ) -> Tensor:
-        all_edges_copy = all_edges.clone()
-
-        # If there are no buckets it should remap on itself
-        if buckets is None:
-            buckets = torch.unique(all_edges_copy)
-
-        return torch.bucketize(all_edges_copy, buckets)
