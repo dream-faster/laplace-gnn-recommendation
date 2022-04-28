@@ -17,24 +17,6 @@ class GraphDataset(InMemoryDataset):
         edge_key = ("customer", "buys", "article")
         rev_edge_key = ("article", "rev_buys", "customer")
 
-        """ Node Features """
-        # Prepare user features
-        user_features = self.graph["customer"].x[idx]
-
-        # Prepare connected article features
-        all_sampled_edges = torch.cat(
-            [subgraph_sample_positive, sampled_edges_negative], dim=0
-        )
-
-        article_features = torch.empty(
-            size=(
-                len(all_sampled_edges),
-                self.graph["article"].x[self.edges[0][0]].shape[0],
-            )
-        )
-        for i, article_id in enumerate(all_sampled_edges.to(torch.long)):
-            article_features[i] = self.graph["article"].x[article_id]
-
         """ Edges """
         # Define the whole graph and the subgraph
         all_edges = self.graph[edge_key].edge_index
@@ -50,12 +32,53 @@ class GraphDataset(InMemoryDataset):
             num_negative_edges=len(subgraph_sample_positive),
         )
 
+        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
+
+        """ Node Features """
+        # Prepare user features
+        user_features = self.graph["customer"].x[idx]
+
+        # Prepare connected article features
+        article_features = torch.empty(
+            size=(
+                len(all_touched_edges),
+                self.graph["article"].x[self.edges[0][0]].shape[0],
+            )
+        )
+        for i, article_id in enumerate(all_touched_edges.to(torch.long)):
+            article_features[i] = self.graph["article"].x[article_id]
+
+        """ Remap and Prepare Edges """
+        # Remap IDs
+        subgraph_edges_remapped = self.__remap_indexes_to_zero(
+            subgraph_edges, buckets=torch.unique(subgraph_edges)
+        )
+        subgraph_sample_positive_remapped = self.__remap_indexes_to_zero(
+            subgraph_sample_positive
+        )
+        sampled_edges_negative_remapped = self.__remap_indexes_to_zero(
+            sampled_edges_negative
+        )
+        # Add
+        sampled_edges_negative_remapped += len(subgraph_edges)
+
+        all_sampled_edges_remapped = torch.cat(
+            [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
+        )
+
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([idx])
-        all_sampled_edges = torch.stack(
+        all_sampled_edges_remapped = torch.stack(
             [
-                id_tensor.repeat(len(all_sampled_edges)),
-                all_sampled_edges,
+                id_tensor.repeat(len(all_sampled_edges_remapped)),
+                all_sampled_edges_remapped,
+            ],
+            dim=0,
+        )
+        subgraph_edges_remapped = torch.stack(
+            [
+                id_tensor.repeat(len(subgraph_edges_remapped)),
+                subgraph_edges_remapped,
             ],
             dim=0,
         )
@@ -75,77 +98,16 @@ class GraphDataset(InMemoryDataset):
         data["article"].x = article_features
 
         # Add original directional edges
-        data[edge_key].edge_index = subgraph_edges
-        data[edge_key].edge_label_index = all_sampled_edges
+        data[edge_key].edge_index = subgraph_edges_remapped
+        data[edge_key].edge_label_index = all_sampled_edges_remapped
         data[edge_key].edge_label = labels
 
         # Add reverse edges
         reverse_key = torch.LongTensor([1, 0])
-        data[rev_edge_key].edge_index = subgraph_edges[reverse_key]
-        data[rev_edge_key].edge_label_index = all_sampled_edges[reverse_key]
+        data[rev_edge_key].edge_index = subgraph_edges_remapped[reverse_key]
+        data[rev_edge_key].edge_label_index = all_sampled_edges_remapped[reverse_key]
         data[rev_edge_key].edge_label = labels
         return data
-
-        # all_edges = self.graph[edge_key].edge_index
-        # all_edges_mapped = all_edges.clone()
-        # all_edges_mapped[0] = self.__remap_indexes_to_zero(all_edges_mapped[0])
-        # all_edges_mapped[1] = self.__remap_indexes_to_zero(all_edges_mapped[1])
-
-        # """ Prepare features and edges """
-        # user_features = self.graph["customer"].x[idx]
-        # article_features = torch.empty(
-        #     size=(
-        #         len(all_edges_mapped),
-        #         self.graph["article"].x[self.edges[0][0]].shape[0],
-        #     )
-        # )
-        # for i in range(len(all_edges_mapped)):
-        #     article_features[i] = self.graph["article"].x[i]
-
-        # # Get positive and negative edges
-        # positive_edges_flat = torch.tensor(self.edges[idx])
-        # positive_edges_flat = self.__remap_indexes_to_zero(
-        #     positive_edges_flat, buckets=all_edges_mapped[1]
-        # )
-        # negative_edges_flat = self.__get_negative_edges(
-        #     filter_ids=positive_edges_flat,
-        #     potential_edges=all_edges_mapped,
-        #     num_negative_edges=len(positive_edges_flat),
-        # )
-
-        # # Add customer id to the tensor
-        # id_tensor = torch.tensor([idx])
-        # positive_edges = torch.stack(
-        #     [id_tensor.repeat(len(positive_edges_flat)), positive_edges_flat],
-        #     dim=0,
-        # )
-        # negative_edges = torch.stack(
-        #     [id_tensor.repeat(len(negative_edges_flat)), negative_edges_flat]
-        # )
-        # pos_neg_edges = torch.cat([positive_edges, negative_edges], dim=1)
-
-        # # Create labels that identify negative from positive edges
-        # labels = torch.cat(
-        #     [torch.ones(positive_edges.shape[1]), torch.zeros(negative_edges.shape[1])],
-        #     dim=0,
-        # )
-
-        # """ Create Data """
-        # data = HeteroData()
-        # data["customer"].x = torch.unsqueeze(user_features, dim=0)
-        # data["article"].x = article_features
-
-        # # Add original directional edges
-        # data[edge_key].edge_index = all_edges_mapped
-        # data[edge_key].edge_label_index = pos_neg_edges
-        # data[edge_key].edge_label = labels
-
-        # # Add reverse edges
-        # reverse_key = torch.LongTensor([1, 0])
-        # data[rev_edge_key].edge_index = all_edges_mapped[reverse_key]
-        # data[rev_edge_key].edge_label_index = pos_neg_edges[reverse_key]
-        # data[rev_edge_key].edge_label = labels
-        # return data
 
     def __get_negative_edges(
         self,
