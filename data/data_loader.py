@@ -11,7 +11,6 @@ from data.dataset import GraphDataset
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-
 def create_dataloaders(
     config: DataLoaderConfig,
 ) -> Tuple[
@@ -35,7 +34,7 @@ def create_dataloaders(
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     # data = T.ToUndirected()(data)
 
-    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
     val_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
     test_loader = DataLoader(train_dataset, batch_size=2, shuffle=False)
 

@@ -77,7 +77,7 @@ class GraphDataset(InMemoryDataset):
         self, positive_edges: Tensor, idx: int, num_negative_edges: int = 10
     ) -> Tensor:
         all_ids = self.graph[("customer", "buys", "article")].edge_index
-        # Get the biggest value available in articles
+        # Get the biggest value available in articles (potential edges to sample from)
         id_max = torch.max(all_ids, dim=1)[0][1]
 
         # Create list of potential negative edges, filter out positive edges
