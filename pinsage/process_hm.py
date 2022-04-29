@@ -31,7 +31,7 @@ def process_hm():
     output_path = "dataset.pkl"
 
     print("| Loading Graph...")
-    g = torch.load("graph.pt")
+    g = torch.load("graph_dgl.pt")
 
     print("| Loading Transactions...")
     transactions = pd.read_parquet("transactions_train.parquet")[
