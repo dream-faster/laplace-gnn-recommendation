@@ -138,7 +138,7 @@ def run_pinsage():
     # Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dataset_path", type=str, default="pinsage/data/derived/dataset.pkl"
+        "--dataset_path", type=str, default="data/derived/pinsage_dataset.pkl"
     )
     parser.add_argument("--random-walk-length", type=int, default=2)
     parser.add_argument("--random-walk-restart-prob", type=float, default=0.5)

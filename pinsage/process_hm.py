@@ -7,7 +7,7 @@ from pinsage.data_utils import *
 
 def process_hm():
 
-    output_path = "dataset.pkl"
+    output_path = "data/dervived/pinsage_dataset.pkl"
 
     print("| Loading Graph...")
     g = torch.load("data/derived/test_graph.pt")
