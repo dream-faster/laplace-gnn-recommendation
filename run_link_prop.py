@@ -2,6 +2,7 @@
 # Revisiting Neighborhood-based Link Prediction for Collaborative Filtering
 # https://arxiv.org/abs/2203.15789
 
+import numpy as np
 import torch
 from torch_sparse import SparseTensor, matmul
 import pandas as pd
@@ -10,43 +11,57 @@ from sklearn.metrics import ndcg_score, recall_score, precision_score, accuracy_
 from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator
 
-device = "cpu"
-train_size, val_size, test_size = 1000, 1000, 1000
 
-customers = pd.read_csv("data/original/customers.csv")
-articles = pd.read_csv("data/original/articles.csv")
-transactions = pd.read_csv("data/original/transactions_train.csv")
-customers.reset_index()
-articles.reset_index()
+def load_data():
+    try:
+        return torch.load("data/derived/link_prop.pt")
+    except FileNotFoundError:
+        pass
 
-# get rid of customers that have no transactions
-customers = customers.merge(
-    pd.DataFrame(transactions["customer_id"].unique(), columns=["customer_id"]),
-    on="customer_id",
-    how="inner",
-)
+    customers = pd.read_csv("data/original/customers.csv")
+    articles = pd.read_csv("data/original/articles.csv")
+    transactions = pd.read_csv("data/original/transactions_train.csv")
+    customers.reset_index()
+    articles.reset_index()
 
-src = list(customers["customer_id"])
-src_map = {v: k for k, v in enumerate(src)}
-dest = list(articles["article_id"])
-dest_map = {v: k for k, v in enumerate(dest)}
+    # get rid of customers that have no transactions
+    customers = customers.merge(
+        pd.DataFrame(transactions["customer_id"].unique(), columns=["customer_id"]),
+        on="customer_id",
+        how="inner",
+    )
+    # get rid of articles that have no transactions
+    articles = articles.merge(
+        pd.DataFrame(transactions["article_id"].unique(), columns=["article_id"]),
+        on="article_id",
+        how="inner",
+    )
 
-transactions.reset_index()
-transactions["src"] = transactions["customer_id"].map(src_map)
-transactions["dest"] = transactions["article_id"].map(dest_map)
+    src = list(customers["customer_id"])
+    src_map = {v: k for k, v in enumerate(src)}
+    dest = list(articles["article_id"])
+    dest_map = {v: k for k, v in enumerate(dest)}
 
-# shuffle transactions
-edge_index = torch.tensor(
-    transactions[["src", "dest"]].sample(frac=1).values, dtype=torch.long
-).T
+    transactions.reset_index()
+    transactions["src"] = transactions["customer_id"].map(src_map)
+    transactions["dest"] = transactions["article_id"].map(dest_map)
 
-# create user-item interaction matrix
-M = SparseTensor(
-    row=edge_index[0],
-    col=edge_index[1],
-    value=torch.ones(len(transactions), dtype=torch.float),
-    sparse_sizes=(len(src), len(dest)),
-).coalesce("max")
+    # shuffle transactions
+    edge_index = torch.tensor(
+        transactions[["src", "dest"]].sample(frac=1).values, dtype=torch.long
+    ).T
+
+    # create user-item interaction matrix
+    M = SparseTensor(
+        row=edge_index[0],
+        col=edge_index[1],
+        value=torch.ones(len(transactions), dtype=torch.float),
+        sparse_sizes=(len(src), len(dest)),
+    ).coalesce("max")
+
+    torch.save((M, src, dest, src_map, dest_map), "data/derived/link_prop.pt")
+
+    return M, src, dest, src_map, dest_map
 
 
 def split_data(start, count, M):
@@ -57,64 +72,110 @@ def split_data(start, count, M):
     return M[start : start + count, item_deg > 0].coalesce("max").to_dense()
 
 
-def negative_sample(y, ratio=0.5):
-    """Creates negative sample by dropping random edges.
+def sample_edges(target, ratio=0.5):
+    """Creates data by dropping random edges.
     Guarantees remaining items and users have at least one edge"""
     # mask nodes with degree <= 1 (cloning since you cannot mask twice at the same time)
-    user_deg, item_deg = y.sum(dim=0), y.sum(dim=1)
-    edges = y.clone()
+    user_deg, item_deg = target.sum(dim=0), target.sum(dim=1)
+    edges = target.clone()
     edges[:, user_deg <= 1] = 0
     edges[item_deg <= 1, :] = 0
     # get edge indices
     row, col = edges.nonzero(as_tuple=True)
-    assert (y[row, col] == 1).all(), "row, col should be all 1"
+    assert (target[row, col] == 1).all(), "row, col should be all 1"
 
     # sample some % of edges
     sample_mask = torch.randint(0, len(row), (int(len(row) * ratio),))
     # clear max 1 edge for each user and item
-    x = y.clone()
+    data = target.clone()
     cleared = {}
     for i, j in torch.stack((row[sample_mask], col[sample_mask])).T:
         if i.item() not in cleared and j.item() not in cleared:
-            assert x[i, j] == 1, "a,b should be 1"
+            assert data[i, j] == 1, "a,b should be 1"
             cleared[i.item()] = True
             cleared[j.item()] = True
-            x[i, j] = 0.0
+            data[i, j] = 0.0
 
-    assert (x.sum(dim=1) >= 1).all(), "should have at least one item"
-    assert (x.sum(dim=0) >= 1).all(), "should have at least one user"
-    return x, y
-
-
-# split data
-# TODO should we use the original node degrees?
-train, test, val = (
-    split_data(0, train_size, M),
-    split_data(train_size, val_size, M),
-    split_data(train_size + val_size, test_size, M),
-)
-
-# negative samples
-x_train, y_train = negative_sample(train, 0.4)
-x_val, y_val = negative_sample(val, 0.4)
-x_test, y_test = negative_sample(test, 0.4)
+    assert (data.sum(dim=1) >= 1).all(), "should have at least one item"
+    assert (data.sum(dim=0) >= 1).all(), "should have at least one user"
+    return data, target
 
 
-class LinkPropMulti:
-    def __init__(self, M, M_true, rounds=1):
-        self.M = M
-        self.M_true = M_true
-        self.rounds = rounds
-        self.L = M
+def mean_average_precision(y_true, y_pred, k=12):
+    """Courtesy of https://www.kaggle.com/code/george86/calculate-map-12-fast-faster-fastest"""
+    # compute the Rel@K for all items
+    rel_at_k = np.zeros((len(y_true), k), dtype=int)
+
+    # collect the intersection indexes (for the ranking vector) for all pairs
+    for idx, (truth, pred) in enumerate(zip(y_true, y_pred)):
+        _, _, inter_idxs = np.intersect1d(
+            truth, pred[:k], assume_unique=True, return_indices=True
+        )
+        rel_at_k[idx, inter_idxs] = 1
+
+    # Calculate the intersection counts for all pairs
+    intersection_count_at_k = rel_at_k.cumsum(axis=1)
+
+    # we have the same denominator for all ranking vectors
+    ranks = np.arange(1, k + 1, 1)
+
+    # Calculating the Precision@K for all Ks for all pairs
+    precisions_at_k = intersection_count_at_k / ranks
+    # Multiply with the Rel@K for all pairs
+    precisions_at_k = precisions_at_k * rel_at_k
+
+    # Calculate the average precisions @ K for all pairs
+    average_precisions_at_k = precisions_at_k.mean(axis=1)
+
+    # calculate the final MAP@K
+    map_at_k = average_precisions_at_k.mean()
+
+    return map_at_k
+
+
+class LinkPropMulti(BaseEstimator):
+    def __init__(self, rounds, k, alpha, beta, gamma, delta):
+        super().__init__()
+        self.rounds, self.k, self.alpha, self.beta, self.gamma, self.delta = (
+            rounds,
+            k,
+            alpha,
+            beta,
+            gamma,
+            delta,
+        )
+        self.user_degrees = None
+        self.item_degrees = None
+        self.L = None
+        self.M = None
+        self.M_target = None
+
+    def process_inputs(self, X, y):
+        """Get rid of unconnected items in k-fold sample and sample edges for data/target split"""
+        connected_items = X.sum(dim=0) > 0
+        self.M_target = y[:, connected_items]
+        self.M = X[:, connected_items]
+        return self.M, self.M_target
+
+    def fit(self, X, y):
+        return self
+
+    def fit_for_score(self, X, y):
+        # reset model
+        self.L = None
+
+        # process data
+        M, target = self.process_inputs(X, y)
+
+        # get node degrees
         self.user_degrees = M.sum(dim=1)
         self.item_degrees = M.sum(dim=0)
 
-    def __call__(self, alpha, beta, gamma, delta):
         # exponentiate degrees by model params
-        user_alpha = self.user_degrees ** (-alpha)
-        item_beta = self.item_degrees ** (-beta)
-        user_gamma = self.user_degrees ** (-gamma)
-        item_delta = self.item_degrees ** (-delta)
+        user_alpha = self.user_degrees ** (-self.alpha)
+        item_beta = self.item_degrees ** (-self.beta)
+        user_gamma = self.user_degrees ** (-self.gamma)
+        item_delta = self.item_degrees ** (-self.delta)
 
         # get rid of inf from 1/0
         user_alpha[torch.isinf(user_alpha)] = 0.0
@@ -127,54 +188,91 @@ class LinkPropMulti:
         gamma_delta = user_gamma.reshape((-1, 1)) * item_delta
 
         # hadamard products
-        M_alpha_beta = self.M * alpha_beta
-        M_gamma_delta = self.M * gamma_delta
-        self.L = M_alpha_beta.matmul(self.M.T).matmul(M_gamma_delta)
+        M_alpha_beta = M * alpha_beta
+        M_gamma_delta = M * gamma_delta
+        self.L = M_alpha_beta.matmul(M.T).matmul(M_gamma_delta)
 
-        # return the link propagated interaction matrix
-        return self.L
+        # get top k new links
+        target_pred = self.predict_k(M, self.k)
 
-    def predict(self, users_ix, k):
-        return self.L[users_ix, :].topk(k, dim=1)[1]
+        # # with the new links recalculate and store node degrees for next round
+        # M_new = (M.clone() + target_pred).clamp(max=1)
+        # self.user_degrees = M_new.sum(dim=1)
+        # self.item_degrees = M_new.sum(dim=0)
 
-    def fit(self, alpha, beta, gamma, delta, k=3, t=0.05, update_M=False):
-        L = self(alpha, beta, gamma, delta)
+        return M, target, target_pred
 
+    def predict_k(self, M, k):
+        """Return top k new links
+        M: should be the same data as in fit
+        k: number of new links to return
+        """
         # take observered links out of predictions
-        y_pred = (L - (self.M == 1).float() * 100000).clamp(min=0)
-
-        # number_of_links = self.item_degrees.sum()
-        # top_link_ix = L.topk(int(number_of_links * t))[1]
+        target_pred = (self.L - (M == 1).float() * 100000).clamp(min=0)
 
         # select top k links for each user
-        for i, col in enumerate(y_pred.topk(k, dim=1)[1]):
-            y_pred[i, col] = 1
+        for i, col in enumerate(target_pred.topk(k, dim=1)[1]):
+            target_pred[i, col] = 1
 
         # clear predictions, keep only new links
-        y_pred = (y_pred == 1).float()
+        target_pred = (target_pred == 1).float()
 
+        return target_pred
+
+    def predict(self, users_ix, k):
+        # return self.L[users_ix, :].topk(k, dim=1)[1]
+        pass
+
+    def score(self, X, y):
+        M, target, target_pred = self.fit_for_score(X, y)
         # take observed out of ground truth
-        y_true = (self.M_true - (self.M == 1).float() * 100000).clamp(min=0)
+        target_true = (target - (M == 1).float() * 100000).clamp(min=0)
 
-        # recalculate and store node degrees for next round
-        # based on new top links
-        M_new = self.M if update_M else self.M.clone()
-        M_new = (M_new + y_pred).clamp(max=1)
-        self.user_degrees = M_new.sum(dim=1)
-        self.item_degrees = M_new.sum(dim=0)
+        return ndcg_score(target_true, target_pred)
 
-        # calculate loss on new links
-        return ndcg_score(y_true, y_pred)
+    def score_mapk(self, X, y):
+        M, target, target_pred = self.fit_for_score(X, y)
+        # take observed out of ground truth
+        target_true = (target - (M == 1).float() * 100000).clamp(min=0)
+        target_true = [dest[x] for x in target_true.nonzero(as_tuple=True)[1]]
+        target_pred = [dest[x] for x in target_pred.nonzero(as_tuple=True)[1]]
+        return mean_average_precision(target_true, target_pred, k=self.k)
 
 
-parameters = {"alpha": 0.0, "beta": 0.67, "gamma": 0.5, "delta": 0.5}
-linkProp = LinkPropMulti(x_train, y_train)
-print(linkProp.fit(**parameters))
-# print("orig:", ndcg_score(y_train, linkProp.M))
-# print("pred:", ndcg_score(y_train, linkProp.L))
-# svc = svm.SVC()
-# clf = GridSearchCV(LinkProp(user_degrees, item_degrees, M), parameters)
-# clf.fit(iris.data, iris.target)
-# GridSearchCV(estimator=SVC(),
-#              param_grid={'C': [1, 10], 'kernel': ('linear', 'rbf')})
-# sorted(clf.cv_results_.keys())
+M, src, dest, src_map, dest_map = load_data()
+# split data
+train_size, val_size, test_size = 1000, 1000, 1000
+# TODO should we use the original node degrees?
+# train, test, val = (
+#     split_data(0, train_size, M),
+#     split_data(train_size, val_size, M),
+#     split_data(train_size + val_size, test_size, M),
+# )
+
+# data_train, target_train = sample_edges(train, 0.4)
+# data_val, target_val = sample_edges(val, 0.4)
+# data_test, target_test = sample_edges(test, 0.4)
+
+data, target = sample_edges(split_data(0, train_size, M), 0.4)
+linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0.5)
+print(linkProp.score_mapk(data, target))
+param_grid = [
+    {
+        "alpha": [0.0, 0.5],
+        "beta": [0.0, 0.5],
+        "gamma": [0.0, 0.5],
+        "delta": [0.0, 0.5],
+        "k": [3],
+        "rounds": [1],
+    },
+]
+linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0)
+clf = GridSearchCV(
+    linkProp,
+    param_grid=param_grid,
+    verbose=2,
+    return_train_score=True,
+)
+clf.fit(data, target)
+sorted(clf.cv_results_.keys())
+print(clf.cv_results_)
