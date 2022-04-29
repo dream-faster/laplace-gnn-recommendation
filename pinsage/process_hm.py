@@ -32,7 +32,7 @@ def process_hm():
     train_g = build_train_graph(
         g, train_indices, "customer", "article", "buys", "rev_buys"
     )
-    assert train_g.out_degrees(etype="buys").min() > 0
+    # assert train_g.out_degrees(etype="buys").min() > 0
 
     # Build the user-item sparse matrix for validation and test set.
     val_matrix, test_matrix = build_val_test_matrix(
