@@ -9,8 +9,8 @@ from torch_geometric.utils import structured_negative_sampling
 from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
-from utils.metrics import (
-    get_metrics,
+from utils.metrics_lightgcn import (
+    get_metrics_lightgcn,
     bpr_loss,
     RecallPrecision_ATk,
     NDCGatK_r,
@@ -70,7 +70,9 @@ def evaluation(
         lambda_val,
     ).item()
 
-    recall, precision, ndcg = get_metrics(model, edge_index, exclude_edge_indices, k)
+    recall, precision, ndcg = get_metrics_lightgcn(
+        model, edge_index, exclude_edge_indices, k
+    )
 
     return loss, recall, precision, ndcg
 

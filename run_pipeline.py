@@ -28,8 +28,6 @@ def run_pipeline(config: Config):
     ) = create_dataloaders(config.dataloader_config)
 
     print("| Creating Model...")
-    feature_info = get_feature_info(full_data)
-
     model = Encoder_Decoder_Model(
         encoder_layers=get_SAGEConv_layers(
             num_layers=config.num_layers,

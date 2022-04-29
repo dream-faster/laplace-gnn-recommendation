@@ -12,6 +12,7 @@ def process_hm():
     print("| Loading Graph...")
     g = torch.load("data/derived/test_graph.pt")
 
+
     print("| Loading Transactions...")
     transactions = pd.read_parquet("data/original/transactions_splitted.parquet")
 
