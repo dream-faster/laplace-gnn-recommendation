@@ -35,7 +35,7 @@ class Config:
 link_pred_config = Config(
     epochs=100,
     k=12,
-    num_layers=3,  # Not wired up
+    num_layers=3,
     hidden_layer_size=128,
     learning_rate=0.01,
     save_model=False,

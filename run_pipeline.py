@@ -9,6 +9,7 @@ from model.encoder_decoder import Encoder_Decoder_Model
 from utils.get_info import get_feature_info
 from data.data_loader import create_dataloaders
 from single_epoch import epoch_with_dataloader
+from model.layers import get_linear_layers, get_SAGEConv_layers
 
 
 def run_pipeline(config: Config):
@@ -28,9 +29,19 @@ def run_pipeline(config: Config):
 
     print("| Creating Model...")
     model = Encoder_Decoder_Model(
-        hidden_channels=config.hidden_layer_size,
-        feature_info=get_feature_info(full_data),
-        metadata=full_data.metadata(),
+        encoder_layers=get_SAGEConv_layers(
+            num_layers=config.num_layers,
+            hidden_channels=config.hidden_layer_size,
+            out_channels=config.hidden_layer_size,
+        ),
+        decoder_layers=get_linear_layers(
+            num_layers=config.num_layers,
+            in_channels=config.hidden_layer_size * 2,
+            hidden_channels=config.hidden_layer_size,
+            out_channels=1,
+        ),
+        feature_info=feature_info,
+        metadata=next(iter(train_loader)).metadata(),
         embedding=True,
     ).to(device)
 

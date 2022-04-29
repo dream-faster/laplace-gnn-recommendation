@@ -11,25 +11,30 @@ from torch_geometric.data import Data, HeteroData
 
 
 class GNNEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels: int, out_channels: int):
+    def __init__(
+        self,
+        layers: ModuleList,
+    ):
         super().__init__()
-        self.conv1 = SAGEConv((-1, -1), hidden_channels)
-        self.conv2 = SAGEConv((-1, -1), int(hidden_channels * 0.6))
-        self.conv3 = SAGEConv((-1, -1), out_channels)
+        self.layers = layers
 
     def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index).relu()
-        x = self.conv2(x, edge_index).relu()
-        x = self.conv3(x, edge_index)
+        for index, layer in enumerate(self.layers):
+            if index == len(self.layers) - 1:
+                x = layer(x, edge_index)
+            else:
+                x = layer(x, edge_index).relu()
+
         return x
 
 
 class EdgeDecoder(torch.nn.Module):
-    def __init__(self, hidden_channels: int):
+    def __init__(
+        self,
+        layers: ModuleList,
+    ):
         super().__init__()
-        self.lin1 = Linear(2 * hidden_channels, hidden_channels)
-        self.lin2 = Linear(hidden_channels, int(hidden_channels * 0.5))
-        self.lin3 = Linear(int(hidden_channels * 0.5), 1)
+        self.layers = layers
 
     def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
         customer_index, article_index = edge_label_index
@@ -37,26 +42,29 @@ class EdgeDecoder(torch.nn.Module):
             [z_dict["customer"][customer_index], z_dict["article"][article_index]],
             dim=-1,
         )
+        for index, layer in enumerate(self.layers):
+            if index == len(self.layers) - 1:
+                z = layer(z)
+            else:
+                z = layer(z).relu()
 
-        z = self.lin1(z).relu()
-        z = self.lin2(z).relu()
-        z = self.lin3(z)
         return z.view(-1)
 
 
 class Encoder_Decoder_Model(torch.nn.Module):
     def __init__(
         self,
-        hidden_channels: int,
+        encoder_layers: ModuleList,
+        decoder_layers: ModuleList,
         feature_info: FeatureInfo,
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
     ):
         super().__init__()
         self.embedding: bool = embedding
-        self.encoder = GNNEncoder(hidden_channels, hidden_channels)
+        self.encoder = GNNEncoder(encoder_layers)
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
-        self.decoder = EdgeDecoder(hidden_channels)
+        self.decoder = EdgeDecoder(decoder_layers)
 
         if self.embedding:
             customer_info, article_info = feature_info
