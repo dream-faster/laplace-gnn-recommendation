@@ -28,11 +28,8 @@ def process_hm():
     test_indices = transactions["test_mask"].to_numpy().nonzero()[0]
 
     print("| Building Train Graph...")
-    # Build the graph with training interactions only.
-    train_g = build_train_graph(
-        g, train_indices, "customer", "article", "buys", "rev_buys"
-    )
-    # assert train_g.out_degrees(etype="buys").min() > 0
+    train_g = torch.load("data/derived/train_graph.pt")
+    assert train_g.out_degrees(etype="buys").min() > 0
 
     # Build the user-item sparse matrix for validation and test set.
     val_matrix, test_matrix = build_val_test_matrix(

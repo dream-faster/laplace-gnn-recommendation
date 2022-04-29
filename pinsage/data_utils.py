@@ -1,45 +1,6 @@
-import torch
 import dgl
 import numpy as np
 import scipy.sparse as ssp
-import tqdm
-
-# This is the train-test split method most of the recommender system papers running on MovieLens
-# takes.  It essentially follows the intuition of "training on the past and predict the future".
-# One can also change the threshold to make validation and test set take larger proportions.
-def train_test_split_by_time(df, timestamp, user):
-    df["train_mask"] = np.ones((len(df),), dtype=np.bool)
-    df["val_mask"] = np.zeros((len(df),), dtype=np.bool)
-    df["test_mask"] = np.zeros((len(df),), dtype=np.bool)
-
-    def train_test_split(df):
-        df = df.sort_values([timestamp])
-        if df.shape[0] > 1:
-            df.iloc[-1, -3] = False
-            df.iloc[-1, -1] = True
-        if df.shape[0] > 2:
-            df.iloc[-2, -3] = False
-            df.iloc[-2, -2] = True
-        return df
-
-    df = df.groupby(user, group_keys=False).apply(train_test_split).sort_index()
-    print(df[df[user] == df[user].unique()[0]].sort_values(timestamp))
-
-
-def build_train_graph(g, train_indices, utype, itype, etype, etype_rev):
-    train_g = g.edge_subgraph(
-        {etype: train_indices, etype_rev: train_indices}, relabel_nodes=False
-    )
-
-    # copy features
-    for ntype in g.ntypes:
-        for col, data in g.nodes[ntype].data.items():
-            train_g.nodes[ntype].data[col] = data
-    for etype in g.etypes:
-        for col, data in g.edges[etype].data.items():
-            train_g.edges[etype].data[col] = data[train_g.edges[etype].data[dgl.EID]]
-
-    return train_g
 
 
 def build_val_test_matrix(g, val_indices, test_indices, utype, itype, etype):
