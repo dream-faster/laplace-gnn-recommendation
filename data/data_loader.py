@@ -31,25 +31,12 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_test.pt", graph_dir=data_dir + "test_graph.pt"
     )
 
-    # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
-    # data = T.ToUndirected()(data)
-
-    train_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
-    val_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
-    test_loader = DataLoader(train_dataset, batch_size=3, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=True)
 
     data = train_dataset.graph
     data = T.ToUndirected()(data)
-
-    # train_loader = NeighborLoader(
-    #     data,
-    #     num_neighbors={
-    #         ("customer", "buys", "article"): [5],
-    #         ("article", "rev_buys", "customer"): [5],
-    #     },
-    #     batch_size=1,
-    #     input_nodes=("article", None)
-    # )
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")

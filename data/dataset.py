@@ -14,7 +14,9 @@ def get_negative_edges(
     id_max = torch.max(potential_edges, dim=1)[0][1]
 
     # Create list of potential negative edges, filter out positive edges
-    combined = torch.cat((torch.range(start=0, end=id_max), filter_ids))
+    combined = torch.cat(
+        (torch.range(start=0, end=id_max, dtype=torch.int64), filter_ids)
+    )
     uniques, counts = combined.unique(return_counts=True)
     difference = uniques[counts == 1]
 
@@ -29,13 +31,11 @@ def get_negative_edges(
 def remap_indexes_to_zero(
     all_edges: Tensor, buckets: Optional[Tensor] = None
 ) -> Tensor:
-    all_edges_copy = all_edges.clone()
-
     # If there are no buckets it should remap on itself
     if buckets is None:
-        buckets = torch.unique(all_edges_copy)
+        buckets = torch.unique(all_edges)
 
-    return torch.bucketize(all_edges_copy, buckets)
+    return torch.bucketize(all_edges, buckets)
 
 
 class GraphDataset(InMemoryDataset):
@@ -81,7 +81,7 @@ class GraphDataset(InMemoryDataset):
                 self.graph["article"].x[self.edges[0][0]].shape[0],
             )
         )
-        for i, article_id in enumerate(all_touched_edges.to(torch.long)):
+        for i, article_id in enumerate(all_touched_edges):
             article_features[i] = self.graph["article"].x[article_id]
 
         """ Remap and Prepare Edges """

@@ -9,7 +9,7 @@ from torch_geometric.data import HeteroData, Data
 from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
-from utils.metrics import get_metrics_universal
+from utils.metrics_encoder_decoder import get_metrics_universal
 
 
 def select_properties(
