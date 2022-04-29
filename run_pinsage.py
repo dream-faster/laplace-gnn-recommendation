@@ -22,6 +22,7 @@ from data.types import PreprocessingConfig, UserColumn, ArticleColumn, DataType
 #         ],
 #         # article_nodes=[],
 #         article_non_categorical_features=[ArticleColumn.ImgEmbedding],
+#         filter_out_unconnected_nodes=True,
 #         load_image_embedding=False,
 #         load_text_embedding=False,
 #         text_embedding_colname="derived_look",

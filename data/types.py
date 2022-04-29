@@ -45,6 +45,7 @@ class PreprocessingConfig:
     article_features: List[ArticleColumn]
 
     article_non_categorical_features: List[ArticleColumn]
+    filter_out_unconnected_nodes: bool
 
     load_image_embedding: bool
     load_text_embedding: bool

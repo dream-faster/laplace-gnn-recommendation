@@ -21,13 +21,8 @@ def process_hm():
     g.edges["rev_buys"].data["timestamp"] = torch.LongTensor(
         pd.DatetimeIndex(transactions["t_dat"]).asi8
     )
-    # Train-validation-test split
-    # This is a little bit tricky as we want to select the last interaction for test, and the
-    # second-to-last interaction for validation.
+
     print("| Creating Train-Test Split...")
-    # train_indices, val_indices, test_indices = train_test_split_by_time(
-    #     transactions[:5000], "t_dat", "customer_id"
-    # )
     train_indices = transactions["train_mask"].to_numpy().nonzero()[0]
     val_indices = transactions["val_mask"].to_numpy().nonzero()[0]
     test_indices = transactions["test_mask"].to_numpy().nonzero()[0]

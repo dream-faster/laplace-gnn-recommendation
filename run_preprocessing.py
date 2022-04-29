@@ -56,8 +56,8 @@ def preprocess(config: PreprocessingConfig):
         if column != "customer_id":
             customers[column] = encode_labels(customers[column])
 
-    if False:
-        print("| Removing disjoint nodes...")
+    if config.filter_out_unconnected_nodes:
+        print("| Removing unconnected nodes...")
         all_article_ids_referenced = set(transactions["article_id"].unique())
         all_customer_ids_referenced = set(transactions["customer_id"].unique())
         disjoint_customers = set(customers["customer_id"].unique()).difference(
