@@ -43,7 +43,7 @@ def train(dataset, args):
     user_to_item_etype = dataset["user-to-item-type"]
     timestamp = dataset["timestamp-edge-column"]
 
-    device = torch.device(args.device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Assign user and movie IDs and use them as features (to learn an individual trainable
     # embedding for each entity)
@@ -138,7 +138,7 @@ def run_pinsage():
     # Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dataset_path", type=str, default="pinsage/data/derived/dataset.pkl"
+        "--dataset_path", type=str, default="data/derived/pinsage_dataset.pkl"
     )
     parser.add_argument("--random-walk-length", type=int, default=2)
     parser.add_argument("--random-walk-restart-prob", type=float, default=0.5)
@@ -147,8 +147,7 @@ def run_pinsage():
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--hidden-dims", type=int, default=16)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--device", type=str, default="cpu")  # can also be "cuda:0"
-    parser.add_argument("--num-epochs", type=int, default=1)
+    parser.add_argument("--num-epochs", type=int, default=10)
     parser.add_argument("--batches-per-epoch", type=int, default=20000)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--lr", type=float, default=3e-5)

@@ -1,42 +1,20 @@
-"""
-Script that reads from raw MovieLens-1M data and dumps into a pickle
-file the following:
-
-* A heterogeneous graph with categorical features.
-* A list with all the movie titles.  The movie titles correspond to
-  the movie nodes in the heterogeneous graph.
-
-This script exemplifies how to prepare tabular data with textual
-features.  Since DGL graphs do not store variable-length features, we
-instead put variable-length features into a more suitable container
-(e.g. torchtext to handle list of texts)
-"""
-
-import os
-import re
-import argparse
 import pickle
 import pandas as pd
-import numpy as np
-import scipy.sparse as ssp
 import dgl
 import torch
-import torchtext
-from pinsage.builder import PandasGraphBuilder
 from pinsage.data_utils import *
 
 
 def process_hm():
 
-    output_path = "dataset.pkl"
+    output_path = "data/derived/pinsage_dataset.pkl"
 
     print("| Loading Graph...")
-    g = torch.load("graph_dgl.pt")
+    g = torch.load("data/derived/test_graph.pt")
+
 
     print("| Loading Transactions...")
-    transactions = pd.read_parquet("transactions_train.parquet")[
-        : int(g.num_edges() / 2)
-    ]
+    transactions = pd.read_parquet("data/original/transactions_splitted.parquet")
 
     g.edges["buys"].data["timestamp"] = torch.LongTensor(
         pd.DatetimeIndex(transactions["t_dat"]).asi8
@@ -44,19 +22,14 @@ def process_hm():
     g.edges["rev_buys"].data["timestamp"] = torch.LongTensor(
         pd.DatetimeIndex(transactions["t_dat"]).asi8
     )
-    # Train-validation-test split
-    # This is a little bit tricky as we want to select the last interaction for test, and the
-    # second-to-last interaction for validation.
+
     print("| Creating Train-Test Split...")
-    train_indices, val_indices, test_indices = train_test_split_by_time(
-        transactions, "t_dat", "customer_id"
-    )
+    train_indices = transactions["train_mask"].to_numpy().nonzero()[0]
+    val_indices = transactions["val_mask"].to_numpy().nonzero()[0]
+    test_indices = transactions["test_mask"].to_numpy().nonzero()[0]
 
     print("| Building Train Graph...")
-    # Build the graph with training interactions only.
-    train_g = build_train_graph(
-        g, train_indices, "customer", "article", "buys", "rev_buys"
-    )
+    train_g = torch.load("data/derived/train_graph.pt")
     assert train_g.out_degrees(etype="buys").min() > 0
 
     # Build the user-item sparse matrix for validation and test set.
@@ -85,4 +58,5 @@ def process_hm():
 
 
 if __name__ == "__main__":
+
     process_hm()

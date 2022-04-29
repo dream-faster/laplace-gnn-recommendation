@@ -8,20 +8,6 @@
 
 ## Prepare datasets
 
-### MovieLens 1M
-
-1. Download and extract the MovieLens-1M dataset from http://files.grouplens.org/datasets/movielens/ml-1m.zip
-   into the current directory.
-2. Run `python process_movielens1m.py ./ml-1m ./data.pkl`.
-   Replace `ml-1m` with the directory you put the `.dat` files, and replace `data.pkl` to
-   any path you wish to put the output pickle file.
-
-### Nowplaying-rs
-
-1. Download and extract the Nowplaying-rs dataset from https://zenodo.org/record/3248543/files/nowplayingrs.zip?download=1
-   into the current directory.
-2. Run `python process_nowplaying_rs.py ./nowplaying_rs_dataset ./data.pkl`
-
 ## Run model
 
 ### Nearest-neighbor recommendation

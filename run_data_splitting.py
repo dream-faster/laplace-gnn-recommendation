@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import polars as pl
 
 
 def split_data():
@@ -14,6 +13,9 @@ def split_data():
     transactions.to_parquet("data/original/transactions_splitted.parquet")
 
 
+# This is the train-test split method most of the recommender system papers running on MovieLens
+# takes.  It essentially follows the intuition of "training on the past and predict the future".
+# One can also change the threshold to make validation and test set take larger proportions.
 def train_test_split_by_time(df: pd.DataFrame, user: str) -> pd.DataFrame:
     """This assumes data is already sorted (it is)"""
     df["train_mask"] = np.ones((len(df),), dtype=bool)
