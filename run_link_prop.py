@@ -6,17 +6,17 @@ import numpy as np
 import torch
 from torch_sparse import SparseTensor, matmul
 import pandas as pd
-import tqdm
+from tqdm import tqdm
 from sklearn.metrics import ndcg_score, recall_score, precision_score, accuracy_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator
 
 
 def load_data():
-    try:
-        return torch.load("data/derived/link_prop.pt")
-    except FileNotFoundError:
-        pass
+    # try:
+    #     return torch.load("data/derived/link_prop.pt")
+    # except FileNotFoundError:
+    #     pass
 
     customers = pd.read_csv("data/original/customers.csv")
     articles = pd.read_csv("data/original/articles.csv")
@@ -25,17 +25,17 @@ def load_data():
     articles.reset_index()
 
     # get rid of customers that have no transactions
-    customers = customers.merge(
-        pd.DataFrame(transactions["customer_id"].unique(), columns=["customer_id"]),
-        on="customer_id",
-        how="inner",
-    )
-    # get rid of articles that have no transactions
-    articles = articles.merge(
-        pd.DataFrame(transactions["article_id"].unique(), columns=["article_id"]),
-        on="article_id",
-        how="inner",
-    )
+    # customers = customers.merge(
+    #     pd.DataFrame(transactions["customer_id"].unique(), columns=["customer_id"]),
+    #     on="customer_id",
+    #     how="inner",
+    # )
+    # # get rid of articles that have no transactions
+    # articles = articles.merge(
+    #     pd.DataFrame(transactions["article_id"].unique(), columns=["article_id"]),
+    #     on="article_id",
+    #     how="inner",
+    # )
 
     src = list(customers["customer_id"])
     src_map = {v: k for k, v in enumerate(src)}
@@ -65,16 +65,13 @@ def load_data():
 
 
 def split_data(start, count, M):
-    """Selects a range of users and filters out newly unconnected items"""
-    item_deg = M[
-        start : start + count,
-    ].sum(dim=0)
-    return M[start : start + count, item_deg > 0].coalesce("max").to_dense()
+    """Selects a range of users"""
+    return M[start : start + count, :].coalesce("max").to_dense()
 
 
 def sample_edges(target, ratio=0.5):
     """Creates data by dropping random edges.
-    Guarantees remaining items and users have at least one edge"""
+    Guarantees remaining users have at least one edge"""
     # mask nodes with degree <= 1 (cloning since you cannot mask twice at the same time)
     user_deg, item_deg = target.sum(dim=0), target.sum(dim=1)
     edges = target.clone()
@@ -96,8 +93,8 @@ def sample_edges(target, ratio=0.5):
             cleared[j.item()] = True
             data[i, j] = 0.0
 
-    assert (data.sum(dim=1) >= 1).all(), "should have at least one item"
-    assert (data.sum(dim=0) >= 1).all(), "should have at least one user"
+    # assert (data.sum(dim=1) >= 1).all(), "should have at least one item"
+    # assert (data.sum(dim=0) >= 1).all(), "should have at least one user"
     return data, target
 
 
@@ -150,22 +147,12 @@ class LinkPropMulti(BaseEstimator):
         self.M = None
         self.M_target = None
 
-    def process_inputs(self, X, y):
-        """Get rid of unconnected items in k-fold sample and sample edges for data/target split"""
-        connected_items = X.sum(dim=0) > 0
-        self.M_target = y[:, connected_items]
-        self.M = X[:, connected_items]
-        return self.M, self.M_target
-
     def fit(self, X, y):
         return self
 
-    def fit_for_score(self, X, y):
+    def fit_for_score(self, M, target):
         # reset model
         self.L = None
-
-        # process data
-        M, target = self.process_inputs(X, y)
 
         # get node degrees
         self.user_degrees = M.sum(dim=1)
@@ -224,6 +211,7 @@ class LinkPropMulti(BaseEstimator):
         pass
 
     def score(self, X, y):
+        # process data
         M, target, target_pred = self.fit_for_score(X, y)
         # take observed out of ground truth
         target_true = (target - (M == 1).float() * 100000).clamp(min=0)
@@ -233,46 +221,63 @@ class LinkPropMulti(BaseEstimator):
     def score_mapk(self, X, y):
         M, target, target_pred = self.fit_for_score(X, y)
         # take observed out of ground truth
+        # TODO this creates users with 0 items
+        # TODO also sampling only makes one new item per user
         target_true = (target - (M == 1).float() * 100000).clamp(min=0)
-        target_true = [dest[x] for x in target_true.nonzero(as_tuple=True)[1]]
-        target_pred = [dest[x] for x in target_pred.nonzero(as_tuple=True)[1]]
-        return mean_average_precision(target_true, target_pred, k=self.k)
+        # only calculating for users with at least one item in true target
+        target_t = target_true.topk(self.k, dim=1)[1][
+            (target_true.topk(self.k, dim=1)[0] > 0).any(dim=1)
+        ]
+        target_p = target_pred.topk(self.k, dim=1)[1][
+            (target_true.topk(self.k, dim=1)[0] > 0).any(dim=1)
+        ]
+        return (
+            mean_average_precision(target_t, target_p, k=self.k),
+            target_pred.topk(self.k, dim=1)[1],
+        )
 
 
 M, src, dest, src_map, dest_map = load_data()
 # split data
-train_size, val_size, test_size = 1000, 1000, 1000
+train_size, val_size, test_size = 2000, 1000, 1000
+
 # TODO should we use the original node degrees?
-# train, test, val = (
-#     split_data(0, train_size, M),
-#     split_data(train_size, val_size, M),
-#     split_data(train_size + val_size, test_size, M),
-# )
-
-# data_train, target_train = sample_edges(train, 0.4)
-# data_val, target_val = sample_edges(val, 0.4)
-# data_test, target_test = sample_edges(test, 0.4)
-
-data, target = sample_edges(split_data(0, train_size, M), 0.4)
-linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0.5)
-print(linkProp.score_mapk(data, target))
-param_grid = [
-    {
-        "alpha": [0.0, 0.5],
-        "beta": [0.0, 0.5],
-        "gamma": [0.0, 0.5],
-        "delta": [0.0, 0.5],
-        "k": [3],
-        "rounds": [1],
-    },
-]
-linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0)
-clf = GridSearchCV(
-    linkProp,
-    param_grid=param_grid,
-    verbose=2,
-    return_train_score=True,
+scores = []
+preds = torch.tensor([])
+total = len(src) // train_size
+for i in tqdm(range(total)):
+    batch_size = train_size if i < total - 1 else len(src) - train_size * i
+    data, target = sample_edges(split_data(i * train_size, batch_size, M), 0.4)
+    linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0.5)
+    score, pred = linkProp.score_mapk(data, target)
+    scores.append(score)
+    preds = torch.cat((preds, pred))
+    print(np.array(scores).mean())
+submission = pd.DataFrame(preds.apply_(lambda x: dest[int(x)])).astype("string")
+submission["prediction"] = submission[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]].agg(
+    " ".join, axis=1
 )
-clf.fit(data, target)
-sorted(clf.cv_results_.keys())
-print(clf.cv_results_)
+submission["customer_id"] = src[: len(submission)]
+submission[["customer_id", "prediction"]].to_csv(
+    "data/derived/submission.csv", index=False
+)
+# param_grid = [
+#     {
+#         "alpha": [0.0, 0.5],
+#         "beta": [0.0, 0.5],
+#         "gamma": [0.0, 0.5],
+#         "delta": [0.0, 0.5],
+#         "k": [3],
+#         "rounds": [1],
+#     },
+# ]
+# linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0)
+# clf = GridSearchCV(
+#     linkProp,
+#     param_grid=param_grid,
+#     verbose=2,
+#     return_train_score=True,
+# )
+# clf.fit(data, target)
+# sorted(clf.cv_results_.keys())
+# print(clf.cv_results_)
