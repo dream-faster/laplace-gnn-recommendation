@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 from torch import Tensor
-from typing import List
+from typing import List, Tuple
+
 
 def bpr_loss(
     users_emb_final: Tensor,
@@ -65,7 +66,7 @@ def get_user_positive_items(edge_index: Tensor) -> dict:
 # computes recall@K and precision@K
 def RecallPrecision_ATk(
     groundTruth: List[List[int]], r: Tensor, k: int
-) -> tuple[float, float]:
+) -> Tuple[float, float]:
     """Computers recall @ k and precision @ k
 
     Args:
@@ -122,7 +123,7 @@ def NDCGatK_r(groundTruth: List[List[int]], r: Tensor, k: int) -> float:
 # wrapper function to get evaluation metrics
 def get_metrics_universal(
     model_output, edge_index: Tensor, exclude_edge_indices: List[Tensor], k: int
-) -> tuple[float, float, float]:
+) -> Tuple[float, float, float]:
     """Computes the evaluation metrics: recall, precision, and ndcg @ k
 
     Args:
