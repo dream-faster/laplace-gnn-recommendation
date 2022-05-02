@@ -7,6 +7,7 @@ from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
 from data.dataset import GraphDataset
+from data.matching.lightgcn import LightGCNMatcher
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -24,20 +25,16 @@ def create_dataloaders(
     train_dataset = GraphDataset(
         edge_dir=data_dir + "edges_train.pt",
         graph_dir=data_dir + "train_graph.pt",
-        eval=False,
-        candidate_pool_size=config.candidate_pool_size,
     )
     val_dataset = GraphDataset(
         edge_dir=data_dir + "edges_val.pt",
         graph_dir=data_dir + "val_graph.pt",
-        eval=True,
-        candidate_pool_size=config.candidate_pool_size,
+        matchers=[LightGCNMatcher(config.candidate_pool_size)],
     )
     test_dataset = GraphDataset(
         edge_dir=data_dir + "edges_test.pt",
         graph_dir=data_dir + "test_graph.pt",
-        eval=True,
-        candidate_pool_size=config.candidate_pool_size,
+        matchers=[LightGCNMatcher(config.candidate_pool_size)],
     )
 
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
