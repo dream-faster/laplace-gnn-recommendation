@@ -5,7 +5,7 @@ from torch import Tensor
 from typing import Union, Optional
 
 
-def get_negative_edges(
+def get_negative_edges_random(
     filter_ids: Tensor,
     potential_edges: Tensor,
     num_negative_edges: int = 10,
@@ -38,10 +38,32 @@ def remap_indexes_to_zero(
     return torch.bucketize(all_edges, buckets)
 
 
+def get_negative_edges_candidate_selection(
+    user_id: int, scores: Tensor, k: int
+) -> Tensor:
+    candidate_scores_all: Tensor = scores[user_id]
+    candidate_scores, candidate_ids = torch.topk(candidate_scores_all, k=k)
+
+    return candidate_ids
+
+
+def get_scores() -> Tensor:
+    item_embeddings: Tensor = torch.load("data/derived/items_emb_final_lightgcn.pt")
+    user_embeddings: Tensor = torch.load("data/derived/users_emb_final_lightgcn.pt")
+
+    return item_embeddings @ user_embeddings.T
+
+
 class GraphDataset(InMemoryDataset):
-    def __init__(self, edge_dir, graph_dir):
+    def __init__(
+        self, edge_dir: str, graph_dir: str, eval: bool, candidate_pool_size: int
+    ):
         self.edges = torch.load(edge_dir)
         self.graph = torch.load(graph_dir)
+        self.eval = eval
+        if self.eval:
+            self.lightgcn_scores = get_scores()
+            self.candidate_pool_size = candidate_pool_size
 
     def __len__(self) -> int:
         return len(self.edges)
@@ -62,11 +84,19 @@ class GraphDataset(InMemoryDataset):
         subgraph_sample_positive = subgraph_edges[:samp_cut]
 
         # Sample negative edges from the whole graph, filtering out subgraph edges (positive edges)
-        sampled_edges_negative = get_negative_edges(
-            filter_ids=subgraph_edges,
-            potential_edges=all_edges,
-            num_negative_edges=len(subgraph_sample_positive),
-        )
+        if self.eval:
+            # Select according to a heuristic (eg.: lightgcn scores)
+            sampled_edges_negative = get_negative_edges_candidate_selection(
+                idx, self.lightgcn_scores, k=self.candidate_pool_size
+            )
+
+        else:
+            # Randomly select from the whole graph
+            sampled_edges_negative = get_negative_edges_random(
+                filter_ids=subgraph_edges,
+                potential_edges=all_edges,
+                num_negative_edges=len(subgraph_sample_positive),
+            )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
 

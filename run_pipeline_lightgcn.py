@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 import torch
 from torch import optim
+from tqdm import tqdm
 
 from torch_geometric.utils import structured_negative_sampling
 
@@ -121,7 +122,9 @@ def train(config: Config):
     train_losses = []
     val_losses = []
 
-    for iter in range(config.epochs):
+    loop_obj = tqdm(range(0, config.epochs))
+    for iter in loop_obj:
+        # for iter in range(config.epochs):
         # forward propagation
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
@@ -216,6 +219,18 @@ def train(config: Config):
     model.eval()
 
     user_pos_items = get_user_positive_items(edge_index)
+
+    def save_scores():
+        # user = user_mapping_index[user_id]
+        user_embeddings = model.users_emb.weight  # [user]
+        item_embeddings = model.items_emb.weight
+        # scores = model.items_emb.weight @ e_u
+
+        print("| Saving the user and article final embeddings...")
+        torch.save(user_embeddings, "data/derived/users_emb_final_lightgcn.pt")
+        torch.save(item_embeddings, "data/derived/items_emb_final_lightgcn.pt")
+
+    save_scores()
 
     def make_predictions(user_id, num_recs):
         user = user_mapping_index[user_id]

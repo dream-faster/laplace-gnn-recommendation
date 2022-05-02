@@ -46,6 +46,7 @@ link_pred_config = Config(
         num_neighbors=64,  # -1 takes all neighbors
         num_neighbors_it=2,
         num_workers=1,
+        candidate_pool_size=10,
     ),
     eval_every=1,
     lr_decay_every=1,
@@ -54,7 +55,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
-    epochs=10000,
+    epochs=100,
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
@@ -67,6 +68,7 @@ lightgcn_config = Config(
         num_neighbors=0,  # IGNORE for LightGCN
         num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
+        candidate_pool_size=None,
     ),
     eval_every=100,
     lr_decay_every=100,
