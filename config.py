@@ -30,10 +30,11 @@ class Config:
     eval_every: int  # (LightGCN) evaluation to run every n epoch
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
+    save_every: int  # How often the model should be saved
 
 
 link_pred_config = Config(
-    epochs=100,
+    epochs=10,
     k=12,
     num_layers=3,
     hidden_layer_size=128,
@@ -46,11 +47,12 @@ link_pred_config = Config(
         num_neighbors=64,  # -1 takes all neighbors
         num_neighbors_it=2,
         num_workers=1,
-        candidate_pool_size=2,
+        candidate_pool_size=20,
     ),
     eval_every=1,
     lr_decay_every=1,
     Lambda=1e-6,
+    save_every=2,
 )
 
 
@@ -73,6 +75,7 @@ lightgcn_config = Config(
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
+    save_every=1,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
