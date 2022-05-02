@@ -40,9 +40,16 @@ def load_dataloaders(config: Config):
 def map_to_id(predictions: Tensor, customer_id_map: dict, article_id_map: dict):
     df = pd.DataFrame(predictions.numpy())
 
-    df.index = df.index.map(str).to_series().map(str).map(customer_id_map)
     for col in df.columns:
-        df[col] = df[col].map(str).map(str).map(article_id_map)
+        # df["prediction"] = df["prediction"] + " " + df[col].map(str).map(article_id_map)
+        df[col] = df[col].map(str).map(article_id_map)
+
+    df["customer_id"] = df.index.to_series().map(lambda x: customer_id_map[str(x)])
+    df["prediction"] = (
+        df[[column for column in df.columns if column != "customer_id"]]
+        .astype(str)
+        .agg(" ".join, axis=1)
+    )
 
     return df
 
@@ -72,7 +79,8 @@ def make_predictions(model, dataloader, k: int):
 
 
 def save_csv(df: pd.DataFrame):
-    df.to_csv("data/derived/submission.csv", index=True)
+    cols_to_keep = ["customer_id", "prediction"]
+    df.loc[:, cols_to_keep].to_csv("data/derived/submission.csv", index=False)
 
 
 def submission_pipeline(config: Config):
