@@ -2,7 +2,7 @@ import torch
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
 from torch import Tensor
-from typing import Union, Optional
+from typing import Union, Optional, List
 from .matching.type import Matcher
 
 
@@ -41,7 +41,7 @@ def remap_indexes_to_zero(
 
 class GraphDataset(InMemoryDataset):
     def __init__(
-        self, edge_dir: str, graph_dir: str, matchers: Optional[list[Matcher]] = None
+        self, edge_dir: str, graph_dir: str, matchers: Optional[List[Matcher]] = None
     ):
         self.edges = torch.load(edge_dir)
         self.graph = torch.load(graph_dir)
