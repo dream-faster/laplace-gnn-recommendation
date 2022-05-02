@@ -50,13 +50,28 @@ def map_to_id(predictions: Tensor, customer_id_map, article_id_map):
     pass
 
 
+@torch.no_grad()
 def make_predictions(model, dataloader):
     predictions = []
-    for batch in dataloader:
-        x, edge_index_dict, edge_label_index, edge_label = select_properties(batch)
-        predictions.append(model.infer(x, edge_index_dict, edge_label_index))
 
-    return torch.concat(predictions)
+    for batch in dataloader:
+        # Prepare data
+        x, edge_index_dict, edge_label_index, edge_label = select_properties(batch)
+
+        # Get predictions
+        prediction = model.infer(x, edge_index_dict, edge_label_index)
+
+        # Filter out positive edges from prediction and edge_label_index
+        prediction = prediction[edge_label == 0]
+        filtered_edge_label_index = edge_label_index[:, edge_label == 0]
+
+        # Get top k predictions and indecies from only negative edges
+        _, topK_indecies = torch.topk(prediction, k=1)
+        top_articles = filtered_edge_label_index[1][topK_indecies]
+
+        predictions.append(top_articles)
+
+    return torch.stack(predictions)
 
 
 def save_csv(df: pd.DataFrame):
