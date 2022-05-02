@@ -53,7 +53,7 @@ def train(
 @torch.no_grad()
 def test(
     data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list
-) -> float:
+) -> tuple[float, float]:
 
     x, edge_index_dict, edge_label_index, edge_label = select_properties(data)
     output = model.infer(x, edge_index_dict, edge_label_index)
@@ -62,7 +62,7 @@ def test(
         output, edge_index_dict, exclude_edge_indices, k=2
     )
 
-    return recall
+    return recall, precision
 
 
 def epoch_with_dataloader(
@@ -72,20 +72,20 @@ def epoch_with_dataloader(
     val_loader,
     test_loader,
 ):
-    loop_obj = tqdm(iter(train_loader))
-    for data in loop_obj:
+    train_loop = tqdm(iter(train_loader))
+
+    for data in train_loop:
         loss = train(data, model, optimizer)
-        loop_obj.set_postfix_str(f"Loss: {loss:.4f}")
-    for data in iter(val_loader):
-        val_rmse = test(data, model, [])
-    for data in iter(test_loader):
-        test_rmse = test(
-            data,
-            model,
-            [],
-        )
+        train_loop.set_postfix_str(f"Loss: {loss:.4f}")
 
-    # val_rmse = test(val_loader, model)
-    # test_rmse = test(test_loader, model)
+    val_loop = tqdm(iter(val_loader))
+    for data in val_loop:
+        val_recall, val_precision = test(data, model, [])
+        val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
 
-    return loss, val_rmse, test_rmse
+    test_loop = tqdm(iter(test_loader))
+    for data in test_loop:
+        test_recall, test_precision = test(data, model, [])
+        test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
+
+    return loss, val_recall, test_recall, val_precision, test_precision

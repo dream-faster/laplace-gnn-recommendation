@@ -135,7 +135,8 @@ def get_metrics_universal(
         tuple: recall @ k, precision @ k, ndcg @ k
     """
 
-    ratings = model_output
+    # Ratings expects a tensor of ratings for multiple users
+    ratings = model_output.unsqueeze(0)
 
     for exclude_edge_index in exclude_edge_indices:
         # gets all the positive items for each user from the edge index
