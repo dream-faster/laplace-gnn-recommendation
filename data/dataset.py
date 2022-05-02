@@ -11,22 +11,31 @@ def get_negative_edges_random(
     all_edges: Tensor,
     num_negative_edges: int = 10,
 ) -> Tensor:
+
     # Get the biggest value available in articles (potential edges to sample from)
     id_max = torch.max(all_edges, dim=1)[0][1]
 
-    # Create list of potential negative edges, filter out positive edges
-    combined = torch.cat(
-        (torch.range(start=0, end=id_max, dtype=torch.int64), subgraph_edges_to_filter)
-    )
-    uniques, counts = combined.unique(return_counts=True)
-    difference = uniques[counts == 1]
+    if all_edges.shape[1] / num_negative_edges > 100:
+        # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
+        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
 
-    # Randomly sample negative edges
-    negative_edges = difference[torch.randperm(difference.nelement())][
-        :num_negative_edges
-    ]
+    else:
+        # Create list of potential negative edges, filter out positive edges
+        combined = torch.cat(
+            (
+                torch.range(start=0, end=id_max, dtype=torch.int64),
+                subgraph_edges_to_filter,
+            )
+        )
+        uniques, counts = combined.unique(return_counts=True)
+        difference = uniques[counts == 1]
 
-    return negative_edges
+        # Randomly sample negative edges
+        negative_edges = difference[torch.randperm(difference.nelement())][
+            :num_negative_edges
+        ]
+
+        return negative_edges
 
 
 def remap_indexes_to_zero(
