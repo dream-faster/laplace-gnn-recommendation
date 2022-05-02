@@ -61,8 +61,9 @@ class GraphDataset(InMemoryDataset):
         self.edges = torch.load(edge_dir)
         self.graph = torch.load(graph_dir)
         self.eval = eval
-        self.lightgcn_scores = get_scores()
-        self.candidate_pool_size = candidate_pool_size
+        if self.eval:
+            self.lightgcn_scores = get_scores()
+            self.candidate_pool_size = candidate_pool_size
 
     def __len__(self) -> int:
         return len(self.edges)
