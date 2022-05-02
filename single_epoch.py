@@ -12,6 +12,9 @@ from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
 from utils.get_info import select_properties
 
+import cProfile as profile
+import pstats
+
 
 def train(
     train_data: Union[HeteroData, Data],
@@ -63,18 +66,35 @@ def epoch_with_dataloader(
 ):
     train_loop = tqdm(iter(train_loader))
 
+    prof = profile.Profile()
+    prof.enable()
+    i = 0
     for data in train_loop:
+
         loss = train(data, model, optimizer)
         train_loop.set_postfix_str(f"Loss: {loss:.4f}")
 
-    val_loop = tqdm(iter(val_loader))
-    for data in val_loop:
-        val_recall, val_precision = test(data, model, [])
-        val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
+        if i % 100 == 0:
+            print("--------------")
+            print("--------------")
+            print("--------------")
+            for aspect in ["cumtime", "ncalls", "tottime", "pcalls"]:
+                print(f"------{aspect}--------")
+                stats = pstats.Stats(prof).strip_dirs().sort_stats(aspect)
+                stats.print_stats(15)  # top 10 rows
 
-    test_loop = tqdm(iter(test_loader))
-    for data in test_loop:
-        test_recall, test_precision = test(data, model, [])
-        test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
+        i += 1
 
-    return loss, val_recall, test_recall, val_precision, test_precision
+    # val_loop = tqdm(iter(val_loader))
+    # for data in val_loop:
+    #     val_recall, val_precision = test(data, model, [])
+    #     val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
+
+    # test_loop = tqdm(iter(test_loader))
+    # for data in test_loop:
+    #     test_recall, test_precision = test(data, model, [])
+    #     test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
+
+    # return loss, val_recall, test_recall, val_precision, test_precision
+
+    return loss

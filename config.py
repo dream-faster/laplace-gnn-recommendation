@@ -34,7 +34,7 @@ class Config:
 
 
 link_pred_config = Config(
-    epochs=10,
+    epochs=100,
     k=12,
     num_layers=3,
     hidden_layer_size=128,
@@ -57,7 +57,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
-    epochs=100,
+    epochs=1,
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
@@ -70,7 +70,7 @@ lightgcn_config = Config(
         num_neighbors=0,  # IGNORE for LightGCN
         num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
-        candidate_pool_size=None,
+        candidate_pool_size=None,  # IGNORE for LightGCN
     ),
     eval_every=100,
     lr_decay_every=100,
@@ -101,7 +101,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=1000,
+    data_size=1000000,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
