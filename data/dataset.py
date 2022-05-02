@@ -7,16 +7,16 @@ from .matching.type import Matcher
 
 
 def get_negative_edges_random(
-    filter_ids: Tensor,
-    positive_edges: Tensor,
+    subgraph_edges_to_filter: Tensor,
+    all_edges: Tensor,
     num_negative_edges: int = 10,
 ) -> Tensor:
     # Get the biggest value available in articles (potential edges to sample from)
-    id_max = torch.max(positive_edges, dim=1)[0][1]
+    id_max = torch.max(all_edges, dim=1)[0][1]
 
     # Create list of potential negative edges, filter out positive edges
     combined = torch.cat(
-        (torch.range(start=0, end=id_max, dtype=torch.int64), filter_ids)
+        (torch.range(start=0, end=id_max, dtype=torch.int64), subgraph_edges_to_filter)
     )
     uniques, counts = combined.unique(return_counts=True)
     difference = uniques[counts == 1]
@@ -76,8 +76,8 @@ class GraphDataset(InMemoryDataset):
         else:
             # Randomly select from the whole graph
             sampled_edges_negative = get_negative_edges_random(
-                filter_ids=subgraph_edges,
-                positive_edges=all_edges,
+                subgraph_edges_to_filter=subgraph_edges,
+                all_edges=all_edges,
                 num_negative_edges=len(subgraph_sample_positive),
             )
 
