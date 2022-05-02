@@ -23,9 +23,7 @@ def deduplicate_transactions(df: pd.DataFrame) -> pd.DataFrame:
     print("|    Label encoding customers...")
     customer_encoded = encode_labels(df["customer_id"]).astype(str)
     print("|    Concatenating customer-articles...")
-    df["customer-article"] = pd.concat([customer_encoded, article_encoded], axis=1).agg(
-        "-".join
-    )
+    df["customer-article"] = customer_encoded + "-" + article_encoded
     print("|    Drop duplicates...")
     df.drop_duplicates(subset=["customer-article"], keep="first", inplace=True)
     df.drop(columns=["customer-article"], inplace=True)
