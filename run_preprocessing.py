@@ -256,18 +256,12 @@ def create_ids_and_maps(
     return df, mapping_forward, mapping_reverse
 
 
-def extract_edges(transactions: pd.DataFrame) -> np.ndarray:
-    return np_groupby_first_col(
-        transactions[["customer_id", "article_id"]]
-        .sort_values("customer_id")
-        .to_numpy()
-    )
+def extract_edges(transactions: pd.DataFrame) -> dict:
+    return transactions.groupby("customer_id")["article_id"].apply(list).to_dict()
 
 
-def extract_reverse_edges(transactions: pd.DataFrame) -> np.ndarray:
-    return np_groupby_first_col(
-        transactions[["article_id", "customer_id"]].sort_values("article_id").to_numpy()
-    )
+def extract_reverse_edges(transactions: pd.DataFrame) -> dict:
+    return transactions.groupby("article_id")["customer_id"].apply(list).to_dict()
 
 
 if __name__ == "__main__":
