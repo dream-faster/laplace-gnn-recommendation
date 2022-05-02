@@ -19,11 +19,6 @@ def load_submission(url: str):
     return pd.read_csv(url + "sample_submission.csv")
 
 
-def generate_submission(predictions: list[str]):
-
-    pass
-
-
 def load_model(url: str):
     """Get the model with the largest version number"""
     files = [f for f in listdir(url) if isfile(join(url, f))]
@@ -42,16 +37,18 @@ def load_dataloaders(config: Config):
     return test_loader, customer_id_map, article_id_map
 
 
-def map_to_id(predictions: Tensor, customer_id_map, article_id_map):
+def map_to_id(predictions: Tensor, customer_id_map: dict, article_id_map: dict):
     df = pd.DataFrame(predictions.numpy())
-    for row in df.itertuples():
-        row[1] = row[1].item()
 
-    pass
+    df.index = df.index.map(str).to_series().map(str).map(customer_id_map)
+    for col in df.columns:
+        df[col] = df[col].map(str).map(str).map(article_id_map)
+
+    return df
 
 
 @torch.no_grad()
-def make_predictions(model, dataloader):
+def make_predictions(model, dataloader, k: int):
     predictions = []
 
     for batch in dataloader:
@@ -75,7 +72,7 @@ def make_predictions(model, dataloader):
 
 
 def save_csv(df: pd.DataFrame):
-    df.to_csv("data/derived/submission.csv", index=False)
+    df.to_csv("data/derived/submission.csv", index=True)
 
 
 def submission_pipeline(config: Config):
@@ -84,10 +81,9 @@ def submission_pipeline(config: Config):
     model = load_model(model_url)
     dataloader, customer_id_map, article_id_map = load_dataloaders(config)
 
-    predictions = make_predictions(model, dataloader)
-    prediction_user_id = map_to_id(predictions, customer_id_map, article_id_map)
-    csv = generate_submission(prediction_user_id)
-    save_csv(csv)
+    predictions = make_predictions(model, dataloader, k=config.k)
+    prediction_mapped = map_to_id(predictions, customer_id_map, article_id_map)
+    save_csv(prediction_mapped)
 
 
 if __name__ == "__main__":
