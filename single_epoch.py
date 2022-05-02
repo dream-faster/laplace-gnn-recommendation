@@ -10,18 +10,7 @@ from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
-
-
-def select_properties(
-    data: Union[HeteroData, Data]
-) -> Tuple[dict, dict, Tensor, Tensor]:
-
-    return (
-        data.x_dict,
-        data.edge_index_dict,
-        data[("customer", "buys", "article")].edge_label_index,
-        data[("customer", "buys", "article")].edge_label.float(),
-    )
+from utils.get_info import select_properties
 
 
 def train(

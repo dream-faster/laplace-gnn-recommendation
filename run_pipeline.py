@@ -58,7 +58,10 @@ def run_pipeline(config: Config):
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
         epoch_with_dataloader(model, optimizer, train_loader, val_loader, test_loader)
-        torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+
+        if epoch % config.save_every == 0:
+            print("| Saving Model...")
+            torch.save(model, f"model/saved/model_{epoch:03d}.pt")
 
 
 if __name__ == "__main__":

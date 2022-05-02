@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo
 from typing import Union, Tuple
@@ -41,3 +42,15 @@ def get_feature_info(
 ) -> Tuple[FeatureInfo, FeatureInfo]:
 
     return __heterogenous_features(full_data)
+
+
+def select_properties(
+    data: Union[HeteroData, Data]
+) -> Tuple[dict, dict, Tensor, Tensor]:
+
+    return (
+        data.x_dict,
+        data.edge_index_dict,
+        data[("customer", "buys", "article")].edge_label_index,
+        data[("customer", "buys", "article")].edge_label.float(),
+    )
