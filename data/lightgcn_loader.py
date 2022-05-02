@@ -66,7 +66,7 @@ def index_based_mapping(id_based_mapping):
 
 
 def create_dataloaders_lightgcn():
-    data = torch.load("data/derived/graph_pyg.pt").to_homogeneous()
+    data = torch.load("data/derived/test_graph.pt").to_homogeneous()
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
