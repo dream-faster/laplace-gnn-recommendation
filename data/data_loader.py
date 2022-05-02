@@ -22,13 +22,22 @@ def create_dataloaders(
 ]:
     data_dir = "data/derived/"
     train_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_train.pt", graph_dir=data_dir + "train_graph.pt"
+        edge_dir=data_dir + "edges_train.pt",
+        graph_dir=data_dir + "train_graph.pt",
+        eval=False,
+        candidate_pool_size=config.candidate_pool_size,
     )
     val_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_val.pt", graph_dir=data_dir + "val_graph.pt"
+        edge_dir=data_dir + "edges_val.pt",
+        graph_dir=data_dir + "val_graph.pt",
+        eval=True,
+        candidate_pool_size=config.candidate_pool_size,
     )
     test_dataset = GraphDataset(
-        edge_dir=data_dir + "edges_test.pt", graph_dir=data_dir + "test_graph.pt"
+        edge_dir=data_dir + "edges_test.pt",
+        graph_dir=data_dir + "test_graph.pt",
+        eval=True,
+        candidate_pool_size=config.candidate_pool_size,
     )
 
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)

@@ -37,6 +37,7 @@ class DataLoaderConfig:
     num_neighbors: int  # sample n neighbors for each node for num_neighbors_it iterations
     num_neighbors_it: int
     num_workers: int  # number of workers to use for data loading
+    candidate_pool_size: int  # How many precalculated candidates we should give over
 
 
 @dataclass

@@ -40,7 +40,7 @@ def run_pipeline(config: Config):
             hidden_channels=config.hidden_layer_size,
             out_channels=1,
         ),
-        feature_info=feature_info,
+        feature_info=get_feature_info(full_data),
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
     ).to(device)
