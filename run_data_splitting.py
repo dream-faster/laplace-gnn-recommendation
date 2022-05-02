@@ -1,16 +1,35 @@
 import pandas as pd
 import numpy as np
+from utils.labelencoder import encode_labels
 
 
 def split_data():
     print("| Loading transactions...")
     transactions = pd.read_parquet("data/original/transactions_train.parquet")
 
+    print("| Deduplicating transactions...")
+    transactions = deduplicate_transactions(transactions)
+
     print("| Splitting into train/val/test datasets...")
     transactions = train_test_split_by_time(transactions, "customer_id")
 
     print("| Saving transactions...")
     transactions.to_parquet("data/original/transactions_splitted.parquet")
+
+
+def deduplicate_transactions(df: pd.DataFrame) -> pd.DataFrame:
+    print("|    Label encoding articles...")
+    article_encoded = encode_labels(df["article_id"]).astype(str)
+    print("|    Label encoding customers...")
+    customer_encoded = encode_labels(df["customer_id"]).astype(str)
+    print("|    Concatenating customer-articles...")
+    df["customer-article"] = pd.concat([customer_encoded, article_encoded], axis=1).agg(
+        "-".join
+    )
+    print("|    Drop duplicates...")
+    df.drop_duplicates(subset=["customer-article"], keep="first", inplace=True)
+    df.drop(columns=["customer-article"], inplace=True)
+    return df
 
 
 # This is the train-test split method most of the recommender system papers running on MovieLens
