@@ -16,6 +16,9 @@ def run_pipeline(config: Config):
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    assert (
+        config.k <= config.dataloader_config.candidate_pool_size
+    ), "k must be smaller than candidate_pool_size"
 
     print("| Creating Datasets...")
     (

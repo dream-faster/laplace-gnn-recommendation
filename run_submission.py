@@ -1,6 +1,7 @@
 import pandas as pd
 import torch
 import numpy as np
+from tqdm import tqdm
 from torch import Tensor
 from config import link_pred_config, Config
 from data.data_loader import create_dataloaders
@@ -8,15 +9,6 @@ from utils.get_info import select_properties
 
 from os import listdir
 from os.path import isfile, join
-
-
-url = "../input/h-and-m-personalized-fashion-recommendations/"
-url = "data/original/"
-model_url = "model/saved"
-
-
-def load_submission(url: str):
-    return pd.read_csv(url + "sample_submission.csv")
 
 
 def load_model(url: str):
@@ -37,11 +29,12 @@ def load_dataloaders(config: Config):
     return test_loader, customer_id_map, article_id_map
 
 
-def map_to_id(predictions: Tensor, customer_id_map: dict, article_id_map: dict):
+def map_to_id(
+    predictions: Tensor, customer_id_map: dict, article_id_map: dict
+) -> pd.DataFrame:
     df = pd.DataFrame(predictions.numpy())
 
     for col in df.columns:
-        # df["prediction"] = df["prediction"] + " " + df[col].map(str).map(article_id_map)
         df[col] = df[col].map(str).map(article_id_map)
 
     df["customer_id"] = df.index.to_series().map(lambda x: customer_id_map[str(x)])
@@ -55,10 +48,10 @@ def map_to_id(predictions: Tensor, customer_id_map: dict, article_id_map: dict):
 
 
 @torch.no_grad()
-def make_predictions(model, dataloader, k: int):
+def make_predictions(model, dataloader, k: int) -> Tensor:
     predictions = []
 
-    for batch in dataloader:
+    for batch in tqdm(dataloader):
         # Prepare data
         x, edge_index_dict, edge_label_index, edge_label = select_properties(batch)
 
@@ -70,7 +63,7 @@ def make_predictions(model, dataloader, k: int):
         filtered_edge_label_index = edge_label_index[:, edge_label == 0]
 
         # Get top k predictions and indecies from only negative edges
-        _, topK_indecies = torch.topk(prediction, k=1)
+        _, topK_indecies = torch.topk(prediction, k=k)
         top_articles = filtered_edge_label_index[1][topK_indecies]
 
         predictions.append(top_articles)
@@ -79,18 +72,25 @@ def make_predictions(model, dataloader, k: int):
 
 
 def save_csv(df: pd.DataFrame):
+    """Save selected columns to csv"""
     cols_to_keep = ["customer_id", "prediction"]
     df.loc[:, cols_to_keep].to_csv("data/derived/submission.csv", index=False)
 
 
 def submission_pipeline(config: Config):
-    # sample = load_submission(url)
+    print("| Loading Model...")
+    model = load_model("model/saved")
 
-    model = load_model(model_url)
+    print("| Loading Dataloaders...")
     dataloader, customer_id_map, article_id_map = load_dataloaders(config)
 
+    print("| Making Predictions...")
     predictions = make_predictions(model, dataloader, k=config.k)
+
+    print("| Mapping positions to ids...")
     prediction_mapped = map_to_id(predictions, customer_id_map, article_id_map)
+
+    print("| Saving predictions...")
     save_csv(prediction_mapped)
 
 

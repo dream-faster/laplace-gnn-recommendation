@@ -47,7 +47,7 @@ link_pred_config = Config(
         num_neighbors=64,  # -1 takes all neighbors
         num_neighbors_it=2,
         num_workers=1,
-        candidate_pool_size=2,
+        candidate_pool_size=20,
     ),
     eval_every=1,
     lr_decay_every=1,
