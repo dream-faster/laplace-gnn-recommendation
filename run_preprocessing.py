@@ -3,6 +3,7 @@ from tqdm import tqdm
 from data.types import (
     DataType,
     PreprocessingConfig,
+    UserColumn,
 )
 import torch
 import json
@@ -11,7 +12,6 @@ import numpy as np
 from typing import Tuple
 from config import only_users_and_articles_nodes
 import numpy as np
-from utils.np import np_groupby_first_col
 
 
 def save_to_csv(
@@ -129,8 +129,22 @@ def preprocess(config: PreprocessingConfig):
                 axis=0,
             )
 
+    print("| Exporting per location info...")
+    torch.save(
+        extract_users_per_location(customers), "data/derived/customers_per_location.pt"
+    )
+    torch.save(
+        extract_location_for_user(customers), "data/derived/location_for_user.pt"
+    )
+
+    print("| Calculating time of user's last purchase...")
+    transactions_per_customer = transactions.groupby(["customer_id"]).last()["t_dat"]
+    customers = customers.merge(
+        transactions_per_customer, left_on="index", right_on="customer_id", how="outer"
+    ).fillna(0.0)
+
     print("| Removing unused columns...")
-    customers.drop(["customer_id"], axis=1, inplace=True)
+    customers.drop(["customer_id", "t_dat"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_csv:
@@ -262,6 +276,14 @@ def extract_edges(transactions: pd.DataFrame) -> dict:
 
 def extract_reverse_edges(transactions: pd.DataFrame) -> dict:
     return transactions.groupby("article_id")["customer_id"].apply(list).to_dict()
+
+
+def extract_users_per_location(customers: pd.DataFrame) -> dict:
+    return customers.groupby("postal_code")["index"].apply(list).to_dict()
+
+
+def extract_location_for_user(customers: pd.DataFrame) -> dict:
+    return customers["postal_code"].to_dict()
 
 
 if __name__ == "__main__":
