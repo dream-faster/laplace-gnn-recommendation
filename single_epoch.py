@@ -32,7 +32,7 @@ def train(
 @torch.no_grad()
 def test(
     data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list
-) -> tuple[float, float]:
+) -> Tuple[float, float]:
 
     x, edge_index_dict, edge_label_index, edge_label = select_properties(data)
     output = model.infer(x, edge_index_dict, edge_label_index)
