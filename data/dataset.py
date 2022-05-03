@@ -11,22 +11,31 @@ def get_negative_edges_random(
     all_edges: Tensor,
     num_negative_edges: int = 10,
 ) -> Tensor:
+
     # Get the biggest value available in articles (potential edges to sample from)
     id_max = torch.max(all_edges, dim=1)[0][1]
 
-    # Create list of potential negative edges, filter out positive edges
-    combined = torch.cat(
-        (torch.range(start=0, end=id_max, dtype=torch.int64), subgraph_edges_to_filter)
-    )
-    uniques, counts = combined.unique(return_counts=True)
-    difference = uniques[counts == 1]
+    if all_edges.shape[1] / num_negative_edges > 100:
+        # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
+        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
 
-    # Randomly sample negative edges
-    negative_edges = difference[torch.randperm(difference.nelement())][
-        :num_negative_edges
-    ]
+    else:
+        # Create list of potential negative edges, filter out positive edges
+        combined = torch.cat(
+            (
+                torch.range(start=0, end=id_max, dtype=torch.int64),
+                subgraph_edges_to_filter,
+            )
+        )
+        uniques, counts = combined.unique(return_counts=True)
+        difference = uniques[counts == 1]
 
-    return negative_edges
+        # Randomly sample negative edges
+        negative_edges = difference[torch.randperm(difference.nelement())][
+            :num_negative_edges
+        ]
+
+        return negative_edges
 
 
 def remap_indexes_to_zero(
@@ -53,7 +62,7 @@ class GraphDataset(InMemoryDataset):
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         edge_key = ("customer", "buys", "article")
         rev_edge_key = ("article", "rev_buys", "customer")
-        cut_ratio = 0.3
+        cut_ratio = 0.5
 
         """ Create Edges """
         # Define the whole graph and the subgraph
@@ -63,7 +72,9 @@ class GraphDataset(InMemoryDataset):
         samp_cut = max(1, math.floor(len(subgraph_edges) * cut_ratio))
 
         # Sample positive edges from subgraph
-        subgraph_sample_positive = subgraph_edges[:samp_cut]
+        subgraph_sample_positive = subgraph_edges[
+            torch.randint(low=0, high=len(self.edges[idx]), size=(samp_cut,))
+        ]
 
         # Sample negative edges from the whole graph, filtering out subgraph edges (positive edges)
         if self.matchers is not None:

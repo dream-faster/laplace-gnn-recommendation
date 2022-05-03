@@ -13,6 +13,8 @@ from model.layers import get_linear_layers, get_SAGEConv_layers
 
 
 def run_pipeline(config: Config):
+    config.print()
+
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -60,7 +62,15 @@ def run_pipeline(config: Config):
     print("| Training Model...")
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        epoch_with_dataloader(model, optimizer, train_loader, val_loader, test_loader)
+        epoch_with_dataloader(
+            model,
+            optimizer,
+            train_loader,
+            val_loader,
+            test_loader,
+            epoch_id=epoch,
+            config=config,
+        )
 
         if epoch % config.save_every == 0:
             print("| Saving Model...")

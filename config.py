@@ -7,6 +7,7 @@ from data.types import (
     ArticleColumn,
     DataType,
 )
+from utils.profiling import Profiler
 
 embedding_range_dict = {
     "2": 2,
@@ -31,10 +32,18 @@ class Config:
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
     save_every: int  # How often the model should be saved
+    profiler: Optional[Profiler] = None
+
+    def print(self):
+        print("\x1b[1;32;47m")
+        print("Configuration is:")
+        for key, value in vars(self).items():
+            print("\x1b[1;37;47m" + f"{key:>20}: " + "\x1b[0;32;47m" + f"{value}")
+        print("\x1b[0m")
 
 
 link_pred_config = Config(
-    epochs=10,
+    epochs=100,
     k=12,
     num_layers=3,
     hidden_layer_size=128,
@@ -53,11 +62,12 @@ link_pred_config = Config(
     lr_decay_every=1,
     Lambda=1e-6,
     save_every=2,
+    profiler=None,  # Profiler(every=20),
 )
 
 
 lightgcn_config = Config(
-    epochs=100,
+    epochs=1,
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
@@ -70,12 +80,13 @@ lightgcn_config = Config(
         num_neighbors=0,  # IGNORE for LightGCN
         num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
-        candidate_pool_size=None,
+        candidate_pool_size=None,  # IGNORE for LightGCN
     ),
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
     save_every=1,
+    profiler=None,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
@@ -101,7 +112,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=1000,
+    data_size=1000000,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
