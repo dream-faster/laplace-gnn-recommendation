@@ -1,3 +1,4 @@
+from numpy import dtype
 from .type import Matcher
 import torch
 
@@ -12,4 +13,4 @@ class UsersSameLocationMatcher(Matcher):
 
     def get_matches(self, user_id: int) -> torch.Tensor:
         location = self.location_for_user[user_id]
-        return torch.Tensor(self.customers_per_location[location][: self.k])
+        return torch.Tensor(self.customers_per_location[location][: self.k]).to(torch.long)

@@ -27,7 +27,8 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_val.pt",
         graph_dir=data_dir + "val_graph.pt",
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
         ],
     )
@@ -35,7 +36,8 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_test.pt",
         graph_dir=data_dir + "test_graph.pt",
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "test"),
         ],
     )
