@@ -76,10 +76,9 @@ class GraphDataset(InMemoryDataset):
             torch.randint(low=0, high=len(self.edges[idx]), size=(samp_cut,))
         ]
 
-        # Sample negative edges from the whole graph, filtering out subgraph edges (positive edges)
         if self.matchers is not None:
             # Select according to a heuristic (eg.: lightgcn scores)
-            candidates = torch.stack(
+            candidates = torch.cat(
                 [matcher.get_matches(idx) for matcher in self.matchers], dim=0
             )
             sampled_edges_negative = candidates.unique()
