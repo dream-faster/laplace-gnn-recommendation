@@ -68,13 +68,17 @@ def epoch_with_dataloader(
             config.profiler.print_stats(i)
 
     val_loop = tqdm(iter(val_loader))
-    for data in val_loop:
+    for i, data in enumerate(val_loop):
+        if i == 5:
+            break
         val_loop.set_description(f"Val, epoch: {epoch_id}")
         val_recall, val_precision = test(data.to(device), model, [])
         val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
 
     test_loop = tqdm(iter(test_loader))
-    for data in test_loop:
+    for i, data in enumerate(test_loop):
+        if i == 5:
+            break
         val_loop.set_description(f"Test, epoch: {epoch_id}")
         test_recall, test_precision = test(data.to(device), model, [])
         test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
