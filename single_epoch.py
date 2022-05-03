@@ -10,10 +10,9 @@ from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
-from utils.get_info import select_properties
+from utils.get_info import select_properties, Profiler
 
 import cProfile as profile
-import pstats
 
 
 def train(
@@ -32,16 +31,6 @@ def train(
     return loss
 
 
-# @torch.no_grad()
-# def test(data: Union[HeteroData, Data], model: Module) -> float:
-#     x, edge_index, edge_label_index, edge_label = select_properties(data)
-
-#     model.eval()
-#     out = model(x, edge_index, edge_label_index).view(-1)
-
-#     return roc_auc_score(edge_label.cpu().numpy(), out.cpu().numpy())
-
-
 @torch.no_grad()
 def test(
     data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list
@@ -54,7 +43,12 @@ def test(
         output, edge_index_dict, exclude_edge_indices, k=2
     )
 
+    # roc_auc_score = roc_auc_score(edge_label.cpu().numpy(), output.cpu().numpy())
+
     return recall, precision
+
+
+profiler = Profiler(every=100)
 
 
 def epoch_with_dataloader(
@@ -65,30 +59,19 @@ def epoch_with_dataloader(
     test_loader,
     epoch_id: int,
 ):
-    prof = profile.Profile()
-    prof.enable()
-    i = 0
 
     train_loop = tqdm(iter(train_loader))
-    for data in train_loop:
+    for i, data in enumerate(train_loop):
         train_loop.set_description(f"Train, epoch: {epoch_id}")
         loss = train(data, model, optimizer)
         train_loop.set_postfix_str(f"Loss: {loss:.4f}")
+        profiler.print_stats(i)
 
     val_loop = tqdm(iter(val_loader))
     for data in val_loop:
         val_loop.set_description(f"Val, epoch: {epoch_id}")
         val_recall, val_precision = test(data, model, [])
         val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
-        if i % 100 == 0:
-            print("--------------")
-            print("--------------")
-            print("--------------")
-            for aspect in ["cumtime", "ncalls", "tottime", "pcalls"]:
-                print(f"------{aspect}--------")
-                stats = pstats.Stats(prof).strip_dirs().sort_stats(aspect)
-                stats.print_stats(15)  # top 15 rows
-        i += 1
 
     test_loop = tqdm(iter(test_loader))
     for data in test_loop:
