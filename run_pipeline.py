@@ -46,7 +46,7 @@ def run_pipeline(config: Config):
             out_channels=1,
         ),
         feature_info=get_feature_info(full_data),
-        metadata=next(iter(train_loader)).metadata(),
+        metadata=next(iter(train_loader)).to(device).metadata(),
         embedding=True,
     ).to(device)
 

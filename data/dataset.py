@@ -132,14 +132,14 @@ class GraphDataset(InMemoryDataset):
         id_tensor = torch.tensor([0])
         all_sampled_edges_remapped = torch.stack(
             [
-                id_tensor.repeat(len(all_sampled_edges_remapped)),
+                id_tensor.repeat(len(all_sampled_edges_remapped)).to(device),
                 all_sampled_edges_remapped,
             ],
             dim=0,
         ).to(device)
         subgraph_edges_remapped = torch.stack(
             [
-                id_tensor.repeat(len(subgraph_edges_remapped)),
+                id_tensor.repeat(len(subgraph_edges_remapped)).to(device),
                 subgraph_edges_remapped,
             ],
             dim=0,
