@@ -13,8 +13,8 @@ from model.layers import get_linear_layers, get_SAGEConv_layers
 
 
 def run_pipeline(config: Config):
-
     config.print()
+
     print("| Seeding everything...")
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
