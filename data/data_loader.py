@@ -9,6 +9,7 @@ from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoade
 from data.dataset import GraphDataset
 from data.matching.lightgcn import LightGCNMatcher
 from data.matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
+from data.matching.users_same_location import UsersSameLocationMatcher
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,7 +26,8 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_val.pt",
         graph_dir=data_dir + "val_graph.pt",
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size, "val"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
         ],
     )
@@ -33,7 +35,8 @@ def create_dataloaders(
         edge_dir=data_dir + "edges_test.pt",
         graph_dir=data_dir + "test_graph.pt",
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size, "test"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "test"),
         ],
     )

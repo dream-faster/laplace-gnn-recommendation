@@ -24,9 +24,3 @@ class UsersWithCommonPurchasesMatcher(Matcher):
             dim=0,
         )
         return articles_purchased_by_common_users[: self.k]
-
-
-def load_bucketized_() -> Tensor:
-    item_embeddings: Tensor = torch.load("data/derived/items_emb_final_lightgcn.pt")
-    user_embeddings: Tensor = torch.load("data/derived/users_emb_final_lightgcn.pt")
-    return item_embeddings @ user_embeddings.T
