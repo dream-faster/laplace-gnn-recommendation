@@ -11,6 +11,8 @@ from sklearn.metrics import ndcg_score, recall_score, precision_score, accuracy_
 from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 def load_data():
     try:
@@ -48,7 +50,7 @@ def load_data():
 
     torch.save((M, src, dest, src_map, dest_map), "data/derived/link_prop.pt")
 
-    return M, src, dest, src_map, dest_map
+    return M.to(device), src, dest, src_map, dest_map
 
 
 def split_data(start, count, M):
@@ -287,13 +289,14 @@ class LinkPropMulti(BaseEstimator):
     # def score(self, X, y):
     #     return ndcg_score(true_target, target_pred)
 
-    def score_mapk(self, X, y, batch_size=400):
+    def score_mapk(self, X, y, batch_size=500):
         self.fit_for_score(X)
         user_topk = torch.empty(size=(0, self.k))
         target_topk = torch.empty(size=(0, self.k))
         scores = []
-        for start in tqdm(range(0, X.size(0), batch_size)):
-            end = min(start + batch_size, X.size(0))
+        total = X.size(0)
+        for start in tqdm(range(0, total, batch_size)):
+            end = min(start + batch_size, total)
             user_pred = self.predict_k(X, start, end, self.k)
             target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)[1]
             user_topk = torch.cat((user_topk, user_pred))
@@ -310,7 +313,7 @@ M, src, dest, src_map, dest_map = load_data()
 data, target = sample_user_items(M, 0.4)
 linkProp = LinkPropMulti(rounds=1, k=12, alpha=0.1, beta=0.1, gamma=0.2, delta=0.5)
 score, preds = linkProp.score_mapk(data, target)
-submission = pd.DataFrame(preds.apply_(lambda x: dest[x])).astype("string")
+submission = pd.DataFrame(preds.long().apply_(lambda x: dest[x])).astype("string")
 submission["prediction"] = (
     submission[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
     .agg(" 0".join, axis=1)
