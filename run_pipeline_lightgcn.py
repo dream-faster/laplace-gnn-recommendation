@@ -79,6 +79,7 @@ def evaluation(
 
 
 def train(config: Config):
+    config.print()
     (
         train_sparse_edge_index,
         val_sparse_edge_index,
