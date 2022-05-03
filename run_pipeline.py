@@ -46,7 +46,7 @@ def run_pipeline(config: Config):
             out_channels=1,
         ),
         feature_info=get_feature_info(full_data),
-        metadata=next(iter(train_loader)).metadata(),
+        metadata=next(iter(train_loader)).to(device).metadata(),
         embedding=True,
     ).to(device)
 
@@ -54,7 +54,7 @@ def run_pipeline(config: Config):
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
     with torch.no_grad():
-        model.initialize_encoder_input_size(next(iter(train_loader)))
+        model.initialize_encoder_input_size(next(iter(train_loader)).to(device))
 
     print("| Defining Optimizer...")
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)

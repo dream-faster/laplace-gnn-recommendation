@@ -67,7 +67,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
-    epochs=1,
+    epochs=1000,
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
