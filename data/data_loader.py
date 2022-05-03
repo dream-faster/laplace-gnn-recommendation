@@ -21,14 +21,13 @@ def create_dataloaders(
     train_dataset = GraphDataset(
         edge_dir=data_dir + "edges_train.pt",
         graph_dir=data_dir + "train_graph.pt",
-        matchers=[UsersSameLocationMatcher(config.candidate_pool_size)],
     )
     val_dataset = GraphDataset(
         edge_dir=data_dir + "edges_val.pt",
         graph_dir=data_dir + "val_graph.pt",
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
-            UsersSameLocationMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size, "val"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
         ],
     )
@@ -37,7 +36,7 @@ def create_dataloaders(
         graph_dir=data_dir + "test_graph.pt",
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
-            UsersSameLocationMatcher(config.candidate_pool_size),
+            UsersSameLocationMatcher(config.candidate_pool_size, "test"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "test"),
         ],
     )
