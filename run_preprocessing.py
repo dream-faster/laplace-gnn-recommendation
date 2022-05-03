@@ -63,9 +63,11 @@ def preprocess(config: PreprocessingConfig):
         disjoint_customers = set(customers["customer_id"].unique()).difference(
             all_customer_ids_referenced
         )
+        print("|     Removing {} customers...".format(len(disjoint_customers)))
         disjoint_articles = set(articles["article_id"].unique()).difference(
             all_article_ids_referenced
         )
+        print("|     Removing {} articles...".format(len(disjoint_articles)))
 
         customers = customers[~customers["customer_id"].isin(disjoint_customers)]
         articles = articles[~articles["article_id"].isin(disjoint_articles)]
