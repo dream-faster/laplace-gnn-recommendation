@@ -107,7 +107,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    filter_out_unconnected_nodes=False,
+    filter_out_unconnected_nodes=True,
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
