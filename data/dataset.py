@@ -5,6 +5,8 @@ from torch import Tensor
 from typing import Union, Optional, List
 from .matching.type import Matcher
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def get_negative_edges_random(
     subgraph_edges_to_filter: Tensor,
@@ -79,7 +81,8 @@ class GraphDataset(InMemoryDataset):
         if self.matchers is not None:
             # Select according to a heuristic (eg.: lightgcn scores)
             candidates = torch.cat(
-                [matcher.get_matches(idx) for matcher in self.matchers], dim=0
+                [matcher.get_matches(idx).to(device) for matcher in self.matchers],
+                dim=0,
             )
             sampled_edges_negative = candidates.unique()
 
