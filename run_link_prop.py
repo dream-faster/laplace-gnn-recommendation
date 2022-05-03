@@ -64,9 +64,14 @@ def sparse_assign(m, i, j, val):
     row, col, value = m.coo()
     prev = m[i.item(), j.item()].to_dense().squeeze()
     return SparseTensor(
-        row=torch.cat((row, torch.tensor([i], dtype=torch.long))),
-        col=torch.cat((col, torch.tensor([j], dtype=torch.long))),
-        value=torch.cat((value, torch.tensor([val], dtype=torch.float) - prev)),
+        row=torch.cat((row.to(device), torch.tensor([i], dtype=torch.long).to(device))),
+        col=torch.cat((col.to(device), torch.tensor([j], dtype=torch.long).to(device))),
+        value=torch.cat(
+            (
+                value.to(device),
+                torch.tensor([val], dtype=torch.float).to(device) - prev.to(device),
+            )
+        ),
         sparse_sizes=(m.size(0), m.size(1)),
     ).coalesce("add")
 
@@ -81,9 +86,9 @@ def sparse_fill_on_mask(m, mask, val, dim=0):
     else:
         prev_col = torch.arange(len(mask))[mask][prev_col]
     return SparseTensor(
-        row=torch.cat((row, prev_row)),
-        col=torch.cat((col, prev_col)),
-        value=torch.cat((value, val - prev_value)),
+        row=torch.cat((row.to(device), prev_row.to(device))),
+        col=torch.cat((col.to(device), prev_col.to(device))),
+        value=torch.cat((value.to(device), val - prev_value.to(device))),
         sparse_sizes=(m.size(0), m.size(1)),
     ).coalesce("add")
 
@@ -97,9 +102,9 @@ def sparse_cat(m, n):
     row = row + m.size(0)
     m_row, m_col, m_value = m.coo()
     return SparseTensor(
-        row=torch.cat((m_row, row)),
-        col=torch.cat((m_col, col)),
-        value=torch.cat((m_value, value)),
+        row=torch.cat((m_row.to(device), row.to(device))),
+        col=torch.cat((m_col.to(device), col.to(device))),
+        value=torch.cat((m_value.to(device), value.to(device))),
         sparse_sizes=(m.size(0) + n.size(0), m.size(1)),
     ).coalesce("add")
 
@@ -107,27 +112,31 @@ def sparse_cat(m, n):
 def sparse_batch_op(batch_size, op, m, n):
     """Batch runs any torch or numpy operation on 2 sparse matrices with same dims"""
     result = SparseTensor(
-        row=torch.tensor([], dtype=torch.long),
-        col=torch.tensor([], dtype=torch.long),
-        value=torch.tensor([], dtype=torch.float),
+        row=torch.tensor([], dtype=torch.long).to(device),
+        col=torch.tensor([], dtype=torch.long).to(device),
+        value=torch.tensor([], dtype=torch.float).to(device),
         sparse_sizes=(0, m.size(1)),
     )
     for i in range(0, m.size(0), batch_size):
         end = min(i + batch_size, m.size(0))
         res = SparseTensor.from_dense(
             op(
-                m[i:end, :].to_dense(),
-                n[i:end, :].to_dense(),
+                m[i:end, :].to_dense().to(device),
+                n[i:end, :].to_dense().to(device),
             )
         )
         result = sparse_cat(result, res)
-    return result
+    return result.to(device)
 
 
 def sparse_nonzero(m):
     """Returns the nonzero indices of a sparse matrix"""
     row, col, value = m.clone().coo()
-    return row[value != 0], col[value != 0], value[value != 0]
+    return (
+        row[value != 0].to(device),
+        col[value != 0].to(device),
+        value[value != 0].to(device),
+    )
 
 
 def intersect2d(a, b):
@@ -141,16 +150,20 @@ def sample_user_items(target, ratio=0.4):
     candidate = sparse_fill_on_mask(target, user_deg > 1, 2, dim=0)
     row, col, value = sparse_nonzero(candidate)
     rand_mask = (value == 2) & (
-        torch.rand(len(value)) < ((value == 2).sum() / len(value) * ratio)
+        torch.rand(len(value)).to(device) < ((value == 2).sum() / len(value) * ratio)
     )
     value[rand_mask] = 0
     value[value == 2] = 1
-    data = SparseTensor(
-        row=row,
-        col=col,
-        value=value,
-        sparse_sizes=(target.size(0), target.size(1)),
-    ).coalesce("add")
+    data = (
+        SparseTensor(
+            row=row,
+            col=col,
+            value=value,
+            sparse_sizes=(target.size(0), target.size(1)),
+        )
+        .coalesce("add")
+        .to(device)
+    )
 
     # take observed out of ground truth
     # TODO does this create users with 0 items?
@@ -158,12 +171,16 @@ def sample_user_items(target, ratio=0.4):
     value[value == 1] = 2
     value[value == 0] = 1
     value[value == 2] = 0
-    target_new_links = SparseTensor(
-        row=row,
-        col=col,
-        value=value,
-        sparse_sizes=(target.size(0), target.size(1)),
-    ).coalesce("add")
+    target_new_links = (
+        SparseTensor(
+            row=row,
+            col=col,
+            value=value,
+            sparse_sizes=(target.size(0), target.size(1)),
+        )
+        .coalesce("add")
+        .to(device)
+    )
 
     return data, target_new_links
 
@@ -251,13 +268,13 @@ class LinkPropMulti(BaseEstimator):
             col=col,
             value=user_alpha[row] * item_beta[col] * value,
             sparse_sizes=(M.size(0), M.size(1)),
-        )
+        ).to(device)
         self.M_gamma_delta = SparseTensor(
             row=row,
             col=col,
             value=user_gamma[row] * item_delta[col] * value,
             sparse_sizes=(M.size(0), M.size(1)),
-        )
+        ).to(device)
 
         # (lazy) link propagation, call get_preds_for_users
 
@@ -271,16 +288,21 @@ class LinkPropMulti(BaseEstimator):
         # self.item_degrees = M_new.sum(dim=0)
 
     def get_preds_for_users(self, start, end):
-        return matmul(matmul(self.M_alpha_beta[start:end], M.t()), self.M_gamma_delta)
+        return matmul(
+            matmul(self.M_alpha_beta[start:end].to(device), M.t().to(device)).to(
+                device
+            ),
+            self.M_gamma_delta.to(device),
+        ).to(device)
 
     def predict_k(self, M, start, end, k):
         """Return top k new links"""
-        user_pred = self.get_preds_for_users(start, end).to_dense()
+        user_pred = self.get_preds_for_users(start, end).to_dense().to(device)
         # take observed links out of predictions
-        user_pred = (user_pred - (M[start:end].to_dense() == 1).float() * 100000).clamp(
-            min=0
-        )
-        return user_pred.topk(k, dim=1)[1]
+        user_pred = (
+            user_pred - (M[start:end].to_dense().to(device) == 1).float() * 100000
+        ).clamp(min=0)
+        return user_pred.topk(k, dim=1)[1].to(device)
 
     def predict(self, users_ix, k):
         # return self.L[users_ix, :].topk(k, dim=1)[1]
@@ -289,16 +311,22 @@ class LinkPropMulti(BaseEstimator):
     # def score(self, X, y):
     #     return ndcg_score(true_target, target_pred)
 
-    def score_mapk(self, X, y, batch_size=500):
+    def score_mapk(self, X, y, batch_size=6000):
         self.fit_for_score(X)
-        user_topk = torch.empty(size=(0, self.k))
-        target_topk = torch.empty(size=(0, self.k))
+        user_topk = torch.empty(size=(0, self.k)).to("cpu")
+        target_topk = torch.empty(size=(0, self.k)).to("cpu")
         scores = []
-        total = X.size(0)
-        for start in tqdm(range(0, total, batch_size)):
-            end = min(start + batch_size, total)
-            user_pred = self.predict_k(X, start, end, self.k)
-            target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)[1]
+        for start in tqdm(range(0, X.size(0), batch_size)):
+            end = min(start + batch_size, X.size(0))
+            user_pred = self.predict_k(X, start, end, self.k).to("cpu")
+            target_pred = (
+                y[start:end]
+                .to_dense()
+                .squeeze()
+                .to(device)
+                .topk(self.k, dim=1)[1]
+                .to("cpu")
+            )
             user_topk = torch.cat((user_topk, user_pred))
             target_topk = torch.cat((target_topk, target_pred))
             scores.append(mean_average_precision(target_topk, user_topk, k=self.k))
