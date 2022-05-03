@@ -63,7 +63,13 @@ def run_pipeline(config: Config):
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
         epoch_with_dataloader(
-            model, optimizer, train_loader, val_loader, test_loader, epoch_id=epoch
+            model,
+            optimizer,
+            train_loader,
+            val_loader,
+            test_loader,
+            epoch_id=epoch,
+            config=config,
         )
 
         if epoch % config.save_every == 0:

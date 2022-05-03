@@ -10,9 +10,7 @@ from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
-from utils.get_info import select_properties, Profiler
-
-import cProfile as profile
+from utils.get_info import select_properties
 
 
 def train(
@@ -48,9 +46,6 @@ def test(
     return recall, precision
 
 
-profiler = Profiler(every=100)
-
-
 def epoch_with_dataloader(
     model: Module,
     optimizer: Optimizer,
@@ -58,6 +53,7 @@ def epoch_with_dataloader(
     val_loader,
     test_loader,
     epoch_id: int,
+    config: Config,
 ):
 
     train_loop = tqdm(iter(train_loader))
@@ -65,7 +61,9 @@ def epoch_with_dataloader(
         train_loop.set_description(f"Train, epoch: {epoch_id}")
         loss = train(data, model, optimizer)
         train_loop.set_postfix_str(f"Loss: {loss:.4f}")
-        profiler.print_stats(i)
+
+        if config.profiler is not None:
+            config.profiler.print_stats(i)
 
     val_loop = tqdm(iter(val_loader))
     for data in val_loop:

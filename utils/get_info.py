@@ -4,8 +4,6 @@ from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo
 from typing import Union, Tuple
 from config import embedding_range_dict
-import pstats
-import cProfile as profile
 
 
 def __embedding_size_selector(max_category: int):
@@ -56,24 +54,3 @@ def select_properties(
         data[("customer", "buys", "article")].edge_label_index,
         data[("customer", "buys", "article")].edge_label.float(),
     )
-
-
-class Profiler:
-    def __init__(self, every: int = 100):
-        self.prof = profile.Profile()
-        self.prof.enable()
-
-        self.every = every
-
-    def print_stats(self, i: int):
-        stats = pstats.Stats(self.prof)  # .strip_dirs()
-        if i % self.every == 0:
-            for j, aspect in enumerate(["cumtime", "ncalls", "tottime", "percall"]):
-                if j % 2 == 0:
-                    print("\x1b[1;37;40m")
-                else:
-                    print("\x1b[5;30;43m")
-                print(f"------{aspect}--------")
-                stats.sort_stats(aspect).print_stats(15)  # top 15 rows
-                print("\x1b[0m")
-            print("\x1b[0m")

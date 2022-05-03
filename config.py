@@ -7,6 +7,7 @@ from data.types import (
     ArticleColumn,
     DataType,
 )
+from utils.profiling import Profiler
 
 embedding_range_dict = {
     "2": 2,
@@ -31,6 +32,7 @@ class Config:
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
     save_every: int  # How often the model should be saved
+    profiler: Optional[Profiler]
 
     def print(self):
         print("\x1b[1;32;47m")
@@ -60,6 +62,7 @@ link_pred_config = Config(
     lr_decay_every=1,
     Lambda=1e-6,
     save_every=2,
+    profiler=Profiler(every=20),
 )
 
 
@@ -83,6 +86,7 @@ lightgcn_config = Config(
     lr_decay_every=100,
     Lambda=1e-6,
     save_every=1,
+    profiler=None,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
