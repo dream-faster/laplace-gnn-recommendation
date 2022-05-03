@@ -137,7 +137,11 @@ def get_metrics_universal(
     """
 
     # Ratings expects a tensor of ratings for multiple users
-    ratings = model_output.unsqueeze(0)
+
+    if len(model_output.shape) < 2:
+        ratings = model_output.unsqueeze(0)
+    else:
+        ratings = model_output
 
     for exclude_edge_index in exclude_edge_indices:
         # gets all the positive items for each user from the edge index

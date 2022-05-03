@@ -128,5 +128,14 @@ class Encoder_Decoder_Model(torch.nn.Module):
         self.eval()
         out = self.forward(x_dict, edge_index_dict, edge_label_index)
         
+        # Rebatching by user.
+        
+        out_per_user = {}
+        for i, user_index in enumerate(edge_label_index[0]):
+            user_id = user_index.item()
+            if user_id not in out_per_user:
+                out_per_user[user_id]=[]
+            out_per_user[user_id].append(out[i])
+ 
         return out
         

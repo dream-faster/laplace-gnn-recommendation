@@ -69,7 +69,7 @@ def epoch_with_dataloader(
 
     val_loop = tqdm(iter(val_loader))
     for i, data in enumerate(val_loop):
-        if i == 5:
+        if i == 50:
             break
         val_loop.set_description(f"Val, epoch: {epoch_id}")
         val_recall, val_precision = test(data.to(device), model, [])
@@ -77,7 +77,7 @@ def epoch_with_dataloader(
 
     test_loop = tqdm(iter(test_loader))
     for i, data in enumerate(test_loop):
-        if i == 5:
+        if i == 50:
             break
         val_loop.set_description(f"Test, epoch: {epoch_id}")
         test_recall, test_precision = test(data.to(device), model, [])
