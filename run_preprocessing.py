@@ -36,6 +36,10 @@ def preprocess(config: PreprocessingConfig):
     if config.data_size is not None:
         transactions = transactions[: config.data_size]
 
+    transactions["year-month"] = pd.to_datetime(transactions["t_dat"]).dt.strftime(
+        "%Y-%m"
+    )
+
     print("| Calculating average price per product...")
     transactions_per_article = transactions.groupby(["article_id"]).mean()["price"]
     articles = articles.merge(
@@ -141,13 +145,22 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Calculating time of user's last purchase...")
-    transactions_per_customer = transactions.groupby(["customer_id"]).last()["t_dat"]
+    transactions_per_customer = transactions.groupby(["customer_id"]).last()[
+        "year-month"
+    ]
     customers = customers.merge(
         transactions_per_customer, left_on="index", right_on="customer_id", how="outer"
     ).fillna(0.0)
 
+    print("| Calculating the most popular products per month...")
+    transactions_per_month = (
+        transactions.groupby(["year-month", "article_id"])
+        .count()
+        .nlargest(10, columns=["customer_id"])
+    )
+
     print("| Removing unused columns...")
-    customers.drop(["customer_id", "t_dat"], axis=1, inplace=True)
+    customers.drop(["customer_id", "year-month"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_csv:
