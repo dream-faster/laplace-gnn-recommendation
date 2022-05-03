@@ -12,6 +12,8 @@ from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
 from utils.get_info import select_properties
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def train(
     train_data: Union[HeteroData, Data],
@@ -59,7 +61,7 @@ def epoch_with_dataloader(
     train_loop = tqdm(iter(train_loader))
     for i, data in enumerate(train_loop):
         train_loop.set_description(f"Train, epoch: {epoch_id}")
-        loss = train(data, model, optimizer)
+        loss = train(data.to(device), model, optimizer)
         train_loop.set_postfix_str(f"Loss: {loss:.4f}")
 
         if config.profiler is not None:
@@ -68,13 +70,13 @@ def epoch_with_dataloader(
     val_loop = tqdm(iter(val_loader))
     for data in val_loop:
         val_loop.set_description(f"Val, epoch: {epoch_id}")
-        val_recall, val_precision = test(data, model, [])
+        val_recall, val_precision = test(data.to(device), model, [])
         val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
 
     test_loop = tqdm(iter(test_loader))
     for data in test_loop:
         val_loop.set_description(f"Test, epoch: {epoch_id}")
-        test_recall, test_precision = test(data, model, [])
+        test_recall, test_precision = test(data.to(device), model, [])
         test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
 
     return loss
