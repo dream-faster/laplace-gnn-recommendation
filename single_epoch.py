@@ -63,6 +63,7 @@ def epoch_with_dataloader(
     train_loader: Union[LinkNeighborLoader, NeighborLoader],
     val_loader,
     test_loader,
+    epoch_id: int,
 ):
     train_loop = tqdm(iter(train_loader))
 
@@ -70,10 +71,16 @@ def epoch_with_dataloader(
     prof.enable()
     i = 0
     for data in train_loop:
+        train_loop.set_description(f"Train, epoch: {epoch_id}")
 
         loss = train(data, model, optimizer)
         train_loop.set_postfix_str(f"Loss: {loss:.4f}")
 
+    val_loop = tqdm(iter(val_loader))
+    for data in val_loop:
+        val_loop.set_description(f"Val, epoch: {epoch_id}")
+        val_recall, val_precision = test(data, model, [])
+        val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
         if i % 100 == 0:
             print("--------------")
             print("--------------")
@@ -83,6 +90,11 @@ def epoch_with_dataloader(
                 stats = pstats.Stats(prof).strip_dirs().sort_stats(aspect)
                 stats.print_stats(15)  # top 10 rows
 
+    test_loop = tqdm(iter(test_loader))
+    for data in test_loop:
+        val_loop.set_description(f"Test, epoch: {epoch_id}")
+        test_recall, test_precision = test(data, model, [])
+        test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
         i += 1
 
     # val_loop = tqdm(iter(val_loader))

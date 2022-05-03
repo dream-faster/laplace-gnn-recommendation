@@ -32,6 +32,13 @@ class Config:
     Lambda: float  # (LightGCN)
     save_every: int  # How often the model should be saved
 
+    def print(self):
+        print("\x1b[1;32;47m")
+        print("Configuration is:")
+        for key, value in vars(self).items():
+            print("\x1b[1;37;47m" + f"{key:>20}: " + "\x1b[0;32;47m" + f"{value}")
+        print("\x1b[0m")
+
 
 link_pred_config = Config(
     epochs=100,
