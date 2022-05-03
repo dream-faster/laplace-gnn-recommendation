@@ -6,7 +6,7 @@ from torch import Tensor
 
 
 class UsersWithCommonPurchasesMatcher(Matcher):
-    def __init__(self, k: int, suffix: Literal["train", "test", "val"]):
+    def __init__(self, k: int, suffix):  ##: Literal["train", "test", "val"]):
         self.user_to_articles = torch.load(f"data/derived/edges_{suffix}.pt")
         self.article_to_users = torch.load(f"data/derived/rev_edges_{suffix}.pt")
         self.k = k
