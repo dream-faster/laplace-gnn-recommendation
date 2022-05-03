@@ -23,6 +23,7 @@ def save_to_csv(
 
 
 def preprocess(config: PreprocessingConfig):
+    config.print()
     print("| Loading customers...")
     customers = pd.read_parquet("data/original/customers.parquet").fillna(0.0)
     customers = customers[[c.value for c in config.customer_features] + ["customer_id"]]

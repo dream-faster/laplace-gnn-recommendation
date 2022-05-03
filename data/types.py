@@ -58,6 +58,13 @@ class PreprocessingConfig:
     save_to_csv: Optional[bool]
     data_type: DataType
 
+    def print(self):
+        print("\x1b[1;32;47m")
+        print("Configuration is:")
+        for key, value in vars(self).items():
+            print("\x1b[1;37;47m" + f"{key:>20}: " + "\x1b[0;32;47m" + f"{value}")
+        print("\x1b[0m")
+
 
 @dataclass
 class FeatureInfo:

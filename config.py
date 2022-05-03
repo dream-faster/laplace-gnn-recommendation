@@ -67,7 +67,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
-    epochs=1,
+    epochs=1000,
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
@@ -107,7 +107,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     ],
     # article_nodes=[],
     article_non_categorical_features=[ArticleColumn.ImgEmbedding],
-    filter_out_unconnected_nodes=True,
+    filter_out_unconnected_nodes=False,
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
