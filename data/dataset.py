@@ -173,10 +173,6 @@ def get_negative_edges_random(
 
 
 def remap_indexes_to_zero(
-    all_edges: Tensor, buckets: Optional[Tensor] = None
+    all_edges: Tensor, buckets: Tensor
 ) -> Tensor:
-    # If there are no buckets it should remap on itself
-    if buckets is None:
-        buckets = torch.unique(all_edges)
-
     return torch.bucketize(all_edges, buckets)
