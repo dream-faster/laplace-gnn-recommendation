@@ -31,7 +31,7 @@ class Config:
     eval_every: int  # (LightGCN) evaluation to run every n epoch
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
-    save_every: int  # How often the model should be saved
+    save_every: float  # How often the model should be saved, Ratio of epochs (eg.: 0.2 * epoch_num)
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
         int
@@ -46,16 +46,16 @@ class Config:
 
 
 link_pred_config = Config(
-    epochs=5,
+    epochs=100,
     k=12,
-    num_layers=3,
+    num_layers=1,
     hidden_layer_size=128,
     learning_rate=0.01,
     save_model=False,
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
         val_split=0.1,
-        batch_size=12,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+        batch_size=128,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
         num_neighbors=64,  # -1 takes all neighbors
         num_neighbors_it=2,
         num_workers=1,
@@ -64,9 +64,9 @@ link_pred_config = Config(
     eval_every=1,
     lr_decay_every=1,
     Lambda=1e-6,
-    save_every=2,
+    save_every=0.2,  #
     profiler=None,  # Profiler(every=20),
-    evaluate_break_at=6,
+    evaluate_break_at=None,
 )
 
 
@@ -89,7 +89,7 @@ lightgcn_config = Config(
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
-    save_every=1,
+    save_every=0.2,
     profiler=None,
     evaluate_break_at=None,
 )
@@ -117,7 +117,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=200,
+    data_size=10000,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
