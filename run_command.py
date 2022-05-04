@@ -14,8 +14,8 @@ def run():
     parser.add_argument("--num-epochs", type=int, default=None)
     parser.add_argument("--num-layers", type=int, default=None)
     parser.add_argument("--candidate-pool-size", type=int, default=None)
-    parser.add_argument("--positive-edges-ratio", type=int, default=None)
-    parser.add_argument("--negative-edges-ratio", type=int, default=None)
+    parser.add_argument("--positive-edges-ratio", type=float, default=None)
+    parser.add_argument("--negative-edges-ratio", type=float, default=None)
     args = parser.parse_args()
 
     if args.data_size is not None:
