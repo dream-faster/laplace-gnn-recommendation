@@ -61,7 +61,7 @@ class GraphDataset(InMemoryDataset):
             )
             # but never add positive edges
             sampled_edges_negative = only_items_with_count_one(
-                torch.cat((candidates.unique(), subgraph_edges), dim=0)
+                torch.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
@@ -164,8 +164,8 @@ def get_negative_edges_random(
         # Create list of potential negative edges, filter out positive edges
         only_negative_edges = only_items_with_count_one(
             torch.cat(
-                torch.range(start=0, end=id_max, dtype=torch.int64),
-                subgraph_edges_to_filter,
+                (torch.range(start=0, end=id_max, dtype=torch.int64),
+                subgraph_edges_to_filter), dim=0
             )
         )
 
