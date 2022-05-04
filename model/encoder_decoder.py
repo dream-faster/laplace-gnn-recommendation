@@ -1,6 +1,7 @@
 import torch
 from data.types import DataLoaderConfig, FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList
+import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
 from typing import List, Tuple
@@ -126,7 +127,23 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
     def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
         self.eval()
-        out = self.forward(x_dict, edge_index_dict, edge_label_index)
+        out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         
-        return out
+        # Rebatching by user.
+        
+        out_per_user = []
+        for i, user_index in enumerate(edge_label_index[0]):
+            user_id = user_index.item()
+            score = out[i].unsqueeze(0)
+            if user_id >= len(out_per_user):
+                out_per_user.append(score)
+            else:
+                out_per_user[user_id] = torch.concat([out_per_user[user_id], score])
+
+        max_output_length = max([element.shape[0] for element in out_per_user])
+        
+        padded_tensors = [F.pad(output, (0,max_output_length-output.shape[0]), "constant", -(1 << 50)) for output in out_per_user]
+        
+        
+        return torch.stack(padded_tensors)
         
