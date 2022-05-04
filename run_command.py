@@ -12,6 +12,10 @@ def run():
     parser.add_argument("--type", type=str, default=None)
     parser.add_argument("--data-size", type=int, default=None)
     parser.add_argument("--num-epochs", type=int, default=None)
+    parser.add_argument("--num-layers", type=int, default=None)
+    parser.add_argument("--candidate-pool-size", type=int, default=None)
+    parser.add_argument("--positive-edges-ratio", type=int, default=None)
+    parser.add_argument("--negative-edges-ratio", type=int, default=None)
     args = parser.parse_args()
 
     if args.data_size is not None:
@@ -19,6 +23,18 @@ def run():
     if args.num_epochs is not None:
         link_pred_config.epochs = args.num_epochs
         lightgcn_config.epochs = args.num_epochs
+    if args.num_layers is not None:
+        link_pred_config.num_layers = args.num_layers
+        lightgcn_config.num_layers = args.num_layers
+    if args.candidate_pool_size is not None:
+        link_pred_config.candidate_pool_size = args.candidate_pool_size
+        lightgcn_config.candidate_pool_size = args.candidate_pool_size
+    if args.positive_edges_ratio is not None:
+        link_pred_config.positive_edges_ratio = args.positive_edges_ratio
+        lightgcn_config.positive_edges_ratio = args.positive_edges_ratio
+    if args.negative_edges_ratio is not None:
+        link_pred_config.negative_edges_ratio = args.negative_edges_ratio
+        lightgcn_config.negative_edges_ratio = args.negative_edges_ratio
 
     assert args.type in [
         "preprocess",
