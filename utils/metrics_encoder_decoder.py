@@ -173,7 +173,8 @@ def get_metrics_universal(
     r = []
     for user in users:
         ground_truth_items = test_user_pos_items[user.item()]
-        label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
+        label = [x in ground_truth_items for x in top_K_items[user]]
+        # label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
         r.append(label)
     r = torch.Tensor(np.array(r).astype("float"))
 

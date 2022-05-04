@@ -34,14 +34,14 @@ def train(
 
 @torch.no_grad()
 def test(
-    data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list
+    data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list, k: int
 ) -> Tuple[float, float]:
 
     x, edge_index_dict, edge_label_index, edge_label = select_properties(data)
     output = model.infer(x, edge_index_dict, edge_label_index)
 
     recall, precision, ndcg = get_metrics_universal(
-        output, edge_index_dict, exclude_edge_indices, k=2
+        output, edge_index_dict, exclude_edge_indices, k=k
     )
 
     # roc_auc_score = roc_auc_score(edge_label.cpu().numpy(), output.cpu().numpy())
@@ -58,13 +58,7 @@ def epoch_with_dataloader(
     epoch_id: int,
     config: Config,
 ):
-    losses, val_recalls, val_precisions, test_recalls, test_precisions = (
-        [],
-        [],
-        [],
-        [],
-        [],
-    )
+    losses, val_recalls, val_precisions = [], [], []
 
     train_loop = tqdm(iter(train_loader), colour="blue")
     for i, data in enumerate(train_loop):
@@ -81,23 +75,11 @@ def epoch_with_dataloader(
         if config.evaluate_break_at and i == config.evaluate_break_at:
             break
         val_loop.set_description(f"VAL | epoch: {epoch_id}")
-        val_recall, val_precision = test(data.to(device), model, [])
+        val_recall, val_precision = test(data.to(device), model, [], k=config.k)
         val_recalls.append(val_recall)
         val_precisions.append(val_precision)
         val_loop.set_postfix_str(
             f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
         )
 
-    test_loop = tqdm(iter(test_loader), colour="yellow")
-    for i, data in enumerate(test_loop):
-        if config.evaluate_break_at and i == config.evaluate_break_at:
-            break
-        test_loop.set_description(f"TEST | epoch: {epoch_id}")
-        test_recall, test_precision = test(data.to(device), model, [])
-        test_recalls.append(test_recall)
-        test_precisions.append(test_precision)
-        test_loop.set_postfix_str(
-            f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
-        )
-
-    return np.mean(losses)
+    return np.mean(val_precisions)
