@@ -46,7 +46,7 @@ class Config:
 
 
 link_pred_config = Config(
-    epochs=100,
+    epochs=5,
     k=12,
     num_layers=3,
     hidden_layer_size=128,
@@ -117,7 +117,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=1000000,
+    data_size=200,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
