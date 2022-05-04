@@ -144,23 +144,17 @@ def preprocess(config: PreprocessingConfig):
         extract_location_for_user(customers), "data/derived/location_for_user.pt"
     )
 
-    print("| Calculating time of user's last purchase...")
-    transactions_per_customer = transactions.groupby(["customer_id"]).last()[
-        "year-month"
-    ]
-    customers = customers.merge(
-        transactions_per_customer, left_on="index", right_on="customer_id", how="outer"
-    ).fillna(0.0)
-
-    print("| Calculating the most popular products per month...")
-    transactions_per_month = (
-        transactions.groupby(["year-month", "article_id"])
-        .count()
-        .nlargest(10, columns=["customer_id"])
+    print("| Calculating the most popular products of the month...")
+    print("last day:", transactions.tail(1)["t_dat"].item())
+    last_month = transactions.tail(1)["year-month"].item()
+    last_month_transactions = transactions[transactions["year-month"] == last_month]
+    most_popular_products = (
+        last_month_transactions["article_id"].value_counts().nlargest(1000)
     )
+    torch.save(most_popular_products, "data/derived/most_popular_products.pt")
 
     print("| Removing unused columns...")
-    customers.drop(["customer_id", "year-month"], axis=1, inplace=True)
+    customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_csv:
