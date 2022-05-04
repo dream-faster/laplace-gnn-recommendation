@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import torch
+import numpy as np
 
 from torch_geometric import seed_everything
 
@@ -10,6 +11,7 @@ from utils.get_info import get_feature_info
 from data.data_loader import create_dataloaders
 from single_epoch import epoch_with_dataloader
 from model.layers import get_linear_layers, get_SAGEConv_layers
+from single_epoch import test
 
 
 def run_pipeline(config: Config):
@@ -60,9 +62,10 @@ def run_pipeline(config: Config):
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     print("| Training Model...")
+    old_val_precision = -1
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        epoch_with_dataloader(
+        val_precision = epoch_with_dataloader(
             model,
             optimizer,
             train_loader,
@@ -72,9 +75,30 @@ def run_pipeline(config: Config):
             config=config,
         )
 
+        # We should save our model if validation precision starts decreasing (it starts to overfit)
+        if val_precision >= old_val_precision:
+            old_val_precision = val_precision.copy()
+        else:
+            print("| Saving Best Generalized Model...")
+            torch.save(model, f"model/saved/model_final.pt")
+
         if epoch % int(config.epochs * config.save_every) == 0:
-            print("| Saving Model...")
+            print("| Saving Model at a regular interval...")
             torch.save(model, f"model/saved/model_{epoch:03d}.pt")
+
+    # Testing loop
+    test_recalls, test_precisions = [], []
+    test_loop = tqdm(iter(test_loader), colour="blue")
+    for i, data in enumerate(test_loop):
+        if config.evaluate_break_at and i == config.evaluate_break_at:
+            break
+        test_loop.set_description("TEST")
+        test_recall, test_precision = test(data.to(device), model, [], k=config.k)
+        test_recalls.append(test_recall)
+        test_precisions.append(test_precision)
+        test_loop.set_postfix_str(
+            f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
+        )
 
 
 if __name__ == "__main__":
