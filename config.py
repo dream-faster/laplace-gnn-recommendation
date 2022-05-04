@@ -33,6 +33,9 @@ class Config:
     Lambda: float  # (LightGCN)
     save_every: int  # How often the model should be saved
     profiler: Optional[Profiler] = None
+    evaluate_break_at: Optional[
+        int
+    ] = None  # Eval and Test should break after this many iterations (not epochs!) None runs whole test and val
 
     def print(self):
         print("\x1b[1;32;47m")
@@ -63,6 +66,7 @@ link_pred_config = Config(
     Lambda=1e-6,
     save_every=2,
     profiler=None,  # Profiler(every=20),
+    evaluate_break_at=6,
 )
 
 
@@ -87,6 +91,7 @@ lightgcn_config = Config(
     Lambda=1e-6,
     save_every=1,
     profiler=None,
+    evaluate_break_at=None,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
