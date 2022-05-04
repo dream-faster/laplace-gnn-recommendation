@@ -71,26 +71,18 @@ class GraphDataset(InMemoryDataset):
         user_features = self.graph[Constants.node_user].x[idx]
 
         # Prepare connected article features
-        article_features = torch.empty(
-            size=(
-                len(all_touched_edges),
-                self.graph[Constants.node_item].x[self.edges[0][0]].shape[0],
-            )
-        )
-        for i, article_id in enumerate(all_touched_edges):
-            article_features[i] = self.graph[Constants.node_item].x[article_id]
+        article_features = self.graph[Constants.node_item].x[all_touched_edges]
 
         """ Remap and Prepare Edges """
         # Remap IDs
-        subgraph_edges_remapped = remap_indexes_to_zero(
-            subgraph_edges, buckets=torch.unique(subgraph_edges)
-        )
+        buckets = torch.unique(all_touched_edges)
+        subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
         subgraph_sample_positive_remapped = remap_indexes_to_zero(
-            subgraph_sample_positive
+            subgraph_sample_positive, buckets=buckets
         )
-        sampled_edges_negative_remapped = remap_indexes_to_zero(sampled_edges_negative)
-        #
-        sampled_edges_negative_remapped += len(subgraph_edges)
+        sampled_edges_negative_remapped = remap_indexes_to_zero(
+            sampled_edges_negative, buckets=buckets
+        )
 
         all_sampled_edges_remapped = torch.cat(
             [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
@@ -164,8 +156,11 @@ def get_negative_edges_random(
         # Create list of potential negative edges, filter out positive edges
         only_negative_edges = only_items_with_count_one(
             torch.cat(
-                (torch.range(start=0, end=id_max, dtype=torch.int64),
-                subgraph_edges_to_filter), dim=0
+                (
+                    torch.range(start=0, end=id_max, dtype=torch.int64),
+                    subgraph_edges_to_filter,
+                ),
+                dim=0,
             )
         )
 
@@ -178,10 +173,6 @@ def get_negative_edges_random(
 
 
 def remap_indexes_to_zero(
-    all_edges: Tensor, buckets: Optional[Tensor] = None
+    all_edges: Tensor, buckets: Tensor
 ) -> Tensor:
-    # If there are no buckets it should remap on itself
-    if buckets is None:
-        buckets = torch.unique(all_edges)
-
     return torch.bucketize(all_edges, buckets)
