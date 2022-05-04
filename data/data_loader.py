@@ -19,10 +19,12 @@ def create_dataloaders(
 ) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap,]:
     data_dir = "data/derived/"
     train_dataset = GraphDataset(
+        config=config,
         edge_dir=data_dir + "edges_train.pt",
         graph_dir=data_dir + "train_graph.pt",
     )
     val_dataset = GraphDataset(
+        config=config,
         edge_dir=data_dir + "edges_val.pt",
         graph_dir=data_dir + "val_graph.pt",
         matchers=[
@@ -32,6 +34,7 @@ def create_dataloaders(
         ],
     )
     test_dataset = GraphDataset(
+        config=config,
         edge_dir=data_dir + "edges_test.pt",
         graph_dir=data_dir + "test_graph.pt",
         matchers=[

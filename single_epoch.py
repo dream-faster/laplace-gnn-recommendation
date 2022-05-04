@@ -1,5 +1,6 @@
 from config import Config
 from typing import Union, Tuple
+import numpy as np
 
 import torch
 from torch import Tensor
@@ -19,7 +20,7 @@ def train(
     train_data: Union[HeteroData, Data],
     model: Module,
     optimizer: Optimizer,
-) -> float:
+) -> Tensor:
 
     x, edge_index, edge_label_index, edge_label = select_properties(train_data)
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -57,30 +58,46 @@ def epoch_with_dataloader(
     epoch_id: int,
     config: Config,
 ):
+    losses, val_recalls, val_precisions, test_recalls, test_precisions = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
 
-    train_loop = tqdm(iter(train_loader))
+    train_loop = tqdm(iter(train_loader), colour="blue")
     for i, data in enumerate(train_loop):
-        train_loop.set_description(f"Train, epoch: {epoch_id}")
+        train_loop.set_description(f"TRAIN | epoch: {epoch_id}")
         loss = train(data.to(device), model, optimizer)
-        train_loop.set_postfix_str(f"Loss: {loss:.4f}")
+        losses.append(loss.detach().cpu().item())
+        train_loop.set_postfix_str(f"Loss: {np.mean(losses):.4f}")
 
         if config.profiler is not None:
             config.profiler.print_stats(i)
 
-    val_loop = tqdm(iter(val_loader))
+    val_loop = tqdm(iter(val_loader), colour="yellow")
     for i, data in enumerate(val_loop):
         if config.evaluate_break_at and i == config.evaluate_break_at:
             break
-        val_loop.set_description(f"Val, epoch: {epoch_id}")
+        val_loop.set_description(f"VAL | epoch: {epoch_id}")
         val_recall, val_precision = test(data.to(device), model, [])
-        val_loop.set_postfix_str(f"Recall Val: {val_recall:.4f}")
+        val_recalls.append(val_recall)
+        val_precisions.append(val_precision)
+        val_loop.set_postfix_str(
+            f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
+        )
 
-    test_loop = tqdm(iter(test_loader))
+    test_loop = tqdm(iter(test_loader), colour="yellow")
     for i, data in enumerate(test_loop):
         if config.evaluate_break_at and i == config.evaluate_break_at:
             break
-        val_loop.set_description(f"Test, epoch: {epoch_id}")
+        test_loop.set_description(f"TEST | epoch: {epoch_id}")
         test_recall, test_precision = test(data.to(device), model, [])
-        test_loop.set_postfix_str(f"Recall Test: {test_recall:.4f}")
+        test_recalls.append(test_recall)
+        test_precisions.append(test_precision)
+        test_loop.set_postfix_str(
+            f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
+        )
 
-    return loss
+    return np.mean(losses)
