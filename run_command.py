@@ -6,35 +6,31 @@ from config import link_pred_config, lightgcn_config, only_users_and_articles_no
 
 
 def run():
-    # Arguments
     parser = argparse.ArgumentParser()
 
+    # Add one special argument for deciding what pipeline to run
     parser.add_argument("--type", type=str, default=None)
-    parser.add_argument("--data-size", type=int, default=None)
-    parser.add_argument("--num-epochs", type=int, default=None)
-    parser.add_argument("--num-layers", type=int, default=None)
-    parser.add_argument("--candidate-pool-size", type=int, default=None)
-    parser.add_argument("--positive-edges-ratio", type=float, default=None)
-    parser.add_argument("--negative-edges-ratio", type=float, default=None)
+
+    # Go through each item in configs and add it to the parser
+    for key, value in vars(link_pred_config).items():
+        parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
+    for key, value in vars(only_users_and_articles_nodes).items():
+        parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
+
     args = parser.parse_args()
 
-    if args.data_size is not None:
-        only_users_and_articles_nodes.data_size = args.data_size
-    if args.num_epochs is not None:
-        link_pred_config.epochs = args.num_epochs
-        lightgcn_config.epochs = args.num_epochs
-    if args.num_layers is not None:
-        link_pred_config.num_layers = args.num_layers
-        lightgcn_config.num_layers = args.num_layers
-    if args.candidate_pool_size is not None:
-        link_pred_config.candidate_pool_size = args.candidate_pool_size
-        lightgcn_config.candidate_pool_size = args.candidate_pool_size
-    if args.positive_edges_ratio is not None:
-        link_pred_config.positive_edges_ratio = args.positive_edges_ratio
-        lightgcn_config.positive_edges_ratio = args.positive_edges_ratio
-    if args.negative_edges_ratio is not None:
-        link_pred_config.negative_edges_ratio = args.negative_edges_ratio
-        lightgcn_config.negative_edges_ratio = args.negative_edges_ratio
+    # Decide which pipeline to configure
+    if vars(args)["type"] == "preprocess":
+        config = only_users_and_articles_nodes
+    elif vars(args)["type"] == "lightgcn":
+        config = lightgcn_config
+    else:
+        config = link_pred_config
+
+    # Overwrite defaults in config objects with arguments from parser
+    for key, value in vars(args).items():
+        if value is not None:
+            vars(config)[key] = value
 
     assert args.type in [
         "preprocess",
@@ -42,12 +38,13 @@ def run():
         "encoder",
     ], "No such pipeline type exists or none given"
 
+    # Run set pipeline
     if args.type == "preprocess":
-        preprocess(only_users_and_articles_nodes)
+        preprocess(config)
     elif args.type == "lightgcn":
-        train(lightgcn_config)
+        train(config)
     elif args.type == "encoder":
-        run_pipeline(link_pred_config)
+        run_pipeline(config)
 
 
 if __name__ == "__main__":
