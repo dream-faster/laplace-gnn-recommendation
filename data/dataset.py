@@ -96,8 +96,9 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative = get_negative_edges_random(
                 subgraph_edges_to_filter=subgraph_edges,
                 all_edges=all_edges,
-                num_negative_edges=self.config.positive_edges_ratio
-                * len(subgraph_sample_positive),
+                num_negative_edges=int(
+                    self.config.negative_edges_ratio * len(subgraph_sample_positive)
+                ),
             )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)

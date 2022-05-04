@@ -32,8 +32,6 @@ class Config:
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
     save_every: float  # How often the model should be saved, Ratio of epochs (eg.: 0.2 * epoch_num)
-    positive_edges_ratio: float  # ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
-    negative_edge_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
         int
@@ -62,6 +60,8 @@ link_pred_config = Config(
         num_neighbors_it=2,
         num_workers=1,
         candidate_pool_size=20,
+        positive_edges_ratio=0.5,
+        negative_edges_ratio=10.0,
     ),
     eval_every=1,
     lr_decay_every=1,
@@ -69,8 +69,6 @@ link_pred_config = Config(
     save_every=0.2,  #
     profiler=None,  # Profiler(every=20),
     evaluate_break_at=None,
-    positive_edges_ratio=0.5,
-    negative_edge_ratio=10.0,
 )
 
 
@@ -89,6 +87,8 @@ lightgcn_config = Config(
         num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
         candidate_pool_size=None,  # IGNORE for LightGCN
+        positive_edges_ratio=1.0,  # IGNORE for LightGCN
+        negative_edges_ratio=1.0,  # IGNORE for LightGCN
     ),
     eval_every=100,
     lr_decay_every=100,
@@ -96,8 +96,6 @@ lightgcn_config = Config(
     save_every=0.2,
     profiler=None,  # IGNORE for LightGCN
     evaluate_break_at=None,  # IGNORE for LightGCN
-    positive_edges_ratio=1.0,  # IGNORE for LightGCN
-    negative_edge_ratio=1.0,  # IGNORE for LightGCN
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
