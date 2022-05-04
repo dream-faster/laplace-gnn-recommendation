@@ -80,7 +80,7 @@ def run_pipeline(config: Config):
             old_val_precision = val_precision.copy()
         else:
             print("| Saving Best Generalized Model...")
-            torch.save(model, f"model/saved/model_final_{epoch:03d}.pt")
+            torch.save(model, f"model/saved/model_final.pt")
 
         if epoch % int(config.epochs * config.save_every) == 0:
             print("| Saving Model at a regular interval...")
