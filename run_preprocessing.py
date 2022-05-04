@@ -12,6 +12,7 @@ import numpy as np
 from typing import Tuple
 from config import only_users_and_articles_nodes
 import numpy as np
+from utils.constants import Constants
 
 
 def save_to_csv(
@@ -223,9 +224,9 @@ def create_data_pyg(
     from torch_geometric.data import HeteroData
 
     data = HeteroData()
-    data["customer"].x = customers
-    data["article"].x = articles
-    data["customer", "buys", "article"].edge_index = torch.as_tensor(
+    data[Constants.node_user].x = customers
+    data[Constants.node_item].x = articles
+    data[Constants.node_user, "buys", Constants.node_item].edge_index = torch.as_tensor(
         (transactions_to_customer_id, transactions_to_article_id),
         dtype=torch.long,
     )
@@ -243,22 +244,22 @@ def create_data_dgl(
 
     data = dgl.heterograph(
         {
-            ("customer", "buys", "article"): (
+            Constants.edge_key: (
                 torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
                 torch.as_tensor(transactions_to_article_id, dtype=torch.long),
             ),
-            ("article", "rev_buys", "customer"): (
+            (Constants.node_item, "rev_buys", Constants.node_user): (
                 torch.as_tensor(transactions_to_article_id, dtype=torch.long),
                 torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
             ),
         },
         num_nodes_dict={
-            "customer": customers.shape[0],
-            "article": articles.shape[0],
+            Constants.node_user: customers.shape[0],
+            Constants.node_item: articles.shape[0],
         },
     )
-    data.nodes["customer"].data["features"] = customers
-    data.nodes["article"].data["features"] = articles
+    data.nodes[Constants.node_user].data["features"] = customers
+    data.nodes[Constants.node_item].data["features"] = articles
     return data
 
 
