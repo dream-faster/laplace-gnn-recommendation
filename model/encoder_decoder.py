@@ -8,7 +8,7 @@ from typing import List, Tuple
 from torch import Tensor
 from typing import Union, Optional
 from torch_geometric.data import Data, HeteroData
-
+from utils.constants import Constants
 
 
 class GNNEncoder(torch.nn.Module):
@@ -40,7 +40,7 @@ class EdgeDecoder(torch.nn.Module):
     def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
         customer_index, article_index = edge_label_index
         z = torch.cat(
-            [z_dict["customer"][customer_index], z_dict["article"][article_index]],
+            [z_dict[Constants.node_user][customer_index], z_dict[Constants.node_item][article_index]],
             dim=-1,
         )
         for index, layer in enumerate(self.layers):
@@ -93,8 +93,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
     def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
-            x_dict["customer"].long(),
-            x_dict["article"].long(),
+            x_dict[Constants.node_user].long(),
+            x_dict[Constants.node_item].long(),
         )
         embedding_customers, embedding_articles = [], []
         for i, embedding_layer in enumerate(self.embedding_customers):
@@ -103,8 +103,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         for i, embedding_layer in enumerate(self.embedding_articles):
             embedding_articles.append(embedding_layer(article_features[:, i]))
 
-        x_dict["customer"] = torch.cat(embedding_customers, dim=1)
-        x_dict["article"] = torch.cat(embedding_articles, dim=1)
+        x_dict[Constants.node_user] = torch.cat(embedding_customers, dim=1)
+        x_dict[Constants.node_item] = torch.cat(embedding_articles, dim=1)
 
         return x_dict
 

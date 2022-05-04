@@ -6,17 +6,16 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
+from utils.constants import Constants
 
 
 def shuffle_data(data: HeteroData) -> HeteroData:
-    new_edge_order = torch.randperm(
-        data[("customer", "buys", "article")].edge_label.size(0)
-    )
-    data[("customer", "buys", "article")].edge_label = data[
-        ("customer", "buys", "article")
-    ].edge_label[new_edge_order]
-    data[("customer", "buys", "article")].edge_label_index = data[
-        ("customer", "buys", "article")
+    new_edge_order = torch.randperm(data[Constants.edge_key].edge_label.size(0))
+    data[Constants.edge_key].edge_label = data[Constants.edge_key].edge_label[
+        new_edge_order
+    ]
+    data[Constants.edge_key].edge_label_index = data[
+        Constants.edge_key
     ].edge_label_index[:, new_edge_order]
 
     return data
@@ -41,8 +40,8 @@ def create_dataloaders(
         num_test=config.test_split,
         neg_sampling_ratio=0.5,
         add_negative_train_samples=True,
-        edge_types=[("customer", "buys", "article")],
-        rev_edge_types=[("article", "rev_buys", "customer")],
+        edge_types=[Constants.edge_key],
+        rev_edge_types=[(Constants.node_item, "rev_buys", Constants.node_user)],
         is_undirected=True,
     )(data)
     # when neg_sampling_ratio > 0 and add_negative_train_samples=True only then you will have negative edges
@@ -52,10 +51,10 @@ def create_dataloaders(
         num_neighbors=[config.num_neighbors] * config.num_neighbors_it,
         batch_size=config.batch_size,
         edge_label_index=(
-            ("customer", "buys", "article"),
-            train_split[("customer", "buys", "article")].edge_label_index,
+            Constants.edge_key,
+            train_split[Constants.edge_key].edge_label_index,
         ),
-        edge_label=train_split[("customer", "buys", "article")].edge_label,
+        edge_label=train_split[Constants.edge_key].edge_label,
         directed=False,
         replace=False,
         shuffle=True,
@@ -67,10 +66,10 @@ def create_dataloaders(
         num_neighbors=[64] * 2,
         batch_size=config.batch_size,
         edge_label_index=(
-            ("customer", "buys", "article"),
-            val_split[("customer", "buys", "article")].edge_label_index,
+            Constants.edge_key,
+            val_split[Constants.edge_key].edge_label_index,
         ),
-        edge_label=val_split[("customer", "buys", "article")].edge_label,
+        edge_label=val_split[Constants.edge_key].edge_label,
         directed=False,
         replace=False,
         shuffle=True,
@@ -82,10 +81,10 @@ def create_dataloaders(
         num_neighbors=[64] * 2,
         batch_size=config.batch_size,
         edge_label_index=(
-            ("customer", "buys", "article"),
-            test_split[("customer", "buys", "article")].edge_label_index,
+            Constants.edge_key,
+            test_split[Constants.edge_key].edge_label_index,
         ),
-        edge_label=test_split[("customer", "buys", "article")].edge_label,
+        edge_label=test_split[Constants.edge_key].edge_label,
         directed=False,
         replace=False,
         shuffle=True,

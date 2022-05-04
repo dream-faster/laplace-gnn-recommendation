@@ -4,6 +4,7 @@ from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo
 from typing import Union, Tuple
 from config import embedding_range_dict
+from utils.constants import Constants
 
 
 def __embedding_size_selector(max_category: int):
@@ -14,8 +15,8 @@ def __embedding_size_selector(max_category: int):
 
 
 def __heterogenous_features(full_data: HeteroData) -> Tuple[FeatureInfo, FeatureInfo]:
-    customer_features = full_data.x_dict["customer"]
-    article_features = full_data.x_dict["article"]
+    customer_features = full_data.x_dict[Constants.node_user]
+    article_features = full_data.x_dict[Constants.node_item]
 
     customer_num_cat = torch.max(customer_features, dim=0)[0].tolist()
     article_num_cat = torch.max(article_features, dim=0)[0].tolist()
@@ -51,6 +52,6 @@ def select_properties(
     return (
         data.x_dict,
         data.edge_index_dict,
-        data[("customer", "buys", "article")].edge_label_index,
-        data[("customer", "buys", "article")].edge_label.float(),
+        data[Constants.edge_key].edge_label_index,
+        data[Constants.edge_key].edge_label.float(),
     )

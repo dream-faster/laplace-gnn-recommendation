@@ -7,14 +7,14 @@ from torch import Tensor
 import torch
 
 from typing import Tuple, Union, Optional, List
+from utils.constants import Constants
 
-
-val_map = {"customer": 1.0, "article": 0.35}
+val_map = {Constants.node_user: 1.0, Constants.node_item: 0.35}
 
 
 def select_layout(G: Union[nx.DiGraph, nx.Graph], node_types: Optional[list]):
     one_category_nodes = [
-        node if node_type == "customer" else None
+        node if node_type == Constants.node_user else None
         for node, node_type in zip(G.nodes(), node_types)
     ]
 
@@ -58,15 +58,15 @@ def manual_graph(data: Union[Data, HeteroData]) -> Union[nx.Graph, nx.DiGraph]:
     G = nx.DiGraph()
     negative_edges, positive_edges, all_edges = get_edges(data)
 
-    customer_nodes = data["customer"].x
-    article_nodes = data["article"].x
+    customer_nodes = data[Constants.node_user].x
+    article_nodes = data[Constants.node_item].x
 
     [
-        G.add_node(i, x=x.tolist(), node_type="customer")
+        G.add_node(i, x=x.tolist(), node_type=Constants.node_user)
         for i, x in enumerate(customer_nodes)
     ]
     [
-        G.add_node(i + len(customer_nodes), x=x.tolist(), node_type="article")
+        G.add_node(i + len(customer_nodes), x=x.tolist(), node_type=Constants.node_item)
         for i, x in enumerate(article_nodes)
     ]
 

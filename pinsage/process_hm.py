@@ -3,6 +3,7 @@ import pandas as pd
 import dgl
 import torch
 from pinsage.data_utils import *
+from utils.constants import Constants
 
 
 def process_hm():
@@ -11,7 +12,6 @@ def process_hm():
 
     print("| Loading Graph...")
     g = torch.load("data/derived/test_graph.pt")
-
 
     print("| Loading Transactions...")
     transactions = pd.read_parquet("data/original/transactions_splitted.parquet")
@@ -34,7 +34,7 @@ def process_hm():
 
     # Build the user-item sparse matrix for validation and test set.
     val_matrix, test_matrix = build_val_test_matrix(
-        g, val_indices, test_indices, "customer", "article", "buys"
+        g, val_indices, test_indices, Constants.node_user, Constants.node_item, "buys"
     )
 
     ## Dump the graph and the datasets
@@ -45,8 +45,8 @@ def process_hm():
         "test-matrix": test_matrix,
         "item-texts": {},
         "item-images": None,
-        "user-type": "customer",
-        "item-type": "article",
+        "user-type": Constants.node_user,
+        "item-type": Constants.node_item,
         "user-to-item-type": "buys",
         "item-to-user-type": "rev_buys",
         "timestamp-edge-column": "timestamp",
