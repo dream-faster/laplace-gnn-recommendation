@@ -86,7 +86,7 @@ lightgcn_config = Config(
         num_neighbors=0,  # IGNORE for LightGCN
         num_neighbors_it=0,  # IGNORE for LightGCN
         num_workers=1,
-        candidate_pool_size=None,  # IGNORE for LightGCN
+        candidate_pool_size=0,  # IGNORE for LightGCN
         positive_edges_ratio=1.0,  # IGNORE for LightGCN
         negative_edges_ratio=1.0,  # IGNORE for LightGCN
     ),
