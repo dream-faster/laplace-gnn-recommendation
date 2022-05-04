@@ -14,13 +14,13 @@ class GraphDataset(InMemoryDataset):
     def __init__(
         self,
         config: DataLoaderConfig,
-        edge_dir: str,
-        graph_dir: str,
+        edge_path: str,
+        graph_path: str,
         train: bool,
         matchers: Optional[List[Matcher]] = None,
     ):
-        self.edges = torch.load(edge_dir)
-        self.graph = torch.load(graph_dir)
+        self.edges = torch.load(edge_path)
+        self.graph = torch.load(graph_path)
         self.matchers = matchers
         self.config = config
         self.train = train

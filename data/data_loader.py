@@ -21,13 +21,15 @@ def create_dataloaders(
     data_dir = "data/derived/"
     train_dataset = GraphDataset(
         config=config,
-        edge_dir=data_dir + "edges_train.pt",
-        graph_dir=data_dir + "train_graph.pt",
+        edge_path=data_dir + "edges_train.pt",
+        graph_path=data_dir + "train_graph.pt",
+        train=True,
     )
     val_dataset = GraphDataset(
         config=config,
-        edge_dir=data_dir + "edges_val.pt",
-        graph_dir=data_dir + "val_graph.pt",
+        edge_path=data_dir + "edges_val.pt",
+        graph_path=data_dir + "val_graph.pt",
+        train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
@@ -37,8 +39,9 @@ def create_dataloaders(
     )
     test_dataset = GraphDataset(
         config=config,
-        edge_dir=data_dir + "edges_test.pt",
-        graph_dir=data_dir + "test_graph.pt",
+        edge_path=data_dir + "edges_test.pt",
+        graph_path=data_dir + "test_graph.pt",
+        train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
