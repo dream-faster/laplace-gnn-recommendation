@@ -1,13 +1,14 @@
 import torch
 from data.types import DataLoaderConfig, FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList
+import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
 from typing import List, Tuple
 from torch import Tensor
 from typing import Union, Optional
 from torch_geometric.data import Data, HeteroData
-
+from utils.constants import Constants
 
 
 class GNNEncoder(torch.nn.Module):
@@ -39,7 +40,7 @@ class EdgeDecoder(torch.nn.Module):
     def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
         customer_index, article_index = edge_label_index
         z = torch.cat(
-            [z_dict["customer"][customer_index], z_dict["article"][article_index]],
+            [z_dict[Constants.node_user][customer_index], z_dict[Constants.node_item][article_index]],
             dim=-1,
         )
         for index, layer in enumerate(self.layers):
@@ -92,8 +93,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
     def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
-            x_dict["customer"].long(),
-            x_dict["article"].long(),
+            x_dict[Constants.node_user].long(),
+            x_dict[Constants.node_item].long(),
         )
         embedding_customers, embedding_articles = [], []
         for i, embedding_layer in enumerate(self.embedding_customers):
@@ -102,8 +103,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         for i, embedding_layer in enumerate(self.embedding_articles):
             embedding_articles.append(embedding_layer(article_features[:, i]))
 
-        x_dict["customer"] = torch.cat(embedding_customers, dim=1)
-        x_dict["article"] = torch.cat(embedding_articles, dim=1)
+        x_dict[Constants.node_user] = torch.cat(embedding_customers, dim=1)
+        x_dict[Constants.node_item] = torch.cat(embedding_articles, dim=1)
 
         return x_dict
 
@@ -126,7 +127,23 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
     def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
         self.eval()
-        out = self.forward(x_dict, edge_index_dict, edge_label_index)
+        out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         
-        return out
+        # Rebatching by user.
+        
+        out_per_user = []
+        for i, user_index in enumerate(edge_label_index[0]):
+            user_id = user_index.item()
+            score = out[i].unsqueeze(0)
+            if user_id >= len(out_per_user):
+                out_per_user.append(score)
+            else:
+                out_per_user[user_id] = torch.concat([out_per_user[user_id], score])
+
+        max_output_length = max([element.shape[0] for element in out_per_user])
+        
+        padded_tensors = [F.pad(output, (0,max_output_length-output.shape[0]), "constant", -(1 << 50)) for output in out_per_user]
+        
+        
+        return torch.stack(padded_tensors)
         

@@ -38,6 +38,8 @@ class DataLoaderConfig:
     num_neighbors_it: int
     num_workers: int  # number of workers to use for data loading
     candidate_pool_size: int  # How many precalculated candidates we should give over
+    positive_edges_ratio: float  # ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
+    negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
 
 
 @dataclass

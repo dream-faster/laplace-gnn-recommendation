@@ -46,7 +46,7 @@ def run_pipeline(config: Config):
             out_channels=1,
         ),
         feature_info=get_feature_info(full_data),
-        metadata=next(iter(train_loader)).to(device).metadata(),
+        metadata=next(iter(train_loader)).metadata(),
         embedding=True,
     ).to(device)
 
@@ -72,7 +72,7 @@ def run_pipeline(config: Config):
             config=config,
         )
 
-        if epoch % config.save_every == 0:
+        if epoch % int(config.epochs * config.save_every) == 0:
             print("| Saving Model...")
             torch.save(model, f"model/saved/model_{epoch:03d}.pt")
 
