@@ -5,65 +5,25 @@ from torch import Tensor
 from typing import Union, Optional, List
 from .matching.type import Matcher
 from utils.constants import Constants
-from config import Config
+from config import DataLoaderConfig
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-def get_negative_edges_random(
-    subgraph_edges_to_filter: Tensor,
-    all_edges: Tensor,
-    num_negative_edges: int = 10,
-) -> Tensor:
-
-    # Get the biggest value available in articles (potential edges to sample from)
-    id_max = torch.max(all_edges, dim=1)[0][1]
-
-    if all_edges.shape[1] / num_negative_edges > 100:
-        # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
-        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
-
-    else:
-        # Create list of potential negative edges, filter out positive edges
-        combined = torch.cat(
-            (
-                torch.range(start=0, end=id_max, dtype=torch.int64),
-                subgraph_edges_to_filter,
-            )
-        )
-        uniques, counts = combined.unique(return_counts=True)
-        difference = uniques[counts == 1]
-
-        # Randomly sample negative edges
-        negative_edges = difference[torch.randperm(difference.nelement())][
-            :num_negative_edges
-        ]
-
-        return negative_edges
-
-
-def remap_indexes_to_zero(
-    all_edges: Tensor, buckets: Optional[Tensor] = None
-) -> Tensor:
-    # If there are no buckets it should remap on itself
-    if buckets is None:
-        buckets = torch.unique(all_edges)
-
-    return torch.bucketize(all_edges, buckets)
 
 
 class GraphDataset(InMemoryDataset):
     def __init__(
         self,
-        config: Config,
+        config: DataLoaderConfig,
         edge_dir: str,
         graph_dir: str,
+        train: bool,
         matchers: Optional[List[Matcher]] = None,
     ):
         self.edges = torch.load(edge_dir)
         self.graph = torch.load(graph_dir)
         self.matchers = matchers
         self.config = config
+        self.train = train
 
     def __len__(self) -> int:
         return len(self.edges)
@@ -83,15 +43,7 @@ class GraphDataset(InMemoryDataset):
             torch.randint(low=0, high=len(self.edges[idx]), size=(samp_cut,))
         ]
 
-        if self.matchers is not None:
-            # Select according to a heuristic (eg.: lightgcn scores)
-            candidates = torch.cat(
-                [matcher.get_matches(idx) for matcher in self.matchers],
-                dim=0,
-            )
-            sampled_edges_negative = candidates.unique()
-
-        else:
+        if self.train:
             # Randomly select from the whole graph
             sampled_edges_negative = get_negative_edges_random(
                 subgraph_edges_to_filter=subgraph_edges,
@@ -99,6 +51,17 @@ class GraphDataset(InMemoryDataset):
                 num_negative_edges=int(
                     self.config.negative_edges_ratio * len(subgraph_sample_positive)
                 ),
+            )
+        else:
+            assert self.matchers is not None, "Must provide matchers for test"
+            # Select according to a heuristic (eg.: lightgcn scores)
+            candidates = torch.cat(
+                [matcher.get_matches(idx) for matcher in self.matchers],
+                dim=0,
+            )
+            # but never add positive edges
+            sampled_edges_negative = only_items_with_count_one(
+                torch.cat((candidates.unique(), subgraph_edges), dim=0)
             )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
@@ -177,3 +140,48 @@ class GraphDataset(InMemoryDataset):
         ]
         data[Constants.rev_edge_key].edge_label = labels
         return data
+
+
+def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
+    uniques, counts = input.unique(return_counts=True)
+    return uniques[counts == 1]
+
+
+def get_negative_edges_random(
+    subgraph_edges_to_filter: Tensor,
+    all_edges: Tensor,
+    num_negative_edges: int,
+) -> Tensor:
+
+    # Get the biggest value available in articles (potential edges to sample from)
+    id_max = torch.max(all_edges, dim=1)[0][1]
+
+    if all_edges.shape[1] / num_negative_edges > 100:
+        # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
+        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
+
+    else:
+        # Create list of potential negative edges, filter out positive edges
+        only_negative_edges = only_items_with_count_one(
+            torch.cat(
+                torch.range(start=0, end=id_max, dtype=torch.int64),
+                subgraph_edges_to_filter,
+            )
+        )
+
+        # Randomly sample negative edges
+        negative_edges = only_negative_edges[
+            torch.randperm(only_negative_edges.nelement())
+        ][:num_negative_edges]
+
+        return negative_edges
+
+
+def remap_indexes_to_zero(
+    all_edges: Tensor, buckets: Optional[Tensor] = None
+) -> Tensor:
+    # If there are no buckets it should remap on itself
+    if buckets is None:
+        buckets = torch.unique(all_edges)
+
+    return torch.bucketize(all_edges, buckets)
