@@ -69,7 +69,7 @@ class GraphDataset(InMemoryDataset):
         """ Create Edges """
         # Define the whole graph and the subgraph
         all_edges = self.graph[edge_key].edge_index
-        subgraph_edges = torch.tensor(self.edges[idx]).to(device)
+        subgraph_edges = torch.tensor(self.edges[idx])
 
         samp_cut = max(1, math.floor(len(subgraph_edges) * cut_ratio))
 
@@ -81,7 +81,7 @@ class GraphDataset(InMemoryDataset):
         if self.matchers is not None:
             # Select according to a heuristic (eg.: lightgcn scores)
             candidates = torch.cat(
-                [matcher.get_matches(idx).to(device) for matcher in self.matchers],
+                [matcher.get_matches(idx) for matcher in self.matchers],
                 dim=0,
             )
             sampled_edges_negative = candidates.unique()
@@ -92,7 +92,7 @@ class GraphDataset(InMemoryDataset):
                 subgraph_edges_to_filter=subgraph_edges,
                 all_edges=all_edges,
                 num_negative_edges=len(subgraph_sample_positive),
-            ).to(device)
+            )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
 
@@ -106,7 +106,7 @@ class GraphDataset(InMemoryDataset):
                 len(all_touched_edges),
                 self.graph["article"].x[self.edges[0][0]].shape[0],
             )
-        ).to(device)
+        )
         for i, article_id in enumerate(all_touched_edges):
             article_features[i] = self.graph["article"].x[article_id]
 
@@ -114,36 +114,34 @@ class GraphDataset(InMemoryDataset):
         # Remap IDs
         subgraph_edges_remapped = remap_indexes_to_zero(
             subgraph_edges, buckets=torch.unique(subgraph_edges)
-        ).to(device)
+        )
         subgraph_sample_positive_remapped = remap_indexes_to_zero(
             subgraph_sample_positive
-        ).to(device)
-        sampled_edges_negative_remapped = remap_indexes_to_zero(
-            sampled_edges_negative
-        ).to(device)
+        )
+        sampled_edges_negative_remapped = remap_indexes_to_zero(sampled_edges_negative)
         #
         sampled_edges_negative_remapped += len(subgraph_edges)
 
         all_sampled_edges_remapped = torch.cat(
             [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
-        ).to(device)
+        )
 
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
         all_sampled_edges_remapped = torch.stack(
             [
-                id_tensor.repeat(len(all_sampled_edges_remapped)).to(device),
+                id_tensor.repeat(len(all_sampled_edges_remapped)),
                 all_sampled_edges_remapped,
             ],
             dim=0,
-        ).to(device)
+        )
         subgraph_edges_remapped = torch.stack(
             [
-                id_tensor.repeat(len(subgraph_edges_remapped)).to(device),
+                id_tensor.repeat(len(subgraph_edges_remapped)),
                 subgraph_edges_remapped,
             ],
             dim=0,
-        ).to(device)
+        )
 
         # Prepare identifier of labels
         labels = torch.cat(
@@ -152,7 +150,7 @@ class GraphDataset(InMemoryDataset):
                 torch.zeros(sampled_edges_negative.shape[0]),
             ],
             dim=0,
-        ).to(device)
+        )
 
         """ Create Data """
         data = HeteroData()
