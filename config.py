@@ -12,10 +12,10 @@ from utils.profiling import Profiler
 embedding_range_dict = {
     "2": 2,
     "10": 3,
-    "1000": 6,
-    "10000": 20,
-    "100000": 30,
-    "1000000": 60,
+    "1000": 4,
+    "10000": 6,
+    "100000": 8,
+    "1000000": 12,
 }
 
 
@@ -23,6 +23,7 @@ embedding_range_dict = {
 class Config:
     epochs: int  # number of training epochs
     hidden_layer_size: int
+    encoder_layer_output_size: int  # Context vector size
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
     num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
     learning_rate: float
@@ -50,6 +51,7 @@ link_pred_config = Config(
     k=12,
     num_layers=2,
     hidden_layer_size=128,
+    encoder_layer_output_size=64,
     learning_rate=0.01,
     save_model=False,
     dataloader_config=DataLoaderConfig(
@@ -77,6 +79,7 @@ lightgcn_config = Config(
     k=12,
     num_layers=3,  # Number of LightGCN steps
     hidden_layer_size=32,
+    encoder_layer_output_size=0,  # IGNORE for LightGCN
     learning_rate=1e-3,
     save_model=False,
     dataloader_config=DataLoaderConfig(

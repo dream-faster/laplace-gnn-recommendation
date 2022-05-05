@@ -22,7 +22,7 @@ class GNNEncoder(torch.nn.Module):
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
             if index == len(self.layers) - 1:
-                x = layer(x, edge_index)
+                x = layer(x, edge_index).relu()
             else:
                 x = layer(x, edge_index).relu()
 
@@ -122,7 +122,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         if self.embedding:
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
-        return self.decoder(z_dict, edge_label_index)
+        output = self.decoder(z_dict, edge_label_index)
+        return output
 
 
     def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
