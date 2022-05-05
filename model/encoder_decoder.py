@@ -22,7 +22,7 @@ class GNNEncoder(torch.nn.Module):
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
             if index == len(self.layers) - 1:
-                x = layer(x, edge_index).relu()
+                x = layer(x, edge_index).sigmoid() # !! .sigmoid() was not in the original code
             else:
                 x = layer(x, edge_index).relu()
 
