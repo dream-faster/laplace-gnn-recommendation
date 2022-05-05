@@ -22,7 +22,7 @@ class GNNEncoder(torch.nn.Module):
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
             if index == len(self.layers) - 1:
-                x = layer(x, edge_index).sigmoid() # !! .sigmoid() was not in the original code
+                x = layer(x, edge_index)
             else:
                 x = layer(x, edge_index).relu()
 
@@ -74,16 +74,18 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
             embedding_customers = [
                 Embedding(
-                    int(customer_info.num_cat[i] + 1),
-                    int(customer_info.embedding_size[i]),
+                    num_embeddings = int(customer_info.num_cat[i] + 1),
+                    embedding_dim = int(customer_info.embedding_size[i]),
+                    max_norm = 1
                 )
                 for i in range(customer_info.num_feat)
             ]
 
             embedding_articles = [
                 Embedding(
-                    int(article_info.num_cat[i] + 1),
-                    int(article_info.embedding_size[i]),
+                    num_embeddings = int(article_info.num_cat[i] + 1),
+                    embedding_dim = int(article_info.embedding_size[i]),
+                    max_norm = 1
                 )
                 for i in range(article_info.num_feat)
             ]
