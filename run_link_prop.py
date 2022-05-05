@@ -2,6 +2,7 @@
 # Revisiting Neighborhood-based Link Prediction for Collaborative Filtering
 # https://arxiv.org/abs/2203.15789
 
+import math
 import numpy as np
 import torch
 from torch_sparse import SparseTensor, matmul
@@ -75,7 +76,7 @@ def sparse_assign(m, i, j, val):
     ).coalesce("add")
 
 
-def sparse_fill_on_mask(m, mask, val, dim=0):
+def sparse_re_assign_on_mask(m, mask, val, dim=0):
     """Fills masked values in a sparse matrix with a row or col mask. Only sets values that have been explicitly set before."""
     row, col, value = m.coo()
     prev_row, prev_col, prev_value = m[mask, :].coo() if dim == 0 else m[:, mask].coo()
@@ -146,7 +147,7 @@ def intersect2d(a, b):
 def sample_user_items(target, ratio=0.4):
     """Drop some edges for users that have more than 1 item"""
     user_deg = target.sum(dim=1)
-    candidate = sparse_fill_on_mask(target, user_deg > 1, 2, dim=0)
+    candidate = sparse_re_assign_on_mask(target, user_deg > 1, 2, dim=0)
     row, col, value = sparse_nonzero(candidate)
     rand_mask = (value == 2) & (
         torch.rand(len(value)).to(device) < ((value == 2).sum() / len(value) * ratio)
@@ -217,10 +218,11 @@ def mean_average_precision(y_true, y_pred, k=12):
 
 
 class LinkPropMulti:
-    def __init__(self, alpha, beta, gamma, delta, rounds, k):
-        self.rounds, self.k, self.alpha, self.beta, self.gamma, self.delta = (
+    def __init__(self, alpha, beta, gamma, delta, rounds, t, k):
+        self.rounds, self.k, self.t, self.alpha, self.beta, self.gamma, self.delta = (
             rounds,
             k,
+            t,
             alpha,
             beta,
             gamma,
@@ -232,10 +234,11 @@ class LinkPropMulti:
         self.M_alpha_beta = None
         self.M_gamma_delta = None
 
-    def set_params(self, alpha, beta, gamma, delta, rounds, k):
-        self.rounds, self.k, self.alpha, self.beta, self.gamma, self.delta = (
+    def set_params(self, alpha, beta, gamma, delta, rounds, t, k):
+        self.rounds, self.k, self.t, self.alpha, self.beta, self.gamma, self.delta = (
             rounds,
             k,
+            t,
             alpha,
             beta,
             gamma,
@@ -248,8 +251,9 @@ class LinkPropMulti:
         self.M_gamma_delta = None
 
         # get node degrees
-        self.user_degrees = M.sum(dim=1)
-        self.item_degrees = M.sum(dim=0)
+        if self.user_degrees == None:
+            self.user_degrees = M.sum(dim=1)
+            self.item_degrees = M.sum(dim=0)
 
         # exponentiate degrees by model params
         user_alpha = self.user_degrees ** (-self.alpha)
@@ -281,16 +285,51 @@ class LinkPropMulti:
             sparse_sizes=(M.size(0), M.size(1)),
         ).to(device)
 
-        # (lazy) link propagation, call get_preds_for_users
+    def fit_multi(self, M, batch_size=600, total=1000):
+        self.fit(M)
+        for i in range(self.rounds - 1):
+            # get top k new links and add them to M
+            M_new = M.clone()
+            for start in range(0, total, batch_size):
+                end = min(start + batch_size, total)
+                # calculate how many new links we need to add back for the updated node_degrees
+                number_of_links = M[start:end].to_dense().to(device).sum()
+                k = math.ceil(number_of_links * self.t / (end - start))
+                # get top k new links
+                predicted_new_link_indices = self.predict_topk(M, start, end, k)
+                # add them to M
+                indices = np.array([])
+                for i, row in enumerate(predicted_new_link_indices):
+                    indices = np.concatenate(
+                        (indices, list(zip([start + i] * len(row), row))), axis=None
+                    )
+                indices = indices.reshape(-1, 2)
+                row, col, value = M_new.coo()
+                M_new = (
+                    SparseTensor(
+                        row=torch.cat(
+                            (
+                                row,
+                                torch.tensor(indices.T[0], dtype=torch.long),
+                            )
+                        ),
+                        col=torch.cat(
+                            (
+                                col,
+                                torch.tensor(indices.T[1], dtype=torch.long),
+                            )
+                        ),
+                        value=torch.cat((value, torch.ones(len(indices)))),
+                        sparse_sizes=(M.size(0), M.size(1)),
+                    )
+                    .coalesce("max")
+                    .to(device)
+                )
 
-        # get top k new links
-        # TODO iterate over users
-        # target_pred = self.predict_k(M, self.k)
-
-        # # with the new links recalculate and store node degrees for next round
-        # M_new = (M.clone() + target_pred).clamp(max=1)
-        # self.user_degrees = M_new.sum(dim=1)
-        # self.item_degrees = M_new.sum(dim=0)
+            # recalculate and store node degrees for next round
+            self.user_degrees = M_new.sum(dim=1)
+            self.item_degrees = M_new.sum(dim=0)
+            self.fit(M)
 
     def get_preds_for_users(self, start, end):
         return matmul(
@@ -300,7 +339,7 @@ class LinkPropMulti:
             self.M_gamma_delta.to(device),
         ).to(device)
 
-    def predict_k(self, M, start, end, k):
+    def predict_topk(self, M, start, end, k):
         """Return top k new links"""
         user_pred = self.get_preds_for_users(start, end).to_dense().to(device)
         # take observed links out of possible predictions
@@ -308,7 +347,7 @@ class LinkPropMulti:
             user_pred - (M[start:end].to_dense().to(device) == 1).float() * 100000
         ).clamp(min=0)
         user_pred = user_pred.topk(k, dim=1)
-        # filter out zeros
+        # filter out zeros and return indices
         return [
             user_pred.indices[i, user_pred.values[i] > 0].to("cpu").long().numpy()
             for i in range(user_pred.values.size(0))
@@ -318,7 +357,7 @@ class LinkPropMulti:
         user_topk = np.array([], dtype=object)
         for start in tqdm(range(0, X.size(0), batch_size)):
             end = min(start + batch_size, X.size(0))
-            user_pred = self.predict_k(X, start, end, self.k)
+            user_pred = self.predict_topk(X, start, end, self.k)
             user_topk = np.concatenate((user_topk, user_pred), dtype=object)
         return user_topk
 
@@ -328,7 +367,7 @@ class LinkPropMulti:
     #     target_topk = np.array([])
     #     for start in tqdm(range(0, total, batch_size)):
     #         end = min(start + batch_size, total)
-    #         user_pred = self.predict_k(X, start, end, self.k)
+    #         user_pred = self.predict_topk(X, start, end, self.k)
     #         target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)
     #         # filter out zeros
     #         target_pred = [
@@ -346,7 +385,7 @@ class LinkPropMulti:
         scores = []
         for start in tqdm(range(0, total, batch_size)):
             end = min(start + batch_size, total)
-            user_pred = self.predict_k(X, start, end, self.k)
+            user_pred = self.predict_topk(X, start, end, self.k)
             target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)
             # filter out zeros
             target_pred = [
@@ -389,16 +428,17 @@ def predict(M, src, dest, alpha, beta, gamma, delta, batch_size=500):
     )
 
 
-def debug(X, y, alpha, beta, gamma, delta, batch_size=500, total=1000):
+def debug(X, y, alpha, beta, gamma, delta, rounds, t, batch_size=500, total=1000):
     linkProp = LinkPropMulti(
         alpha,
         beta,
         gamma,
         delta,
-        rounds=1,
+        rounds,
+        t,
         k=12,
     )
-    linkProp.fit(X)
+    linkProp.fit_multi(X, batch_size, total)
     score, preds = linkProp.score(X, y, batch_size, total)
     print(score)
 
@@ -411,7 +451,7 @@ def param_search(M):
         "gamma": [0.1, 0.3, 0.5, 0.7, 0.9],
         "delta": [0.1, 0.3, 0.5, 0.7, 0.9],
     }
-    linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0)
+    linkProp = LinkPropMulti(rounds=1, t=0.05, k=12, alpha=0, beta=0, gamma=0, delta=0)
     best = {"score": 0}
     for params in [dict(zip(param_grid, v)) for v in product(*param_grid.values())]:
         val, target = sample_user_items(M, 0.4)
@@ -424,7 +464,7 @@ def param_search(M):
         print(score, params)
 
     # test
-    linkProp = LinkPropMulti(rounds=1, k=12, alpha=0, beta=0, gamma=0, delta=0)
+    linkProp = LinkPropMulti(rounds=1, t=0.05, k=12, alpha=0, beta=0, gamma=0, delta=0)
     test, target = sample_user_items(M, 0.4)
     params = best["params"]
     linkProp.set_params(**params, k=12, rounds=1)
@@ -448,4 +488,4 @@ if __name__ == "__main__":
     # param_search(M)
     # predict(M, src, dest, 0.5, 0.1, 0.9, 0.3)
     data, target = sample_user_items(M, 0.1)
-    debug(data, target, 0.5, 0.1, 0.9, 0.3, batch_size=500, total=1000)
+    debug(data, target, 0.5, 0.1, 0.9, 0.3, 9, 0.05, batch_size=500, total=1000)
