@@ -217,7 +217,7 @@ def mean_average_precision(y_true, y_pred, k=12):
 
 
 class LinkPropMulti:
-    def __init__(self, rounds, k, alpha, beta, gamma, delta):
+    def __init__(self, alpha, beta, gamma, delta, rounds, k):
         self.rounds, self.k, self.alpha, self.beta, self.gamma, self.delta = (
             rounds,
             k,
@@ -232,7 +232,7 @@ class LinkPropMulti:
         self.M_alpha_beta = None
         self.M_gamma_delta = None
 
-    def set_params(self, rounds, k, alpha, beta, gamma, delta):
+    def set_params(self, alpha, beta, gamma, delta, rounds, k):
         self.rounds, self.k, self.alpha, self.beta, self.gamma, self.delta = (
             rounds,
             k,
@@ -303,74 +303,81 @@ class LinkPropMulti:
     def predict_k(self, M, start, end, k):
         """Return top k new links"""
         user_pred = self.get_preds_for_users(start, end).to_dense().to(device)
-        # take observed links out of predictions
+        # take observed links out of possible predictions
         user_pred = (
             user_pred - (M[start:end].to_dense().to(device) == 1).float() * 100000
         ).clamp(min=0)
-        return user_pred.topk(k, dim=1)[1].to(device)
+        user_pred = user_pred.topk(k, dim=1)
+        # filter out zeros
+        return [
+            user_pred.indices[i, user_pred.values[i] > 0].to("cpu").long().numpy()
+            for i in range(user_pred.values.size(0))
+        ]
 
     def predict(self, X, batch_size=600):
-        user_topk = torch.empty(size=(0, self.k)).to("cpu")
+        user_topk = np.array([], dtype=object)
         for start in tqdm(range(0, X.size(0), batch_size)):
             end = min(start + batch_size, X.size(0))
-            user_pred = self.predict_k(X, start, end, self.k).to("cpu")
-            user_topk = torch.cat((user_topk, user_pred))
+            user_pred = self.predict_k(X, start, end, self.k)
+            user_topk = np.concatenate((user_topk, user_pred), dtype=object)
         return user_topk
 
-    def score(self, X, y, batch_size=500, total=1000):
-        user_topk = torch.empty(size=(0, self.k)).to("cpu")
-        target_topk = torch.empty(size=(0, self.k)).to("cpu")
+    # def score_ndcg(self, X, y, batch_size=500, total=1000):
+    #     # TODO ndcg is on the whole item array of 0s and 1s
+    #     user_topk = np.array([])
+    #     target_topk = np.array([])
+    #     for start in tqdm(range(0, total, batch_size)):
+    #         end = min(start + batch_size, total)
+    #         user_pred = self.predict_k(X, start, end, self.k)
+    #         target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)
+    #         # filter out zeros
+    #         target_pred = [
+    #             target_pred.indices[i, target_pred.values[i] > 0].to("cpu")
+    #             for i in range(target_pred.values.size(0))
+    #         ]
+    #         user_topk = np.concatenate((user_topk, user_pred))
+    #         target_topk = np.concatenate((target_topk, target_pred))
+
+    # return ndcg_score(target_topk, user_topk, k=self.k)
+
+    def score(self, X, y, batch_size=600, total=1000):
+        user_topk = np.array([], dtype=object)
+        target_topk = np.array([], dtype=object)
+        scores = []
         for start in tqdm(range(0, total, batch_size)):
             end = min(start + batch_size, total)
-            user_pred = self.predict_k(X, start, end, self.k).to("cpu")
-            target_pred = (
-                y[start:end]
-                .to_dense()
-                .squeeze()
-                .to(device)
-                .topk(self.k, dim=1)[1]
+            user_pred = self.predict_k(X, start, end, self.k)
+            target_pred = y[start:end].to_dense().squeeze().topk(self.k, dim=1)
+            # filter out zeros
+            target_pred = [
+                target_pred.indices[i, target_pred.values[i] > 0]
                 .to("cpu")
-            )
-            user_topk = torch.cat((user_topk, user_pred))
-            target_topk = torch.cat((target_topk, target_pred))
-
-        # TODO only calculating for users with at least one item in true target
-        # target_t = target_topk[(y[start:end].to_dense().squeeze().topk(self.k, dim=1)[0] > 0).any(dim=1)]
-        return mean_average_precision(target_topk, user_topk, k=self.k)
-
-    def score_mapk(self, X, y, batch_size=600):
-        user_topk = torch.empty(size=(0, self.k)).to("cpu")
-        target_topk = torch.empty(size=(0, self.k)).to("cpu")
-        scores = []
-        for start in tqdm(range(0, X.size(0), batch_size)):
-            end = min(start + batch_size, X.size(0))
-            user_pred = self.predict_k(X, start, end, self.k).to("cpu")
-            target_pred = (
-                y[start:end]
-                .to_dense()
-                .squeeze()
-                .to(device)
-                .topk(self.k, dim=1)[1]
-                .to("cpu")
-            )
+                .long()
+                .numpy()
+                for i in range(target_pred.values.size(0))
+            ]
+            user_topk = np.concatenate((user_topk, user_pred), dtype=object)
+            target_topk = np.concatenate((target_topk, target_pred), dtype=object)
             scores.append(mean_average_precision(target_pred, user_pred, k=self.k))
             print(np.array(scores).mean())
-            user_topk = torch.cat((user_topk, user_pred))
-            target_topk = torch.cat((target_topk, target_pred))
 
-        # TODO only calculating for users with at least one item in true target
-        # target_t = target_topk[(y[start:end].to_dense().squeeze().topk(self.k, dim=1)[0] > 0).any(dim=1)]
         return np.array(scores).mean(), user_topk
 
 
-def train(M, src, dest, src_map, dest_map):
-    data, target = sample_user_items(M, 0.4)
-    linkProp = LinkPropMulti(rounds=1, k=12, alpha=0.2, beta=0.5, gamma=0.5, delta=0.1)
-    linkProp.fit(data)
-    score, preds = linkProp.score_mapk(data, target)
-    submission = pd.DataFrame(preds.long().apply_(lambda x: dest[x]).to_numpy()).astype(
-        "string"
+def predict(M, src, dest, alpha, beta, gamma, delta, batch_size=500):
+    linkProp = LinkPropMulti(
+        alpha,
+        beta,
+        gamma,
+        delta,
+        rounds=1,
+        k=12,
     )
+    linkProp.fit(M)
+    preds = linkProp.predict(M, batch_size)
+    submission = pd.DataFrame(
+        [list(map(lambda x: dest[x], preds[i])) for i in len(preds)]
+    ).astype("string")
     submission["prediction"] = (
         submission[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
         .agg(" 0".join, axis=1)
@@ -382,8 +389,22 @@ def train(M, src, dest, src_map, dest_map):
     )
 
 
+def debug(X, y, alpha, beta, gamma, delta, batch_size=500, total=1000):
+    linkProp = LinkPropMulti(
+        alpha,
+        beta,
+        gamma,
+        delta,
+        rounds=1,
+        k=12,
+    )
+    linkProp.fit(X)
+    score, preds = linkProp.score(X, y, batch_size, total)
+    print(score)
+
+
 # find optimal params
-def param_search(M, src, dest, src_map, dest_map):
+def param_search(M):
     param_grid = {
         "alpha": [0.1, 0.3, 0.5, 0.7, 0.9],
         "beta": [0.1, 0.3, 0.5, 0.7, 0.9],
@@ -421,9 +442,10 @@ def param_search(M, src, dest, src_map, dest_map):
 # 0.5, 0.5, 0.9, 0.1 > 0.526
 # 0.5, 0.7, 0.7, 0.3 > 0.519
 
-# figure out if my score is correct
-
 M, src, dest, src_map, dest_map = load_data()
 
 if __name__ == "__main__":
-    param_search(M, src, dest, src_map, dest_map)
+    # param_search(M)
+    # predict(M, src, dest, 0.5, 0.1, 0.9, 0.3)
+    data, target = sample_user_items(M, 0.1)
+    debug(data, target, 0.5, 0.1, 0.9, 0.3, batch_size=500, total=1000)
