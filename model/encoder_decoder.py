@@ -1,6 +1,6 @@
 import torch
 from data.types import DataLoaderConfig, FeatureInfo
-from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm2d
+from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
@@ -68,8 +68,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(decoder_layers)
         
-        self.encoder_layer_norm_customer = BatchNorm2d(encoder_layers[-1].out_channels)
-        self.encoder_layer_norm_article = BatchNorm2d(encoder_layers[-1].out_channels)
+        self.encoder_layer_norm_customer = BatchNorm1d(encoder_layers[-1].out_channels)
+        self.encoder_layer_norm_article = BatchNorm1d(encoder_layers[-1].out_channels)
 
         if self.embedding:
             customer_info, article_info = feature_info
