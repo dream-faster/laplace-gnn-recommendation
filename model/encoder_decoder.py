@@ -74,16 +74,18 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
             embedding_customers = [
                 Embedding(
-                    int(customer_info.num_cat[i] + 1),
-                    int(customer_info.embedding_size[i]),
+                    num_embeddings = int(customer_info.num_cat[i] + 1),
+                    embedding_dim = int(customer_info.embedding_size[i]),
+                    max_norm = 1
                 )
                 for i in range(customer_info.num_feat)
             ]
 
             embedding_articles = [
                 Embedding(
-                    int(article_info.num_cat[i] + 1),
-                    int(article_info.embedding_size[i]),
+                    num_embeddings = int(article_info.num_cat[i] + 1),
+                    embedding_dim = int(article_info.embedding_size[i]),
+                    max_norm = 1
                 )
                 for i in range(article_info.num_feat)
             ]
@@ -122,7 +124,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         if self.embedding:
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
-        return self.decoder(z_dict, edge_label_index)
+        output = self.decoder(z_dict, edge_label_index)
+        return output
 
 
     def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:

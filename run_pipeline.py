@@ -39,11 +39,11 @@ def run_pipeline(config: Config):
         encoder_layers=get_SAGEConv_layers(
             num_layers=config.num_layers,
             hidden_channels=config.hidden_layer_size,
-            out_channels=config.hidden_layer_size,
+            out_channels=config.encoder_layer_output_size,
         ),
         decoder_layers=get_linear_layers(
             num_layers=config.num_layers,
-            in_channels=config.hidden_layer_size * 2,
+            in_channels=config.encoder_layer_output_size * 2,
             hidden_channels=config.hidden_layer_size,
             out_channels=1,
         ),
@@ -81,6 +81,9 @@ def run_pipeline(config: Config):
         else:
             print("| Saving Best Generalized Model...")
             torch.save(model, f"model/saved/model_final.pt")
+            old_val_precision = (
+                -1
+            )  # We should only save it at the inflection point from decreasing one step
 
         if epoch % int(config.epochs * config.save_every) == 0:
             print("| Saving Model at a regular interval...")
