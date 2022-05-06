@@ -4,21 +4,21 @@ from torch.nn import Linear
 
 
 def get_SAGEConv_layers(
-    num_layers: int, hidden_channels: int, out_channels: int
+    num_layers: int, hidden_channels: int, out_channels: int, agg_type: str
 ) -> nn.ModuleList:
     from torch_geometric.nn import SAGEConv
 
     conv_single_layer = SAGEConv(
         (-1, -1),
         hidden_channels,
-        aggr="add",
+        aggr=agg_type,
         normalize=False,
         bias=True,
     )
     conv_last_layer = SAGEConv(
         (-1, -1),
         out_channels,
-        aggr="add",
+        aggr=agg_type,
         normalize=False,
         bias=True,
     )

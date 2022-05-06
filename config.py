@@ -28,6 +28,8 @@ class Config:
     num_gnn_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
     num_linear_layers: int  # number of linear layers in the decoder
     learning_rate: float
+    conv_agg_type: str  # "add", "mean", "max", "lstm"
+    heterogeneous_prop_agg_type: str  # "sum", "mean", "min", "max", "mul"
     save_model: bool
     dataloader_config: DataLoaderConfig
     eval_every: int  # (LightGCN) evaluation to run every n epoch
@@ -54,6 +56,8 @@ link_pred_config = Config(
     num_linear_layers=2,
     hidden_layer_size=128,
     encoder_layer_output_size=64,
+    conv_agg_type="add",
+    heterogeneous_prop_agg_type="sum",
     learning_rate=0.01,
     save_model=False,
     dataloader_config=DataLoaderConfig(
@@ -84,6 +88,8 @@ lightgcn_config = Config(
     hidden_layer_size=32,
     encoder_layer_output_size=0,  # IGNORE for LightGCN
     learning_rate=1e-3,
+    conv_agg_type="add",  # IGNORE for LightGCN
+    heterogeneous_prop_agg_type="sum",  # IGNORE for LightGCN
     save_model=False,
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
