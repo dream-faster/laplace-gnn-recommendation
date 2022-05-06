@@ -37,12 +37,12 @@ def run_pipeline(config: Config):
     print("| Creating Model...")
     model = Encoder_Decoder_Model(
         encoder_layers=get_SAGEConv_layers(
-            num_layers=config.num_layers,
+            num_layers=config.num_gnn_layers,
             hidden_channels=config.hidden_layer_size,
             out_channels=config.encoder_layer_output_size,
         ),
         decoder_layers=get_linear_layers(
-            num_layers=config.num_layers,
+            num_layers=config.num_linear_layers,
             in_channels=config.encoder_layer_output_size * 2,
             hidden_channels=config.hidden_layer_size,
             out_channels=1,

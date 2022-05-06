@@ -17,7 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def create_dataloaders(
     config: DataLoaderConfig,
-) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap,]:
+) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap, HeteroData]:
     data_dir = "data/derived/"
     train_dataset = GraphDataset(
         config=config,

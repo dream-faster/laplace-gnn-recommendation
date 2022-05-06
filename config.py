@@ -25,7 +25,8 @@ class Config:
     hidden_layer_size: int
     encoder_layer_output_size: int  # Context vector size
     k: int  # value of k for recall@k. It is important to set this to a reasonable value!
-    num_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
+    num_gnn_layers: int  # number of  layers (i.e., number of hops to consider during propagation)
+    num_linear_layers: int  # number of linear layers in the decoder
     learning_rate: float
     save_model: bool
     dataloader_config: DataLoaderConfig
@@ -49,7 +50,8 @@ class Config:
 link_pred_config = Config(
     epochs=100,
     k=12,
-    num_layers=2,
+    num_gnn_layers=1,
+    num_linear_layers=2,
     hidden_layer_size=128,
     encoder_layer_output_size=64,
     learning_rate=0.01,
@@ -77,7 +79,8 @@ link_pred_config = Config(
 lightgcn_config = Config(
     epochs=1000,
     k=12,
-    num_layers=3,  # Number of LightGCN steps
+    num_gnn_layers=3,  # Number of LightGCN steps
+    num_linear_layers=0,  # IGNORE for LightGCN
     hidden_layer_size=32,
     encoder_layer_output_size=0,  # IGNORE for LightGCN
     learning_rate=1e-3,
