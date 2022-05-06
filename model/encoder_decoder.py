@@ -60,11 +60,12 @@ class Encoder_Decoder_Model(torch.nn.Module):
         feature_info: FeatureInfo,
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
+        heterogeneous_prop_agg_type: str, # "sum", "mean", "min", "max", "mul"
     ):
         super().__init__()
         self.embedding: bool = embedding
         self.encoder = GNNEncoder(encoder_layers)
-        self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
+        self.encoder = to_hetero(self.encoder, metadata, aggr=heterogeneous_prop_agg_type)
         self.decoder = EdgeDecoder(decoder_layers)
 
         if self.embedding:
