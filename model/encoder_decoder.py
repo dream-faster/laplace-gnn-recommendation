@@ -1,6 +1,6 @@
 import torch
 from data.types import DataLoaderConfig, FeatureInfo
-from torch.nn import Linear, Embedding, ModuleList
+from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm2d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
@@ -18,6 +18,7 @@ class GNNEncoder(torch.nn.Module):
     ):
         super().__init__()
         self.layers = layers
+        
 
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
@@ -66,6 +67,9 @@ class Encoder_Decoder_Model(torch.nn.Module):
         self.encoder = GNNEncoder(encoder_layers)
         self.encoder = to_hetero(self.encoder, metadata, aggr="sum")
         self.decoder = EdgeDecoder(decoder_layers)
+        
+        self.encoder_layer_norm_customer = BatchNorm2d(encoder_layers[-1].out_channels)
+        self.encoder_layer_norm_article = BatchNorm2d(encoder_layers[-1].out_channels)
 
         if self.embedding:
             customer_info, article_info = feature_info
@@ -124,6 +128,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         if self.embedding:
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
+        z_dict['customer'] = self.encoder_layer_norm_customer(z_dict['customer'])
+        z_dict['article'] = self.encoder_layer_norm_article(z_dict['article'])
         output = self.decoder(z_dict, edge_label_index)
         return output
 

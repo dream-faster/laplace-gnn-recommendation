@@ -8,13 +8,18 @@
             "name": "Run pipeline",
             "type": "python",
             "request": "launch",
-            "module": "run_command",
-            "args": [
-                "--epochs",
-                "5",
-                "--type",
-                "encoder"
-            ]
+            "module": "run_pipeline",
+            // "args": [
+            //     "--epochs",
+            //     "5",
+            //     "--type",
+            //     "encoder"
+            // ],
+            // "justMyCode": false,
+            // "debugOptions": [
+            //     "DebugStdLib"
+            // ],
+            "debugStdLib": true
         }
     ]
 }
