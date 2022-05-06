@@ -37,12 +37,13 @@ def run_pipeline(config: Config):
     print("| Creating Model...")
     model = Encoder_Decoder_Model(
         encoder_layers=get_SAGEConv_layers(
-            num_layers=config.num_layers,
+            num_layers=config.num_gnn_layers,
             hidden_channels=config.hidden_layer_size,
             out_channels=config.encoder_layer_output_size,
+            agg_type=config.conv_agg_type,
         ),
         decoder_layers=get_linear_layers(
-            num_layers=config.num_layers,
+            num_layers=config.num_linear_layers,
             in_channels=config.encoder_layer_output_size * 2,
             hidden_channels=config.hidden_layer_size,
             out_channels=1,
@@ -50,6 +51,7 @@ def run_pipeline(config: Config):
         feature_info=get_feature_info(full_data),
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
+        heterogeneous_prop_agg_type=config.heterogeneous_prop_agg_type,
     ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number
