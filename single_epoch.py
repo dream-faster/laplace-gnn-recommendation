@@ -25,6 +25,8 @@ def train(
     x, edge_index, edge_label_index, edge_label = select_properties(train_data)
     criterion = torch.nn.BCEWithLogitsLoss()
 
+    optimizer.zero_grad()
+
     out = model(x, edge_index, edge_label_index).view(-1)
     loss = criterion(out, edge_label)
     loss.backward()
