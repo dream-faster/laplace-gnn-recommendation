@@ -18,8 +18,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if isnotebook():
     from tqdm.notebook import tqdm as tqdm_notebook
-
+    print("Running in Notebook")
     tqdm = tqdm_notebook
+else: 
+    print("Running in python shell")
 
 
 def train(
