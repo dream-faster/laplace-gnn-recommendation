@@ -72,16 +72,17 @@ def epoch_with_dataloader(
         if config.profiler is not None:
             config.profiler.print_stats(i)
 
-    val_loop = tqdm(iter(val_loader), colour="yellow")
-    for i, data in enumerate(val_loop):
-        if config.evaluate_break_at and i == config.evaluate_break_at:
-            break
-        val_loop.set_description(f"VAL | epoch: {epoch_id}")
-        val_recall, val_precision = test(data.to(device), model, [], k=config.k)
-        val_recalls.append(val_recall)
-        val_precisions.append(val_precision)
-        val_loop.set_postfix_str(
-            f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
-        )
+    if epoch_id % config.eval_every == 0:
+        val_loop = tqdm(iter(val_loader), colour="yellow")
+        for i, data in enumerate(val_loop):
+            if config.evaluate_break_at and i == config.evaluate_break_at:
+                break
+            val_loop.set_description(f"VAL | epoch: {epoch_id}")
+            val_recall, val_precision = test(data.to(device), model, [], k=config.k)
+            val_recalls.append(val_recall)
+            val_precisions.append(val_precision)
+            val_loop.set_postfix_str(
+                f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
+            )
 
     return np.mean(val_precisions)
