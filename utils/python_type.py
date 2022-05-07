@@ -4,6 +4,7 @@ import os
 def isnotebook():
     if "COLAB_GPU" in os.environ:
         print("I'm running on Colab")
+        return True
     else:
         try:
             shell = get_ipython().__class__.__name__
