@@ -87,7 +87,7 @@ def run_pipeline(config: Config):
                 -1
             )  # We should only save it at the inflection point from decreasing one step
 
-        if epoch % int(config.epochs * config.save_every) == 0:
+        if epoch % max(1, int(config.epochs * config.save_every)) == 0:
             print("| Saving Model at a regular interval...")
             torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 
