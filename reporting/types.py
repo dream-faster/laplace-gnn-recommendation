@@ -5,18 +5,19 @@ from typing import Optional
 @dataclass
 class BaseStats:
     type: Optional[str]
-    epoch: Optional[int]
 
 
 @dataclass
 class ContinousStatsTrain(BaseStats):
     loss: float
+    epoch: int
 
 
 @dataclass
 class ContinousStatsVal(BaseStats):
     recall_val: float
     precision_val: float
+    epoch: int
 
 
 @dataclass
