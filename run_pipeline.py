@@ -13,7 +13,14 @@ from single_epoch import epoch_with_dataloader
 from model.layers import get_linear_layers, get_SAGEConv_layers
 from single_epoch import test
 
-from reporting.wandb import setup_config
+from reporting.wandb import setup_config, report_results
+from reporting.types import (
+    Stats,
+    BaseStats,
+    ContinousStatsVal,
+    ContinousStatsTest,
+    ContinousStatsTrain,
+)
 
 
 def run_pipeline(config: Config, with_wandb: bool = False):
@@ -70,7 +77,7 @@ def run_pipeline(config: Config, with_wandb: bool = False):
     old_val_precision = -1
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        val_precision = epoch_with_dataloader(
+        loss_mean, val_recall_mean, val_precision_mean = epoch_with_dataloader(
             model,
             optimizer,
             train_loader,
@@ -81,8 +88,8 @@ def run_pipeline(config: Config, with_wandb: bool = False):
         )
 
         # We should save our model if validation precision starts decreasing (it starts to overfit)
-        if val_precision >= old_val_precision:
-            old_val_precision = val_precision.copy()
+        if val_precision_mean >= old_val_precision:
+            old_val_precision = val_precision_mean.copy()
         else:
             print("| Saving Best Generalized Model...")
             torch.save(model.state_dict(), f"model/saved/model_final.pt")
@@ -93,6 +100,13 @@ def run_pipeline(config: Config, with_wandb: bool = False):
         if epoch % max(1, int(config.epochs * config.save_every)) == 0:
             print("| Saving Model at a regular interval...")
             torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+
+        train_stats = ContinousStatsTrain(type="train", loss=loss_mean)
+        val_stats = ContinousStatsVal(
+            type="val", recall_val=val_recall_mean, precision_val=val_precision_mean
+        )
+        report_results(output_stats=train_stats, wandb=wandb, final=False)
+        report_results(output_stats=val_stats, wandb=wandb, final=False)
 
     # Testing loop
     test_recalls, test_precisions = [], []
@@ -107,6 +121,12 @@ def run_pipeline(config: Config, with_wandb: bool = False):
         test_loop.set_postfix_str(
             f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
         )
+    test_stats = ContinousStatsTest(
+        type="test",
+        recall_test=np.mean(test_recalls),
+        precision_test=np.mean(test_precisions),
+    )
+    report_results(output_stats=test_stats, wandb=wandb, final=True)
 
 
 if __name__ == "__main__":

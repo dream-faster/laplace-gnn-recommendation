@@ -1,6 +1,6 @@
 from config import Config
-from typing import Optional
-from reporting.types import Stats
+from typing import Optional, Union
+from reporting.types import Stats, BaseStats
 
 import wandb
 import os
@@ -46,17 +46,20 @@ def override_config_with_wandb_values(
     return Config(**config_dict)
 
 
-def send_report_to_wandb(stats: Stats, wandb: Optional[object]):
+def send_report_to_wandb(
+    stats: Union[Stats, BaseStats], wandb: Optional[object], final: bool = False
+):
     if wandb is None:
         return
 
     run = wandb.run
     run.save()
 
-    for key, value in stats.items():
+    for key, value in vars(stats).items():
         run.log({key: value})
 
-    run.finish()
+    if final:
+        run.finish()
 
 
 def setup_config(
@@ -70,3 +73,7 @@ def setup_config(
         config = new_config
 
     return wandb, config
+
+
+def report_results(output_stats: Union[Stats, BaseStats], wandb, final: bool = False):
+    send_report_to_wandb(output_stats, wandb)

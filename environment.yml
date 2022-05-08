@@ -26,5 +26,6 @@ dependencies:
       - torch-sparse
       - torch-scatter
       - python-dotenv
+      - wandb
 
 prefix: /usr/local/anaconda3/envs/fashion
