@@ -82,14 +82,14 @@ def run_pipeline(config: Config):
             old_val_precision = val_precision.copy()
         else:
             print("| Saving Best Generalized Model...")
-            torch.save(model, f"model/saved/model_final.pt")
+            torch.save(model.state_dict(), f"model/saved/model_final.pt")
             old_val_precision = (
                 -1
             )  # We should only save it at the inflection point from decreasing one step
 
-        if epoch % int(config.epochs * config.save_every) == 0:
+        if epoch % max(1, int(config.epochs * config.save_every)) == 0:
             print("| Saving Model at a regular interval...")
-            torch.save(model, f"model/saved/model_{epoch:03d}.pt")
+            torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 
     # Testing loop
     test_recalls, test_precisions = [], []

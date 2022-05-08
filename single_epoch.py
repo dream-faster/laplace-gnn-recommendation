@@ -7,7 +7,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch_geometric.data import HeteroData, Data
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
@@ -24,6 +24,8 @@ def train(
 
     x, edge_index, edge_label_index, edge_label = select_properties(train_data)
     criterion = torch.nn.BCEWithLogitsLoss()
+
+    optimizer.zero_grad()
 
     out = model(x, edge_index, edge_label_index).view(-1)
     loss = criterion(out, edge_label)
@@ -70,16 +72,17 @@ def epoch_with_dataloader(
         if config.profiler is not None:
             config.profiler.print_stats(i)
 
-    val_loop = tqdm(iter(val_loader), colour="yellow")
-    for i, data in enumerate(val_loop):
-        if config.evaluate_break_at and i == config.evaluate_break_at:
-            break
-        val_loop.set_description(f"VAL | epoch: {epoch_id}")
-        val_recall, val_precision = test(data.to(device), model, [], k=config.k)
-        val_recalls.append(val_recall)
-        val_precisions.append(val_precision)
-        val_loop.set_postfix_str(
-            f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
-        )
+    if epoch_id % config.eval_every == 0:
+        val_loop = tqdm(iter(val_loader), colour="yellow")
+        for i, data in enumerate(val_loop):
+            if config.evaluate_break_at and i == config.evaluate_break_at:
+                break
+            val_loop.set_description(f"VAL | epoch: {epoch_id}")
+            val_recall, val_precision = test(data.to(device), model, [], k=config.k)
+            val_recalls.append(val_recall)
+            val_precisions.append(val_precision)
+            val_loop.set_postfix_str(
+                f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
+            )
 
     return np.mean(val_precisions)

@@ -11,10 +11,10 @@ from utils.profiling import Profiler
 
 embedding_range_dict = {
     "2": 2,
-    "10": 3,
-    "1000": 6,
+    "10": 4,
+    "1000": 12,
     "10000": 20,
-    "100000": 30,
+    "100000": 40,
     "1000000": 60,
 }
 
