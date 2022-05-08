@@ -101,12 +101,21 @@ def run_pipeline(config: Config, with_wandb: bool = False):
             print("| Saving Model at a regular interval...")
             torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 
-        train_stats = ContinousStatsTrain(type="train", loss=loss_mean)
-        val_stats = ContinousStatsVal(
-            type="val", recall_val=val_recall_mean, precision_val=val_precision_mean
+        report_results(
+            output_stats=ContinousStatsTrain(type="train", loss=loss_mean, epoch=epoch),
+            wandb=wandb,
+            final=False,
         )
-        report_results(output_stats=train_stats, wandb=wandb, final=False)
-        report_results(output_stats=val_stats, wandb=wandb, final=False)
+        report_results(
+            output_stats=ContinousStatsVal(
+                type="val",
+                recall_val=val_recall_mean,
+                precision_val=val_precision_mean,
+                epoch=epoch,
+            ),
+            wandb=wandb,
+            final=False,
+        )
 
     # Testing loop
     test_recalls, test_precisions = [], []
@@ -121,13 +130,17 @@ def run_pipeline(config: Config, with_wandb: bool = False):
         test_loop.set_postfix_str(
             f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
         )
-    test_stats = ContinousStatsTest(
-        type="test",
-        recall_test=np.mean(test_recalls),
-        precision_test=np.mean(test_precisions),
+
+    report_results(
+        output_stats=ContinousStatsTest(
+            type="test",
+            recall_test=np.mean(test_recalls),
+            precision_test=np.mean(test_precisions),
+        ),
+        wandb=wandb,
+        final=True,
     )
-    report_results(output_stats=test_stats, wandb=wandb, final=True)
 
 
 if __name__ == "__main__":
-    run_pipeline(link_pred_config)
+    run_pipeline(link_pred_config, with_wandb=True)

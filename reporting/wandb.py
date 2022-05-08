@@ -6,6 +6,10 @@ import wandb
 import os
 
 
+def isPrimitive(obj):
+    return not hasattr(obj, "__dict__")
+
+
 def get_wandb():
     from dotenv import load_dotenv
 
@@ -40,8 +44,9 @@ def override_config_with_wandb_values(
     wandb_config: dict = wandb.config
 
     config_dict = vars(raw_config)
-    for k in config_dict:
-        config_dict[k] = wandb_config[k]
+    for k, v in config_dict.items():
+        if isPrimitive(v):
+            config_dict[k] = wandb_config[k]
 
     return Config(**config_dict)
 
@@ -53,10 +58,10 @@ def send_report_to_wandb(
         return
 
     run = wandb.run
-    run.save()
+    if final:
+        run.save()
 
-    for key, value in vars(stats).items():
-        run.log({key: value})
+    run.log(vars(stats))
 
     if final:
         run.finish()
@@ -65,6 +70,7 @@ def send_report_to_wandb(
 def setup_config(
     project_name: str, with_wandb: bool, raw_config: Config
 ) -> tuple[Optional[object], Config]:
+
     wandb = None
     config = raw_config
     if with_wandb:
@@ -76,4 +82,4 @@ def setup_config(
 
 
 def report_results(output_stats: Union[Stats, BaseStats], wandb, final: bool = False):
-    send_report_to_wandb(output_stats, wandb)
+    send_report_to_wandb(output_stats, wandb, final)

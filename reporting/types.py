@@ -5,6 +5,7 @@ from typing import Optional
 @dataclass
 class BaseStats:
     type: Optional[str]
+    epoch: Optional[int]
 
 
 @dataclass

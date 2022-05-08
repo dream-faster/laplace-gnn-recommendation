@@ -50,7 +50,7 @@ class Config:
 
 
 link_pred_config = Config(
-    epochs=100,
+    epochs=10,
     k=12,
     num_gnn_layers=1,
     num_linear_layers=2,
