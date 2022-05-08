@@ -6,6 +6,7 @@ from typing import Union, Optional, List
 from .matching.type import Matcher
 from utils.constants import Constants
 from config import DataLoaderConfig
+from typing import Tuple
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -36,6 +37,36 @@ class GraphDataset(InMemoryDataset):
         all_edges = self.graph[Constants.edge_key].edge_index
         subgraph_edges = torch.tensor(self.edges[idx])
 
+        (
+            user_features,
+            article_features,
+            subgraph_edges_remapped,
+            all_sampled_edges_remapped,
+            labels,
+        ) = self.single_user(idx, all_edges, subgraph_edges)
+
+        """ Create Data """
+        data = HeteroData()
+        data[Constants.node_user].x = torch.unsqueeze(user_features, dim=0)
+        data[Constants.node_item].x = article_features
+
+        # Add original directional edges
+        data[Constants.edge_key].edge_index = subgraph_edges_remapped
+        data[Constants.edge_key].edge_label_index = all_sampled_edges_remapped
+        data[Constants.edge_key].edge_label = labels
+
+        # Add reverse edges
+        reverse_key = torch.LongTensor([1, 0])
+        data[Constants.rev_edge_key].edge_index = subgraph_edges_remapped[reverse_key]
+        data[Constants.rev_edge_key].edge_label_index = all_sampled_edges_remapped[
+            reverse_key
+        ]
+        data[Constants.rev_edge_key].edge_label = labels
+        return data
+
+    def single_user(
+        self, idx: int, all_edges: Tensor, subgraph_edges: Tensor
+    ) -> Tuple[Tensor, Tensor, Tensor]:
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
         )
@@ -115,25 +146,6 @@ class GraphDataset(InMemoryDataset):
             ],
             dim=0,
         )
-
-        """ Create Data """
-        data = HeteroData()
-        data[Constants.node_user].x = torch.unsqueeze(user_features, dim=0)
-        data[Constants.node_item].x = article_features
-
-        # Add original directional edges
-        data[Constants.edge_key].edge_index = subgraph_edges_remapped
-        data[Constants.edge_key].edge_label_index = all_sampled_edges_remapped
-        data[Constants.edge_key].edge_label = labels
-
-        # Add reverse edges
-        reverse_key = torch.LongTensor([1, 0])
-        data[Constants.rev_edge_key].edge_index = subgraph_edges_remapped[reverse_key]
-        data[Constants.rev_edge_key].edge_label_index = all_sampled_edges_remapped[
-            reverse_key
-        ]
-        data[Constants.rev_edge_key].edge_label = labels
-        return data
 
 
 def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
