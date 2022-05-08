@@ -12,16 +12,8 @@ from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
 from utils.get_info import select_properties
-from utils.python_type import isnotebook
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# if isnotebook():
-#     from tqdm.notebook import tqdm as tqdm_notebook
-#     print("Running in Notebook")
-#     tqdm = tqdm_notebook
-# else:
-#     print("Running in python shell")
 
 
 def train(
