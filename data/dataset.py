@@ -6,6 +6,7 @@ from typing import Union, Optional, List
 from .matching.type import Matcher
 from utils.constants import Constants
 from config import DataLoaderConfig
+from .query_server.queries import ArticleQueryServer, UserQueryServer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -14,33 +15,42 @@ class GraphDataset(InMemoryDataset):
     def __init__(
         self,
         config: DataLoaderConfig,
-        edge_path: str,
-        graph_path: str,
+        suffix: str,
         train: bool,
         matchers: Optional[List[Matcher]] = None,
     ):
-        self.edges = torch.load(edge_path)
-        self.graph = torch.load(graph_path)
+
+        self.users = UserQueryServer(None, suffix)
+        self.articles = ArticleQueryServer(None, suffix)
+        self.graph = torch.load(f"data/derived/{suffix}_graph.pt")
         self.matchers = matchers
+        if self.matchers is not None:
+            for matcher in self.matchers:
+                matcher.users = self.users
+                matcher.articles = self.articles
         self.config = config
         self.train = train
 
     def __len__(self) -> int:
-        return len(self.edges)
+        return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
-        # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
-        subgraph_edges = torch.tensor(self.edges[idx])
+        subgraph_edges = self.users.get_item(
+            idx
+        )  # all the positive edges for the current user
 
+        # if self.config.num_neighbors > 1:
+        #     for i in range(self.config.num_neighbors - 1):
+        #         subgraph_edges = torch.cat([subgraph_edges, self.users.get_item(idx)], dim=0)
+
+        # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
         )
-
-        # Sample positive edges from subgraph
         subgraph_sample_positive = subgraph_edges[
-            torch.randint(low=0, high=len(self.edges[idx]), size=(samp_cut,))
+            torch.randint(low=0, high=len(subgraph_edges), size=(samp_cut,))
         ]
 
         if self.train:
@@ -48,9 +58,7 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative = get_negative_edges_random(
                 subgraph_edges_to_filter=subgraph_edges,
                 all_edges=all_edges,
-                num_negative_edges=int(
-                    self.config.negative_edges_ratio * len(subgraph_sample_positive)
-                ),
+                num_negative_edges=int(self.config.negative_edges_ratio * samp_cut),
             )
         else:
             assert self.matchers is not None, "Must provide matchers for test"
@@ -58,10 +66,10 @@ class GraphDataset(InMemoryDataset):
             candidates = torch.cat(
                 [matcher.get_matches(idx) for matcher in self.matchers],
                 dim=0,
-            )
+            ).unique()
             # but never add positive edges
             sampled_edges_negative = only_items_with_count_one(
-                torch.cat([candidates.unique(), subgraph_edges], dim=0)
+                torch.cat([candidates, subgraph_edges], dim=0)
             )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
@@ -76,11 +84,11 @@ class GraphDataset(InMemoryDataset):
         """ Remap and Prepare Edges """
         # Remap IDs
         buckets = torch.unique(all_touched_edges)
-        subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
-        subgraph_sample_positive_remapped = remap_indexes_to_zero(
+        subgraph_edges_remapped = remap_indices_to_zero(subgraph_edges, buckets=buckets)
+        subgraph_sample_positive_remapped = remap_indices_to_zero(
             subgraph_sample_positive, buckets=buckets
         )
-        sampled_edges_negative_remapped = remap_indexes_to_zero(
+        sampled_edges_negative_remapped = remap_indices_to_zero(
             sampled_edges_negative, buckets=buckets
         )
 
@@ -88,21 +96,12 @@ class GraphDataset(InMemoryDataset):
             [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
         )
 
-        # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
-        all_sampled_edges_remapped = torch.stack(
-            [
-                id_tensor.repeat(len(all_sampled_edges_remapped)),
-                all_sampled_edges_remapped,
-            ],
-            dim=0,
+        all_sampled_edges_remapped = create_edges_from_target_indices(
+            id_tensor, all_sampled_edges_remapped
         )
-        subgraph_edges_remapped = torch.stack(
-            [
-                id_tensor.repeat(len(subgraph_edges_remapped)),
-                subgraph_edges_remapped,
-            ],
-            dim=0,
+        subgraph_edges_remapped = create_edges_from_target_indices(
+            id_tensor, subgraph_edges_remapped
         )
 
         # Prepare identifier of labels
@@ -157,7 +156,7 @@ def get_negative_edges_random(
         only_negative_edges = only_items_with_count_one(
             torch.cat(
                 (
-                    torch.range(start=0, end=id_max, dtype=torch.int64),
+                    torch.arange(start=0, end=id_max, dtype=torch.int64),
                     subgraph_edges_to_filter,
                 ),
                 dim=0,
@@ -172,7 +171,18 @@ def get_negative_edges_random(
         return negative_edges
 
 
-def remap_indexes_to_zero(
-    all_edges: Tensor, buckets: Tensor
-) -> Tensor:
+def remap_indices_to_zero(all_edges: Tensor, buckets: Tensor) -> Tensor:
     return torch.bucketize(all_edges, buckets)
+
+
+def create_edges_from_target_indices(
+    source_index: Tensor, target_indices: Tensor
+) -> Tensor:
+    """Expand target indices list with user's id to have shape [2, num_nodes]"""
+    return torch.stack(
+        [
+            source_index.repeat(len(target_indices)),
+            target_indices,
+        ],
+        dim=0,
+    )

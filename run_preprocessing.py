@@ -282,15 +282,27 @@ def create_ids_and_maps(
 
 
 def extract_edges(transactions: pd.DataFrame) -> dict:
-    return transactions.groupby("customer_id")["article_id"].apply(list).to_dict()
+    return (
+        transactions.groupby("customer_id")["article_id"]
+        .apply(lambda x: torch.as_tensor(x.values, dtype=torch.long))
+        .to_dict()
+    )
 
 
 def extract_reverse_edges(transactions: pd.DataFrame) -> dict:
-    return transactions.groupby("article_id")["customer_id"].apply(list).to_dict()
+    return (
+        transactions.groupby("article_id")["customer_id"]
+        .apply(lambda x: torch.as_tensor(x.values, dtype=torch.long))
+        .to_dict()
+    )
 
 
 def extract_users_per_location(customers: pd.DataFrame) -> dict:
-    return customers.groupby("postal_code")["index"].apply(list).to_dict()
+    return (
+        customers.groupby("postal_code")["index"]
+        .apply(lambda x: torch.as_tensor(x.values, dtype=torch.long))
+        .to_dict()
+    )
 
 
 def extract_location_for_user(customers: pd.DataFrame) -> dict:
