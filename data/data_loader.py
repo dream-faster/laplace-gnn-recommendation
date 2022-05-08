@@ -23,14 +23,14 @@ def create_dataloaders(
         config=config,
         edge_path=data_dir + "edges_train.pt",
         graph_path=data_dir + "train_graph.pt",
-        article_edge_path=data_dir + "article_edges_train.pt",
+        article_edge_path=data_dir + "rev_edges_train.pt",
         train=True,
     )
     val_dataset = GraphDataset(
         config=config,
         edge_path=data_dir + "edges_val.pt",
         graph_path=data_dir + "val_graph.pt",
-        article_edge_path=data_dir + "article_edges_val.pt",
+        article_edge_path=data_dir + "rev_edges_val.pt",
         train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
@@ -43,7 +43,7 @@ def create_dataloaders(
         config=config,
         edge_path=data_dir + "edges_test.pt",
         graph_path=data_dir + "test_graph.pt",
-        article_edge_path=data_dir + "article_edges_test.pt",
+        article_edge_path=data_dir + "rev_edges_test.pt",
         train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),

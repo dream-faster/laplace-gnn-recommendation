@@ -35,15 +35,45 @@ class GraphDataset(InMemoryDataset):
         """Create Edges"""
         # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
-        subgraph_edges = torch.tensor(self.edges[idx])
 
-        (
-            user_features,
-            article_features,
-            subgraph_edges_remapped,
-            all_sampled_edges_remapped,
-            labels,
-        ) = self.single_user(idx, all_edges, subgraph_edges)
+        num_hops = 2
+        users_to_check = torch.tensor([idx])
+        subgraph_edges_remapped_list, all_sampled_edges_remapped_list, labels_list = (
+            [],
+            [],
+            [],
+        )
+        for i in range(num_hops):
+            connected_articles = torch.unique(
+                torch.tensor(
+                    [a for _id in users_to_check for a in self.edges[_id.item()]]
+                )
+            )
+
+            users_to_check = torch.unique(
+                torch.tensor(
+                    [
+                        a
+                        for node_id in connected_articles
+                        for a in self.article_edges[node_id.item()]
+                    ]
+                )
+            )
+
+            for user_id in users_to_check:
+                user_id = user_id.item()
+                subgraph_edges = torch.tensor(self.edges[user_id])
+                (
+                    user_features,
+                    article_features,
+                    subgraph_edges_remapped,
+                    all_sampled_edges_remapped,
+                    labels,
+                ) = self.single_user(user_id, all_edges, subgraph_edges)
+
+                subgraph_edges_remapped_list.append(subgraph_edges_remapped)
+                all_sampled_edges_remapped_list.append(all_sampled_edges_remapped)
+                labels_list.append(labels)
 
         """ Create Data """
         data = HeteroData()
@@ -145,6 +175,14 @@ class GraphDataset(InMemoryDataset):
                 torch.zeros(sampled_edges_negative.shape[0]),
             ],
             dim=0,
+        )
+
+        return (
+            user_features,
+            article_features,
+            subgraph_edges_remapped,
+            all_sampled_edges_remapped,
+            labels,
         )
 
 

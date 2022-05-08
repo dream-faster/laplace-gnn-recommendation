@@ -205,23 +205,13 @@ def preprocess(config: PreprocessingConfig):
     torch.save(
         extract_reverse_edges(transactions_train), "data/derived/rev_edges_train.pt"
     )
-    torch.save(
-        extract_edges_articles(transactions_train),
-        "data/derived/articles_edges_train.pt",
-    )
 
     torch.save(extract_edges(transactions_val), "data/derived/edges_val.pt")
     torch.save(extract_reverse_edges(transactions_val), "data/derived/rev_edges_val.pt")
-    torch.save(
-        extract_edges_articles(transactions_val), "data/derived/articles_edges_val.pt"
-    )
 
     torch.save(extract_edges(transactions_test), "data/derived/edges_test.pt")
     torch.save(
         extract_reverse_edges(transactions_test), "data/derived/rev_edges_test.pt"
-    )
-    torch.save(
-        extract_edges_articles(transactions_test), "data/derived/articles_edges_test.pt"
     )
 
     print("| Saving the node-to-id mapping...")
