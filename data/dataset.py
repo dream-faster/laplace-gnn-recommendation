@@ -16,11 +16,13 @@ class GraphDataset(InMemoryDataset):
         config: DataLoaderConfig,
         edge_path: str,
         graph_path: str,
+        article_edge_path: str,
         train: bool,
         matchers: Optional[List[Matcher]] = None,
     ):
         self.edges = torch.load(edge_path)
         self.graph = torch.load(graph_path)
+        self.article_edges = torch.load(article_edge_path)
         self.matchers = matchers
         self.config = config
         self.train = train
@@ -172,7 +174,5 @@ def get_negative_edges_random(
         return negative_edges
 
 
-def remap_indexes_to_zero(
-    all_edges: Tensor, buckets: Tensor
-) -> Tensor:
+def remap_indexes_to_zero(all_edges: Tensor, buckets: Tensor) -> Tensor:
     return torch.bucketize(all_edges, buckets)
