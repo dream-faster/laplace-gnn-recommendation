@@ -22,8 +22,9 @@ dependencies:
   - pyright
   - pip
   - pip:
-    - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
-    - torch-sparse
-    - torch-scatter
+      - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
+      - torch-sparse
+      - torch-scatter
+      - python-dotenv
 
 prefix: /usr/local/anaconda3/envs/fashion

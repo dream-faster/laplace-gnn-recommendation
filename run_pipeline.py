@@ -13,9 +13,12 @@ from single_epoch import epoch_with_dataloader
 from model.layers import get_linear_layers, get_SAGEConv_layers
 from single_epoch import test
 
+from reporting.wandb import setup_config
 
-def run_pipeline(config: Config):
+
+def run_pipeline(config: Config, with_wandb: bool = False):
     config.print()
+    wandb, config = setup_config("Fashion-Recomm-GNN", with_wandb, config)
 
     print("| Seeding everything...")
     seed_everything(5)
