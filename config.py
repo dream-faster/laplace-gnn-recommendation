@@ -52,7 +52,7 @@ class Config:
 link_pred_config = Config(
     epochs=100,
     k=12,
-    num_gnn_layers=1,
+    num_gnn_layers=2,
     num_linear_layers=2,
     hidden_layer_size=128,
     encoder_layer_output_size=64,
