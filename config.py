@@ -50,7 +50,7 @@ class Config:
 
 
 link_pred_config = Config(
-    epochs=100,
+    epochs=10,
     k=12,
     num_gnn_layers=1,
     num_linear_layers=2,
@@ -63,7 +63,7 @@ link_pred_config = Config(
     dataloader_config=DataLoaderConfig(
         test_split=0.1,
         val_split=0.1,
-        batch_size=128,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+        batch_size=64,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
         num_neighbors=64,  # -1 takes all neighbors
         num_neighbors_it=2,
         num_workers=1,

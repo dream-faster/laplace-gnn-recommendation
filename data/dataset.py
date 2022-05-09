@@ -34,7 +34,7 @@ class GraphDataset(InMemoryDataset):
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
-        num_hops = 2
+        num_hops = 1
 
         # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
@@ -112,6 +112,7 @@ class GraphDataset(InMemoryDataset):
             subgraph_edges,
             subgraph_sample_positive,
             sampled_edges_negative,
+            all_touched_edges,
             buckets_customers=buckets_customer,
             buckets_articles=buckets_articles,
         )
@@ -245,6 +246,7 @@ class GraphDataset(InMemoryDataset):
         subgraph_edges: Tensor,
         subgraph_sample_positive: Tensor,
         sampled_edges_negative: Tensor,
+        all_touched_edges: Tensor,
         buckets_customers: Tensor,
         buckets_articles: Tensor,
     ) -> Tuple[Tensor, Tensor]:
@@ -272,15 +274,15 @@ class GraphDataset(InMemoryDataset):
         sampled_edges_negative[0] = id_tensor.repeat(len(sampled_edges_negative[0]))
 
         # Remap negative edges to start from zero
-        negative_buckets_article = torch.unique(sampled_edges_negative[1])
+        all_touched_edges_ids = torch.unique(all_touched_edges[1])
 
         sampled_edges_negative[1] = remap_indexes_to_zero(
-            sampled_edges_negative[1], buckets=negative_buckets_article
+            sampled_edges_negative[1], buckets=all_touched_edges_ids
         )
         # Shift negative edges to be after the subgraph edges
-        sampled_edges_negative[1] = torch.add(
-            sampled_edges_negative[1], torch.max(subgraph_edges[1]) + 1
-        )
+        # sampled_edges_negative[1] = torch.add(
+        #     sampled_edges_negative[1], torch.max(subgraph_edges[1]) + 1
+        # )
 
         return subgraph_edges, subgraph_sample_positive, sampled_edges_negative
 
