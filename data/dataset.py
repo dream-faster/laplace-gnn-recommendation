@@ -52,10 +52,13 @@ class GraphDataset(InMemoryDataset):
 
         if self.train:
             # Randomly select from the whole graph
-            sampled_edges_negative = get_negative_edges_random(
-                subgraph_edges_to_filter=subgraph_edges,
-                all_edges=all_edges,
-                num_negative_edges=int(self.config.negative_edges_ratio * samp_cut),
+            sampled_edges_negative = create_edges_from_target_indices(
+                idx,
+                get_negative_edges_random(
+                    subgraph_edges_to_filter=subgraph_edges,
+                    all_edges=all_edges,
+                    num_negative_edges=int(self.config.negative_edges_ratio * samp_cut),
+                ),
             )
         else:
             assert self.matchers is not None, "Must provide matchers for test"
@@ -65,22 +68,34 @@ class GraphDataset(InMemoryDataset):
                 dim=0,
             ).unique()
             # but never add positive edges
-            sampled_edges_negative = only_items_with_count_one(
-                torch.cat([candidates, subgraph_edges], dim=0)
+            sampled_edges_negative = create_edges_from_target_indices(
+                idx,
+                only_items_with_count_one(
+                    torch.cat([candidates, subgraph_edges], dim=0)
+                ),
             )
 
         n_hop_edges = fetch_n_hop_neighbourhood(
             self.config.num_neighbors_it, idx, self.users, self.articles
         )
 
-        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative, n_hop_edges], dim=0)
+        all_touched_edges = torch.cat(
+            [
+                create_edges_from_target_indices(idx, subgraph_edges),
+                sampled_edges_negative,
+                n_hop_edges,
+            ],
+            dim=1,
+        )
 
         """ Node Features """
         # Prepare user features
-        user_features = self.graph[Constants.node_user].x[idx]
+        all_user_ids, _ = torch.sort(torch.unique(all_touched_edges[0]))
+        user_features = self.graph[Constants.node_user].x[all_user_ids]
 
         # Prepare connected article features
-        article_features = self.graph[Constants.node_item].x[all_touched_edges]
+        all_article_ids, _ = torch.sort(torch.unique(all_touched_edges[1]))
+        article_features = self.graph[Constants.node_item].x[all_article_ids]
 
         """ Remap and Prepare Edges """
         # Remap IDs
@@ -97,13 +112,13 @@ class GraphDataset(InMemoryDataset):
             [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
         )
 
-        id_tensor = torch.tensor([0])
-        all_sampled_edges_remapped = create_edges_from_target_indices(
-            id_tensor, all_sampled_edges_remapped
-        )
-        subgraph_edges_remapped = create_edges_from_target_indices(
-            id_tensor, subgraph_edges_remapped
-        )
+        # id_tensor = torch.tensor([0])
+        # all_sampled_edges_remapped = create_edges_from_target_indices(
+        #     id_tensor, all_sampled_edges_remapped
+        # )
+        # subgraph_edges_remapped = create_edges_from_target_indices(
+        #     id_tensor, subgraph_edges_remapped
+        # )
 
         # Prepare identifier of labels
         labels = torch.cat(
@@ -196,7 +211,7 @@ def fetch_n_hop_neighbourhood(
     n: int, user_id: int, users: UserQueryServer, articles: ArticleQueryServer
 ) -> torch.Tensor:
     """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
-    accum_edges = torch.Tensor([[], []])
+    accum_edges = torch.Tensor([[], []]).to(dtype = torch.long)
     users_explored = set([])
     users_queue = set([user_id])
     articles_queue = []
@@ -233,14 +248,3 @@ def create_neighbouring_article_edges(
     articles_purchased = users.get_item(user_id)
     edges_to_articles = create_edges_from_target_indices(user_id, articles_purchased)
     return articles_purchased.tolist(), edges_to_articles
-
-
-# def create_neighbouring_user_edges(
-#     article_id: int, articles: ArticleQueryServer
-# ) -> tuple[Tensor, list[int]]:
-#     """Fetch neighbouring users for an article, returns the edges (Tensor) and the user list"""
-#     users_who_purchased = articles.get_item(article_id)
-#     edges_to_users = create_edges_from_target_indices(
-#         torch.Tensor(article_id).to(torch.long), users_who_purchased
-#     )
-#     return edges_to_users, users_who_purchased.tolist()
