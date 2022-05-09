@@ -34,7 +34,7 @@ class GraphDataset(InMemoryDataset):
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
-        num_hops = 2
+        num_hops = 1
 
         # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
@@ -94,14 +94,16 @@ class GraphDataset(InMemoryDataset):
             [subgraph_edges, sampled_edges_negative], dim=1
         )
 
-        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
-        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
+        all_customer_ids = torch.unique(all_touched_edges[0], sorted=True)
+        all_article_ids = torch.unique(all_touched_edges[1], sorted=True)
         user_features, article_features = self.get_features(
-            all_customer_ids=buckets_customer, all_article_ids=buckets_articles
+            all_customer_ids=all_customer_ids, all_article_ids=all_article_ids
         )
 
         """ Remap Edges """
         # Remap IDs
+        buckets_customer = torch.unique(subgraph_edges[0], sorted=True)
+        buckets_articles = torch.unique(subgraph_edges[1], sorted=True)
         (
             subgraph_edges_remapped,
             subgraph_sample_positive_remapped,
@@ -227,7 +229,7 @@ class GraphDataset(InMemoryDataset):
         )
 
     def get_features(
-        self, all_article_ids: Tensor, all_customer_ids: Tensor
+        self, all_customer_ids: Tensor, all_article_ids: Tensor
     ) -> Tuple[Tensor, Tensor]:
         """Node Features"""
         # Prepare user features
