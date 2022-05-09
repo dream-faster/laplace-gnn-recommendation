@@ -69,14 +69,14 @@ def epoch_with_dataloader(
     losses, val_recalls, val_precisions = [], [], []
 
     train_loop = tqdm(iter(train_loader), colour="blue")
-    # for i, data in enumerate(train_loop):
-    #     train_loop.set_description(f"TRAIN | epoch: {epoch_id}")
-    #     loss = train(data.to(device), model, optimizer)
-    #     losses.append(loss.detach().cpu().item())
-    #     train_loop.set_postfix_str(f"Loss: {np.mean(losses):.4f}")
+    for i, data in enumerate(train_loop):
+        train_loop.set_description(f"TRAIN | epoch: {epoch_id}")
+        loss = train(data.to(device), model, optimizer)
+        losses.append(loss.detach().cpu().item())
+        train_loop.set_postfix_str(f"Loss: {np.mean(losses):.4f}")
 
-    #     if config.profiler is not None:
-    #         config.profiler.print_stats(i)
+        if config.profiler is not None:
+            config.profiler.print_stats(i)
 
     if epoch_id % config.eval_every == 0:
         val_loop = tqdm(iter(val_loader), colour="yellow")
