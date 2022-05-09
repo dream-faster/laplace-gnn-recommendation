@@ -129,8 +129,8 @@ class Encoder_Decoder_Model(torch.nn.Module):
         if self.embedding:
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
-        # z_dict[Constants.node_user] = self.encoder_layer_norm_customer(z_dict[Constants.node_user])
-        # z_dict[Constants.node_item] = self.encoder_layer_norm_article(z_dict[Constants.node_item])
+        z_dict[Constants.node_user] = self.encoder_layer_norm_customer(z_dict[Constants.node_user])
+        z_dict[Constants.node_item] = self.encoder_layer_norm_article(z_dict[Constants.node_item])
         output = self.decoder(z_dict, edge_label_index)
         return output
 
