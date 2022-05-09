@@ -95,20 +95,17 @@ class GraphDataset(InMemoryDataset):
         )
 
         """ Node Features """
-        user_buckets = torch.unique(all_subgraph_edges[0])
-        article_buckets = torch.unique(all_subgraph_edges[1])
+        user_buckets = torch.unique(all_subgraph_edges[0], sorted=True)
+        article_buckets = torch.unique(all_subgraph_edges[1], sorted=True)
 
-        all_user_ids, _ = torch.sort(user_buckets)
-        user_features = self.graph[Constants.node_user].x[all_user_ids]
-
-        all_article_ids, _ = torch.sort(article_buckets)
-        article_features = self.graph[Constants.node_item].x[all_article_ids]
+        user_features = self.graph[Constants.node_user].x[user_buckets]
+        article_features = self.graph[Constants.node_item].x[article_buckets]
 
         """ Remap and Prepare Edges """
         all_subgraph_edges = remap_edges_to_start_from_zero(
             all_subgraph_edges, user_buckets, article_buckets
         )
-        sampled_article_edges = remap_edges_to_start_from_zero(
+        all_sampled_edges = remap_edges_to_start_from_zero(
             torch.cat(
                 [sampled_positive_article_edges, sampled_negative_article_edges], dim=1
             ),
@@ -125,6 +122,8 @@ class GraphDataset(InMemoryDataset):
             dim=0,
         )
 
+        all_sampled_edges, labels = shuffle_edges_and_labels(all_sampled_edges, labels)
+
         """ Create Data """
         data = HeteroData()
         data[Constants.node_user].x = user_features
@@ -132,15 +131,13 @@ class GraphDataset(InMemoryDataset):
 
         # Add original directional edges
         data[Constants.edge_key].edge_index = all_subgraph_edges
-        data[Constants.edge_key].edge_label_index = sampled_article_edges
+        data[Constants.edge_key].edge_label_index = all_sampled_edges
         data[Constants.edge_key].edge_label = labels
 
         # Add reverse edges
         reverse_key = torch.LongTensor([1, 0])
         data[Constants.rev_edge_key].edge_index = all_subgraph_edges[reverse_key]
-        data[Constants.rev_edge_key].edge_label_index = sampled_article_edges[
-            reverse_key
-        ]
+        data[Constants.rev_edge_key].edge_label_index = all_sampled_edges[reverse_key]
         data[Constants.rev_edge_key].edge_label = labels
         return data
 
@@ -253,3 +250,8 @@ def create_neighbouring_article_edges(
     articles_purchased = users.get_item(user_id)
     edges_to_articles = create_edges_from_target_indices(user_id, articles_purchased)
     return articles_purchased.tolist(), edges_to_articles
+
+
+def shuffle_edges_and_labels(edges: Tensor, labels: Tensor) -> Tuple[Tensor, Tensor]:
+    new_edge_order = torch.randperm(edges.size(1))
+    return (edges[:, new_edge_order], labels[new_edge_order])
