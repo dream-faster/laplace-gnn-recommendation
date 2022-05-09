@@ -227,7 +227,7 @@ def fetch_n_hop_neighbourhood(
     users_queue = set([user_id])
     articles_queue = []
 
-    for i in range(n):
+    for i in range(0, n):
         new_articles_and_edges = [
             create_neighbouring_article_edges(user, users) for user in users_queue
         ]
