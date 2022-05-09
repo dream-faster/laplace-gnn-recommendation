@@ -9,7 +9,7 @@ def train(trial):
     num_gnn_layers = trial.suggest_int("num_gnn_layers", 1, 4)
 
     search_space = dict(
-        epochs=2,
+        epochs=10,
         k=12,
         num_gnn_layers=num_gnn_layers,
         num_linear_layers=trial.suggest_int("num_linear_layers", 1, 4),
