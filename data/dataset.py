@@ -185,18 +185,9 @@ class GraphDataset(InMemoryDataset):
                 torch.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
-        all_sampled_edges = torch.concat(
-            [subgraph_sample_positive, sampled_edges_negative]
-        )
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
-        all_sampled_edges = torch.stack(
-            [
-                id_tensor.repeat(len(all_sampled_edges)),
-                all_sampled_edges,
-            ],
-            dim=0,
-        )
+
         subgraph_sample_positive = torch.stack(
             [
                 id_tensor.repeat(len(subgraph_sample_positive)),
