@@ -23,9 +23,9 @@ from reporting.types import (
 )
 
 
-def run_pipeline(config: Config, with_wandb: bool = False):
+def run_pipeline(config: Config):
     config.print()
-    wandb, config = setup_config("Fashion-Recomm-GNN", with_wandb, config)
+    wandb, config = setup_config("Fashion-Recomm-GNN", config.wandb_enabled, config)
 
     print("| Seeding everything...")
     seed_everything(5)
@@ -143,4 +143,4 @@ def run_pipeline(config: Config, with_wandb: bool = False):
 
 
 if __name__ == "__main__":
-    run_pipeline(link_pred_config, with_wandb=True)
+    run_pipeline(link_pred_config)

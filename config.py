@@ -21,6 +21,7 @@ embedding_range_dict = {
 
 @dataclass
 class Config:
+    wandb_enabled: bool
     epochs: int  # number of training epochs
     hidden_layer_size: int
     encoder_layer_output_size: int  # Context vector size
@@ -50,6 +51,7 @@ class Config:
 
 
 link_pred_config = Config(
+    wandb_enabled=False,
     epochs=10,
     k=12,
     num_gnn_layers=1,
@@ -81,6 +83,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = Config(
+    wandb_enabled=False,
     epochs=1000,
     k=12,
     num_gnn_layers=3,  # Number of LightGCN steps
