@@ -135,7 +135,7 @@ class Encoder_Decoder_Model(torch.nn.Module):
         return output
 
 
-    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
+    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor) -> Tensor:
         self.eval()
         out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         
