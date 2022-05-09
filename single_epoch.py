@@ -85,4 +85,4 @@ def epoch_with_dataloader(
                 f"Recall: {np.mean(val_recalls):.4f} | Precision: {np.mean(val_precisions):.4f}"
             )
 
-    return np.mean(val_precisions)
+    return np.mean(losses), np.mean(val_recalls), np.mean(val_precisions)
