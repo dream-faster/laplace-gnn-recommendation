@@ -1,4 +1,3 @@
-from regex import F
 import torch
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
@@ -64,7 +63,7 @@ class GraphDataset(InMemoryDataset):
             )
 
             old_users_to_check = torch.concat(
-                old_users_to_check, torch.clone(users_to_check)
+                (old_users_to_check, torch.clone(users_to_check)), dim=0
             )
 
             users_to_check = torch.tensor(
@@ -88,8 +87,8 @@ class GraphDataset(InMemoryDataset):
             [subgraph_edges_tensor, all_sampled_edges], dim=1
         )
 
-        all_customer_ids = torch.sort(torch.unique(all_touched_edges[0]))
-        all_article_ids = torch.sort(torch.unique(all_touched_edges[1]))
+        all_customer_ids, _ = torch.sort(torch.unique(all_touched_edges[0]))
+        all_article_ids, _ = torch.sort(torch.unique(all_touched_edges[1]))
         user_features, article_features = self.get_features(
             all_article_ids=all_article_ids, all_customer_ids=all_customer_ids
         )
