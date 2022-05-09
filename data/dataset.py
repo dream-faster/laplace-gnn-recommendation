@@ -41,6 +41,9 @@ class GraphDataset(InMemoryDataset):
         positive_article_indices = self.users.get_item(
             idx
         )  # all the positive target indices for the current user
+        positive_article_edges = create_edges_from_target_indices(
+            idx, positive_article_indices
+        )
 
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
@@ -84,7 +87,7 @@ class GraphDataset(InMemoryDataset):
 
         all_touched_edges = torch.cat(
             [
-                create_edges_from_target_indices(idx, positive_article_indices),
+                positive_article_edges,
                 sampled_edges_negative,
                 n_hop_edges,
             ],
@@ -103,7 +106,9 @@ class GraphDataset(InMemoryDataset):
         """ Remap and Prepare Edges """
         # Remap IDs
         buckets = torch.unique(all_touched_edges)
-        subgraph_edges_remapped = remap_indices_to_zero(subgraph_edges, buckets=buckets)
+        subgraph_edges_remapped = remap_indices_to_zero(
+            positive_article_edges, buckets=buckets
+        )
         subgraph_sample_positive_remapped = remap_indices_to_zero(
             subgraph_sample_positive, buckets=buckets
         )
