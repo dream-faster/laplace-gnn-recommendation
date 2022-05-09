@@ -34,7 +34,7 @@ class GraphDataset(InMemoryDataset):
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
-        num_hops = 1
+        num_hops = 2
 
         # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
