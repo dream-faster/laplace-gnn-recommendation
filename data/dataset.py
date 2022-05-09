@@ -73,7 +73,7 @@ class GraphDataset(InMemoryDataset):
             self.config.num_neighbors_it, idx, self.users, self.articles
         )
 
-        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
+        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative, n_hop_edges], dim=0)
 
         """ Node Features """
         # Prepare user features
@@ -210,9 +210,7 @@ def fetch_n_hop_neighbourhood(
         new_edges = torch.cat([x[1] for x in new_articles_and_edges], dim=1)
 
         if i != 0:
-            accum_edges = torch.cat(
-                [accum_edges, new_edges], dim=1
-            )  # here we may need to do something about the dimensionality of the edges
+            accum_edges = torch.cat([accum_edges, new_edges], dim=1)
 
         articles_queue.extend(new_articles)
         new_users = (
@@ -223,7 +221,7 @@ def fetch_n_hop_neighbourhood(
             )
             - users_explored
         )  # remove the intersection between the two sets, so we only explore a user once
-        users_queue = users_queue | new_users
+        users_queue = new_users
 
     return accum_edges
 
