@@ -38,16 +38,19 @@ class GraphDataset(InMemoryDataset):
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
-        subgraph_edges = self.users.get_item(
+        positive_article_indices = self.users.get_item(
             idx
-        )  # all the positive edges for the current user
+        )  # all the positive target indices for the current user
 
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
-            1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
+            1,
+            math.floor(
+                len(positive_article_indices) * self.config.positive_edges_ratio
+            ),
         )
-        subgraph_sample_positive = subgraph_edges[
-            torch.randint(low=0, high=len(subgraph_edges), size=(samp_cut,))
+        sampled_positive_article_indices = positive_article_indices[
+            torch.randint(low=0, high=len(positive_article_indices), size=(samp_cut,))
         ]
 
         if self.train:
@@ -55,7 +58,7 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative = create_edges_from_target_indices(
                 idx,
                 get_negative_edges_random(
-                    subgraph_edges_to_filter=subgraph_edges,
+                    subgraph_edges_to_filter=sampled_positive_article_indices,
                     all_edges=all_edges,
                     num_negative_edges=int(self.config.negative_edges_ratio * samp_cut),
                 ),
@@ -71,7 +74,7 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative = create_edges_from_target_indices(
                 idx,
                 only_items_with_count_one(
-                    torch.cat([candidates, subgraph_edges], dim=0)
+                    torch.cat([candidates, positive_article_indices], dim=0)
                 ),
             )
 
@@ -81,7 +84,7 @@ class GraphDataset(InMemoryDataset):
 
         all_touched_edges = torch.cat(
             [
-                create_edges_from_target_indices(idx, subgraph_edges),
+                create_edges_from_target_indices(idx, positive_article_indices),
                 sampled_edges_negative,
                 n_hop_edges,
             ],
@@ -211,7 +214,7 @@ def fetch_n_hop_neighbourhood(
     n: int, user_id: int, users: UserQueryServer, articles: ArticleQueryServer
 ) -> torch.Tensor:
     """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
-    accum_edges = torch.Tensor([[], []]).to(dtype = torch.long)
+    accum_edges = torch.Tensor([[], []]).to(dtype=torch.long)
     users_explored = set([])
     users_queue = set([user_id])
     articles_queue = []
