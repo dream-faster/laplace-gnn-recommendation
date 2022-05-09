@@ -122,16 +122,15 @@ class GraphDataset(InMemoryDataset):
         # Prepare identifier of labels
         labels = torch.cat(
             [
-                torch.ones(sampled_positive_article_edges.shape[0]),
-                torch.zeros(sampled_negative_article_edges.shape[0]),
-                torch.ones(n_hop_edges.shape[0]),
+                torch.ones(sampled_positive_article_edges.shape[1]),
+                torch.zeros(sampled_negative_article_edges.shape[1]),
             ],
             dim=0,
         )
 
         """ Create Data """
         data = HeteroData()
-        data[Constants.node_user].x = torch.unsqueeze(user_features, dim=0)
+        data[Constants.node_user].x = user_features
         data[Constants.node_item].x = article_features
 
         # Add original directional edges
