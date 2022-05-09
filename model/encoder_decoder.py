@@ -9,7 +9,7 @@ from torch import Tensor
 from typing import Union, Optional
 from torch_geometric.data import Data, HeteroData
 from utils.constants import Constants
-
+from utils.tensor import padded_stack
 
 class GNNEncoder(torch.nn.Module):
     def __init__(
@@ -135,25 +135,12 @@ class Encoder_Decoder_Model(torch.nn.Module):
         return output
 
 
-    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
+    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor) -> torch.Tensor:
         self.eval()
         out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         
         # Rebatching by user.
-        
-        out_per_user = []
-        for i, user_index in enumerate(edge_label_index[0]):
-            user_id = user_index.item()
-            score = out[i].unsqueeze(0)
-            if user_id >= len(out_per_user):
-                out_per_user.append(score)
-            else:
-                out_per_user[user_id] = torch.concat([out_per_user[user_id], score])
-
-        max_output_length = max([element.shape[0] for element in out_per_user])
-        
-        padded_tensors = [F.pad(output, (0,max_output_length-output.shape[0]), "constant", -(1 << 50)) for output in out_per_user]
-        
-        
-        return torch.stack(padded_tensors)
+        users = edge_label_index[0].unique(sorted=True)
+        per_user = padded_stack([edge_label_index[:,edge_label_index[0] == user][1] for user in users], value=-(1 << 50))
+        return per_user
         
