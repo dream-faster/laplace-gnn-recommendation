@@ -10,7 +10,7 @@ from utils.visualize import visualize_graph
     customer_id_map,
     article_id_map,
     full_data,
-) = create_dataloaders(config.dataloader_config)
+) = create_dataloaders(config)
 
 
 visualize_graph(next(iter(train_loader)))

@@ -28,8 +28,8 @@ class ContinousStatsTest(BaseStats):
 
 @dataclass
 class Stats:
-    loss: list[float]
-    recall_val: list[float]
-    recall_test: list[float]
-    precision_val: list[float]
-    precision_test: list[float]
+    loss: float
+    recall_val: float
+    recall_test: float
+    precision_val: float
+    precision_test: float

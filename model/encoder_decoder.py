@@ -1,5 +1,5 @@
 import torch
-from data.types import DataLoaderConfig, FeatureInfo
+from data.types import FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero

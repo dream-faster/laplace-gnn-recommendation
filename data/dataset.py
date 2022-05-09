@@ -5,7 +5,7 @@ from torch import Tensor
 from typing import Union, Optional, List
 from .matching.type import Matcher
 from utils.constants import Constants
-from config import DataLoaderConfig
+from config import Config
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class GraphDataset(InMemoryDataset):
     def __init__(
         self,
-        config: DataLoaderConfig,
+        config: Config,
         edge_path: str,
         graph_path: str,
         train: bool,

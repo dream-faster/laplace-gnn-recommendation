@@ -22,9 +22,7 @@ def load_model(url: str):
 
 
 def load_dataloaders(config: Config):
-    _, _, test_loader, customer_id_map, article_id_map, _ = create_dataloaders(
-        config.dataloader_config
-    )
+    _, _, test_loader, customer_id_map, article_id_map, _ = create_dataloaders(config)
 
     return test_loader, customer_id_map, article_id_map
 
