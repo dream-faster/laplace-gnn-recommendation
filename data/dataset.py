@@ -48,7 +48,8 @@ class GraphDataset(InMemoryDataset):
             if i == 0:
                 (
                     subgraph_edges,
-                    all_sampled_edges,
+                    subgraph_sample_positive,
+                    sampled_edges_negative,
                     labels,
                 ) = self.first_user(idx, all_edges)
 
@@ -84,13 +85,8 @@ class GraphDataset(InMemoryDataset):
         subgraph_edges_tensor = torch.concat(subgraph_edges_list, dim=1)
 
         """ Get Features """
-        # The subgraph and the sampled graph together (with negative and positive samples)
-        all_touched_edges = torch.concat(
-            [subgraph_edges_tensor, all_sampled_edges], dim=1
-        )
-
-        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
-        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
+        buckets_customer = torch.unique(subgraph_edges_tensor[0], sorted=True)
+        buckets_articles = torch.unique(subgraph_edges_tensor[1], sorted=True)
         user_features, article_features = self.get_features(
             all_customer_ids=buckets_customer, all_article_ids=buckets_articles
         )
@@ -98,11 +94,21 @@ class GraphDataset(InMemoryDataset):
         """ Remap Edges """
         # Remap IDs
 
-        subgraph_edges_remapped, all_sampled_edges_remapped = self.remap_edges(
+        (
+            subgraph_edges_remapped,
+            subgraph_sample_positive_remapped,
+            sampled_edges_negative_remapped,
+        ) = self.remap_edges(
             subgraph_edges,
-            all_sampled_edges,
+            subgraph_sample_positive,
+            sampled_edges_negative,
             buckets_customers=buckets_customer,
             buckets_articles=buckets_articles,
+        )
+
+        # The subgraph and the sampled graph together (with negative and positive samples)
+        all_sampled_edges_remapped = torch.concat(
+            [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=1
         )
 
         """ Create Data """
@@ -183,6 +189,20 @@ class GraphDataset(InMemoryDataset):
             ],
             dim=0,
         )
+        subgraph_sample_positive = torch.stack(
+            [
+                id_tensor.repeat(len(subgraph_sample_positive)),
+                subgraph_sample_positive,
+            ],
+            dim=0,
+        )
+        sampled_edges_negative = torch.stack(
+            [
+                id_tensor.repeat(len(sampled_edges_negative)),
+                sampled_edges_negative,
+            ],
+            dim=0,
+        )
 
         subgraph_edges = torch.stack(
             [
@@ -195,14 +215,15 @@ class GraphDataset(InMemoryDataset):
         # Prepare identifier of labels
         labels = torch.cat(
             [
-                torch.ones(subgraph_sample_positive.shape[0]),
-                torch.zeros(sampled_edges_negative.shape[0]),
+                torch.ones(subgraph_sample_positive.shape[1]),
+                torch.zeros(sampled_edges_negative.shape[1]),
             ],
             dim=0,
         )
         return (
             subgraph_edges,
-            all_sampled_edges,
+            subgraph_sample_positive,
+            sampled_edges_negative,
             labels,
         )
 
@@ -221,7 +242,8 @@ class GraphDataset(InMemoryDataset):
     def remap_edges(
         self,
         subgraph_edges: Tensor,
-        all_sampled_edges: Tensor,
+        subgraph_sample_positive: Tensor,
+        sampled_edges_negative: Tensor,
         buckets_customers: Tensor,
         buckets_articles: Tensor,
     ) -> Tuple[Tensor, Tensor]:
@@ -234,14 +256,30 @@ class GraphDataset(InMemoryDataset):
             subgraph_edges[1], buckets=buckets_articles
         )
 
-        all_sampled_edges[0] = remap_indexes_to_zero(
-            all_sampled_edges[0], buckets=buckets_customers
+        subgraph_sample_positive[0] = remap_indexes_to_zero(
+            subgraph_sample_positive[0], buckets=buckets_customers
         )
-        all_sampled_edges[1] = remap_indexes_to_zero(
-            all_sampled_edges[1], buckets=buckets_articles
+        subgraph_sample_positive[1] = remap_indexes_to_zero(
+            subgraph_sample_positive[1], buckets=buckets_articles
         )
 
-        return subgraph_edges, all_sampled_edges
+        negative_buckets_customer = torch.unique(sampled_edges_negative[0])
+        negative_buckets_article = torch.unique(sampled_edges_negative[1])
+        sampled_edges_negative[0] = remap_indexes_to_zero(
+            sampled_edges_negative[0], buckets=negative_buckets_customer
+        )
+        sampled_edges_negative[1] = remap_indexes_to_zero(
+            sampled_edges_negative[1], buckets=negative_buckets_article
+        )
+
+        sampled_edges_negative[0] = torch.add(
+            sampled_edges_negative[0], torch.max(subgraph_edges[0])
+        )
+        sampled_edges_negative[1] = torch.add(
+            sampled_edges_negative[1], torch.max(subgraph_edges[1])
+        )
+
+        return subgraph_edges, subgraph_sample_positive, sampled_edges_negative
 
 
 def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
