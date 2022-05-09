@@ -1,3 +1,4 @@
+from regex import F
 import torch
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
@@ -33,22 +34,36 @@ class GraphDataset(InMemoryDataset):
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
+        num_hops = 2
+
         # Define the whole graph and the subgraph
         all_edges = self.graph[Constants.edge_key].edge_index
 
-        num_hops = 2
+        # Add first user to user_to_check
         users_to_check = torch.tensor([idx])
-        subgraph_edges_remapped_list, all_sampled_edges_remapped_list, labels_list = (
-            [],
-            [],
-            [],
-        )
+        subgraph_edges_list = []
+
         for i in range(num_hops):
+            if i == 0:
+                subgraph_edges = torch.tensor(self.edges[user_id])
+                (
+                    user_features,
+                    article_features,
+                    subgraph_edges_remapped,
+                    all_sampled_edges_remapped,
+                    labels,
+                ) = self.first_user(i, user_id, all_edges, subgraph_edges)
+
+                subgraph_edges_list.append(subgraph_edges_remapped)
+                continue
+
             connected_articles = torch.unique(
                 torch.tensor(
                     [a for _id in users_to_check for a in self.edges[_id.item()]]
                 )
             )
+
+            old_users_to_check = users_to_check.copy()
 
             users_to_check = torch.unique(
                 torch.tensor(
@@ -61,19 +76,9 @@ class GraphDataset(InMemoryDataset):
             )
 
             for user_id in users_to_check:
-                user_id = user_id.item()
-                subgraph_edges = torch.tensor(self.edges[user_id])
-                (
-                    user_features,
-                    article_features,
-                    subgraph_edges_remapped,
-                    all_sampled_edges_remapped,
-                    labels,
-                ) = self.single_user(user_id, all_edges, subgraph_edges)
-
-                subgraph_edges_remapped_list.append(subgraph_edges_remapped)
-                all_sampled_edges_remapped_list.append(all_sampled_edges_remapped)
-                labels_list.append(labels)
+                subgraph_edges_list.append(
+                    self.single_user(user_id.item(), subgraph_edges)
+                )
 
         """ Create Data """
         data = HeteroData()
@@ -94,8 +99,11 @@ class GraphDataset(InMemoryDataset):
         data[Constants.rev_edge_key].edge_label = labels
         return data
 
-    def single_user(
-        self, idx: int, all_edges: Tensor, subgraph_edges: Tensor
+    def single_user(self, idx: int, subgraph_edges: Tensor) -> Tensor:
+        return subgraph_edges[idx]
+
+    def first_user(
+        self, i: int, idx: int, all_edges: Tensor, subgraph_edges: Tensor
     ) -> Tuple[Tensor, Tensor, Tensor]:
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
@@ -136,47 +144,6 @@ class GraphDataset(InMemoryDataset):
         # Prepare connected article features
         article_features = self.graph[Constants.node_item].x[all_touched_edges]
 
-        """ Remap and Prepare Edges """
-        # Remap IDs
-        buckets = torch.unique(all_touched_edges)
-        subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
-        subgraph_sample_positive_remapped = remap_indexes_to_zero(
-            subgraph_sample_positive, buckets=buckets
-        )
-        sampled_edges_negative_remapped = remap_indexes_to_zero(
-            sampled_edges_negative, buckets=buckets
-        )
-
-        all_sampled_edges_remapped = torch.cat(
-            [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
-        )
-
-        # Expand flat edge list with user's id to have shape [2, num_nodes]
-        id_tensor = torch.tensor([0])
-        all_sampled_edges_remapped = torch.stack(
-            [
-                id_tensor.repeat(len(all_sampled_edges_remapped)),
-                all_sampled_edges_remapped,
-            ],
-            dim=0,
-        )
-        subgraph_edges_remapped = torch.stack(
-            [
-                id_tensor.repeat(len(subgraph_edges_remapped)),
-                subgraph_edges_remapped,
-            ],
-            dim=0,
-        )
-
-        # Prepare identifier of labels
-        labels = torch.cat(
-            [
-                torch.ones(subgraph_sample_positive.shape[0]),
-                torch.zeros(sampled_edges_negative.shape[0]),
-            ],
-            dim=0,
-        )
-
         return (
             user_features,
             article_features,
@@ -184,6 +151,49 @@ class GraphDataset(InMemoryDataset):
             all_sampled_edges_remapped,
             labels,
         )
+
+
+def remap_edges(subgraph_edges, positive_edges, negative_edges, buckets):
+    """Remap and Prepare Edges"""
+    # Remap IDs
+    buckets = torch.unique(all_touched_edges)
+    subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
+    subgraph_sample_positive_remapped = remap_indexes_to_zero(
+        subgraph_sample_positive, buckets=buckets
+    )
+    sampled_edges_negative_remapped = remap_indexes_to_zero(
+        sampled_edges_negative, buckets=buckets
+    )
+
+    all_sampled_edges_remapped = torch.cat(
+        [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
+    )
+
+    # Expand flat edge list with user's id to have shape [2, num_nodes]
+    id_tensor = torch.tensor([0])
+    all_sampled_edges_remapped = torch.stack(
+        [
+            id_tensor.repeat(len(all_sampled_edges_remapped)),
+            all_sampled_edges_remapped,
+        ],
+        dim=0,
+    )
+    subgraph_edges_remapped = torch.stack(
+        [
+            id_tensor.repeat(len(subgraph_edges_remapped)),
+            subgraph_edges_remapped,
+        ],
+        dim=0,
+    )
+
+    # Prepare identifier of labels
+    labels = torch.cat(
+        [
+            torch.ones(subgraph_sample_positive.shape[0]),
+            torch.zeros(sampled_edges_negative.shape[0]),
+        ],
+        dim=0,
+    )
 
 
 def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
