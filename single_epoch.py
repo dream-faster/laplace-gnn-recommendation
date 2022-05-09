@@ -12,6 +12,7 @@ from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
 from utils.metrics_encoder_decoder import get_metrics_universal
 from utils.get_info import select_properties
+from utils.constants import Constants
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -43,7 +44,11 @@ def test(
     output = model.infer(x, edge_index_dict, edge_label_index)
 
     recall, precision, ndcg = get_metrics_universal(
-        output, edge_index_dict, exclude_edge_indices, k=k
+        output,
+        edge_index_dict[Constants.edge_key],
+        edge_label_index,
+        exclude_edge_indices,
+        k=k,
     )
 
     # roc_auc_score = roc_auc_score(edge_label.cpu().numpy(), output.cpu().numpy())

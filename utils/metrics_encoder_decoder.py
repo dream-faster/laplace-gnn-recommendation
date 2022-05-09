@@ -55,9 +55,9 @@ def get_user_positive_items(edge_index: Tensor) -> dict:
         dict: dictionary of positive items for each user
     """
     user_pos_items: dict = {}
-    for i in range(edge_index[Constants.edge_key].shape[1]):
-        user = edge_index[Constants.edge_key][0][i].item()
-        item = edge_index[Constants.edge_key][1][i].item()
+    for i in range(edge_index.shape[1]):
+        user = edge_index[0][i].item()
+        item = edge_index[1][i].item()
         if user not in user_pos_items:
             user_pos_items[user] = []
         user_pos_items[user].append(item)
@@ -123,7 +123,11 @@ def NDCGatK_r(groundTruth: List[List[int]], r: Tensor, k: int) -> float:
 
 # wrapper function to get evaluation metrics
 def get_metrics_universal(
-    model_output, edge_index: Tensor, exclude_edge_indices: List[Tensor], k: int
+    model_output,
+    edge_index: Tensor,
+    edge_label_index: Tensor,
+    exclude_edge_indices: List[Tensor],
+    k: int,
 ) -> Tuple[float, float, float]:
     """Computes the evaluation metrics: recall, precision, and ndcg @ k
 
@@ -161,7 +165,7 @@ def get_metrics_universal(
     _, top_K_items = torch.topk(ratings, k=k)
 
     # get all unique users in evaluated split
-    users = edge_index[Constants.edge_key][0].unique()
+    users = edge_label_index[0].unique()
 
     test_user_pos_items = get_user_positive_items(edge_index)
 
