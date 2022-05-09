@@ -41,9 +41,6 @@ class GraphDataset(InMemoryDataset):
         positive_article_indices = self.users.get_item(
             idx
         )  # all the positive target indices for the current user
-        positive_article_edges = create_edges_from_target_indices(
-            idx, positive_article_indices
-        )
 
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
