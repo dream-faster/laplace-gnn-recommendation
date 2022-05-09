@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Union
 
 
 @dataclass
@@ -28,8 +28,8 @@ class ContinousStatsTest(BaseStats):
 
 @dataclass
 class Stats:
-    loss: list[float]
-    recall_val: list[float]
-    recall_test: list[float]
-    precision_val: list[float]
-    precision_test: list[float]
+    loss: List[float]
+    recall_val: List[float]
+    recall_test: List[float]
+    precision_val: List[float]
+    precision_test: List[float]
