@@ -45,6 +45,7 @@ class GraphDataset(InMemoryDataset):
         subgraph_edges_list = []
 
         for i in range(num_hops):
+            """For origin user also sample positive edges and negative edges"""
             if i == 0:
                 (
                     subgraph_edges,
@@ -63,10 +64,12 @@ class GraphDataset(InMemoryDataset):
                 )
             )
 
+            # Keep track of what user we already sampled
             old_users_to_check = torch.concat(
                 (old_users_to_check, torch.clone(users_to_check)), dim=0
             )
 
+            # Get new users by looking at all the edges of the articles we were connected to
             users_to_check = torch.tensor(
                 [
                     a
@@ -75,25 +78,30 @@ class GraphDataset(InMemoryDataset):
                 ]
             )
 
+            # Filter out users we already sampled
             users_to_check = difference(users_to_check, old_users_to_check)
 
+            """ Loop through and add edges to the subgraph """
             for user_id in users_to_check:
                 subgraph_edges = self.single_user(user_id.item())
                 subgraph_edges_list.append(subgraph_edges)
 
         # The entire subgraph with positive edges (negative edges excluded)
-        subgraph_edges_tensor = torch.concat(subgraph_edges_list, dim=1)
+        subgraph_edges = torch.concat(subgraph_edges_list, dim=1)
 
         """ Get Features """
-        buckets_customer = torch.unique(subgraph_edges_tensor[0], sorted=True)
-        buckets_articles = torch.unique(subgraph_edges_tensor[1], sorted=True)
+        all_touched_edges = torch.concat(
+            [subgraph_edges, sampled_edges_negative], dim=1
+        )
+
+        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
+        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
         user_features, article_features = self.get_features(
             all_customer_ids=buckets_customer, all_article_ids=buckets_articles
         )
 
         """ Remap Edges """
         # Remap IDs
-
         (
             subgraph_edges_remapped,
             subgraph_sample_positive_remapped,
@@ -272,11 +280,11 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative[1], buckets=negative_buckets_article
         )
 
-        sampled_edges_negative[0] = torch.add(
-            sampled_edges_negative[0], torch.max(subgraph_edges[0])
-        )
+        id_tensor = torch.tensor([0])
+
+        sampled_edges_negative[0] = id_tensor.repeat(len(sampled_edges_negative[0]))
         sampled_edges_negative[1] = torch.add(
-            sampled_edges_negative[1], torch.max(subgraph_edges[1])
+            sampled_edges_negative[1], torch.max(subgraph_edges[1] + 1)
         )
 
         return subgraph_edges, subgraph_sample_positive, sampled_edges_negative
