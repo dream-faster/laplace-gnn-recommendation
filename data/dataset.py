@@ -42,6 +42,7 @@ class GraphDataset(InMemoryDataset):
 
         # Add first user to user_to_check
         users_to_check = torch.tensor([idx])
+        old_users_to_check = torch.tensor([idx])
         subgraph_edges_list = []
 
         for i in range(num_hops):
@@ -55,13 +56,16 @@ class GraphDataset(InMemoryDataset):
                 subgraph_edges_list.append(subgraph_edges)
                 continue
 
+            """ Define new subset of users"""
             connected_articles = torch.unique(
                 torch.tensor(
                     [a for _id in users_to_check for a in self.edges[_id.item()]]
                 )
             )
 
-            old_users_to_check = torch.clone(users_to_check)
+            old_users_to_check = torch.concat(
+                old_users_to_check, torch.clone(users_to_check)
+            )
 
             users_to_check = torch.tensor(
                 [
@@ -79,12 +83,13 @@ class GraphDataset(InMemoryDataset):
 
         subgraph_edges_tensor = torch.concat(subgraph_edges_list, dim=1)
 
+        """ Get Features """
         all_touched_edges = torch.concat(
             [subgraph_edges_tensor, all_sampled_edges], dim=1
         )
 
-        all_customer_ids = torch.unique(all_touched_edges[0])
-        all_article_ids = torch.unique(all_touched_edges[1])
+        all_customer_ids = torch.sort(torch.unique(all_touched_edges[0]))
+        all_article_ids = torch.sort(torch.unique(all_touched_edges[1]))
         user_features, article_features = self.get_features(
             all_article_ids=all_article_ids, all_customer_ids=all_customer_ids
         )
