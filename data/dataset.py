@@ -95,14 +95,21 @@ class GraphDataset(InMemoryDataset):
 
         """ Remap Edges """
         # Remap IDs
-        buckets = torch.unique(all_touched_edges)
+        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
+        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
+
         subgraph_edges_remapped, all_sampled_edges_remapped = self.remap_edges(
-            subgraph_edges, all_sampled_edges, buckets=buckets
+            subgraph_edges,
+            all_sampled_edges,
+            buckets_customers=buckets_customer,
+            buckets_articles=buckets_articles,
         )
 
         """ Create Data """
         data = HeteroData()
-        data[Constants.node_user].x = torch.unsqueeze(user_features, dim=0)
+        if len(user_features.shape) == 1:
+            user_features = torch.unsqueeze(user_features, dim=0)
+        data[Constants.node_user].x = user_features
         data[Constants.node_item].x = article_features
 
         # Add original directional edges
@@ -212,17 +219,29 @@ class GraphDataset(InMemoryDataset):
         return user_features, article_features
 
     def remap_edges(
-        self, subgraph_edges: Tensor, all_sampled_edges: Tensor, buckets: Tensor
+        self,
+        subgraph_edges: Tensor,
+        all_sampled_edges: Tensor,
+        buckets_customers: Tensor,
+        buckets_articles: Tensor,
     ) -> Tuple[Tensor, Tensor]:
         """Remap and Prepare Edges"""
 
-        subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
-
-        all_sampled_edges_remapped = remap_indexes_to_zero(
-            all_sampled_edges, buckets=buckets
+        subgraph_edges[0] = remap_indexes_to_zero(
+            subgraph_edges[0], buckets=buckets_customers
+        )
+        subgraph_edges[1] = remap_indexes_to_zero(
+            subgraph_edges[1], buckets=buckets_articles
         )
 
-        return subgraph_edges_remapped, all_sampled_edges_remapped
+        all_sampled_edges[0] = remap_indexes_to_zero(
+            all_sampled_edges[0], buckets=buckets_customers
+        )
+        all_sampled_edges[1] = remap_indexes_to_zero(
+            all_sampled_edges[1], buckets=buckets_articles
+        )
+
+        return subgraph_edges, all_sampled_edges
 
 
 def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
