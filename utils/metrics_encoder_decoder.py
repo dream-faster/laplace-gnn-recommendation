@@ -175,9 +175,9 @@ def get_metrics_universal(
 
     # determine the correctness of topk predictions
     r = []
-    for user in users:
+    for i, user in enumerate(users):
         ground_truth_items = test_user_pos_items[user.item()]
-        label = [x in ground_truth_items for x in top_K_items[user]]
+        label = [x in ground_truth_items for x in top_K_items[i]]
         r.append(label)
     r = torch.Tensor(np.array(r).astype("float"))
 
