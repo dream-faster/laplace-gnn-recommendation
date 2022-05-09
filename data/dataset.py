@@ -85,7 +85,7 @@ class GraphDataset(InMemoryDataset):
             self.config.num_neighbors_it, idx, self.users, self.articles
         )
 
-        all_edges = torch.cat(
+        all_subgraph_edges = torch.cat(
             [
                 sampled_positive_article_edges,
                 sampled_negative_article_edges,
@@ -95,8 +95,8 @@ class GraphDataset(InMemoryDataset):
         )
 
         """ Node Features """
-        user_buckets = torch.unique(all_edges[0])
-        article_buckets = torch.unique(all_edges[1])
+        user_buckets = torch.unique(all_subgraph_edges[0])
+        article_buckets = torch.unique(all_subgraph_edges[1])
 
         all_user_ids, _ = torch.sort(user_buckets)
         user_features = self.graph[Constants.node_user].x[all_user_ids]
@@ -106,7 +106,7 @@ class GraphDataset(InMemoryDataset):
 
         """ Remap and Prepare Edges """
         all_subgraph_edges = remap_edges_to_start_from_zero(
-            all_edges, user_buckets, article_buckets
+            all_subgraph_edges, user_buckets, article_buckets
         )
         sampled_article_edges = remap_edges_to_start_from_zero(
             torch.cat(
