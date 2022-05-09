@@ -46,12 +46,11 @@ class GraphDataset(InMemoryDataset):
 
         for i in range(num_hops):
             if i == 0:
-                subgraph_edges = torch.tensor(self.edges[user_id])
                 (
                     subgraph_edges,
                     all_sampled_edges,
                     labels,
-                ) = self.first_user(i, user_id, all_edges, subgraph_edges)
+                ) = self.first_user(idx, all_edges)
 
                 subgraph_edges_list.append(subgraph_edges)
                 continue
@@ -62,7 +61,7 @@ class GraphDataset(InMemoryDataset):
                 )
             )
 
-            old_users_to_check = users_to_check.copy()
+            old_users_to_check = torch.clone(users_to_check)
 
             users_to_check = torch.tensor(
                 [
@@ -75,12 +74,14 @@ class GraphDataset(InMemoryDataset):
             users_to_check = difference(users_to_check, old_users_to_check)
 
             for user_id in users_to_check:
-                subgraph_edges = self.single_user(user_id.item(), subgraph_edges)
+                subgraph_edges = self.single_user(user_id.item())
                 subgraph_edges_list.append(subgraph_edges)
 
-        subgraph_edges_tensor = torch.cat(subgraph_edges_list, dim=0)
+        subgraph_edges_tensor = torch.concat(subgraph_edges_list, dim=1)
 
-        all_touched_edges = torch.concat(subgraph_edges_tensor, all_sampled_edges)
+        all_touched_edges = torch.concat(
+            [subgraph_edges_tensor, all_sampled_edges], dim=1
+        )
 
         all_customer_ids = torch.unique(all_touched_edges[0])
         all_article_ids = torch.unique(all_touched_edges[1])
@@ -114,12 +115,21 @@ class GraphDataset(InMemoryDataset):
         data[Constants.rev_edge_key].edge_label = labels
         return data
 
-    def single_user(self, idx: int, subgraph_edges: Tensor) -> Tensor:
-        return subgraph_edges[idx]
+    def single_user(self, idx: int) -> Tensor:
+        subgraph_edges_flat = torch.tensor(self.edges[idx])
+        id_tensor = torch.tensor([idx])
+        subgraph_edges = torch.stack(
+            [
+                id_tensor.repeat(len(subgraph_edges_flat)),
+                subgraph_edges_flat,
+            ],
+            dim=0,
+        )
+        return subgraph_edges
 
-    def first_user(
-        self, i: int, idx: int, all_edges: Tensor, subgraph_edges: Tensor
-    ) -> Tuple[Tensor, Tensor, Tensor]:
+    def first_user(self, idx: int, all_edges: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+        subgraph_edges = torch.tensor(self.edges[idx])
+
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
         )
@@ -150,6 +160,9 @@ class GraphDataset(InMemoryDataset):
                 torch.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
+        all_sampled_edges = torch.concat(
+            [subgraph_sample_positive, sampled_edges_negative]
+        )
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
         all_sampled_edges = torch.stack(
