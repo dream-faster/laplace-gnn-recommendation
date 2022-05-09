@@ -80,23 +80,23 @@ class GraphDataset(InMemoryDataset):
                 subgraph_edges = self.single_user(user_id.item())
                 subgraph_edges_list.append(subgraph_edges)
 
+        # The entire subgraph with positive edges (negative edges excluded)
         subgraph_edges_tensor = torch.concat(subgraph_edges_list, dim=1)
 
         """ Get Features """
+        # The subgraph and the sampled graph together (with negative and positive samples)
         all_touched_edges = torch.concat(
             [subgraph_edges_tensor, all_sampled_edges], dim=1
         )
 
-        all_customer_ids, _ = torch.sort(torch.unique(all_touched_edges[0]))
-        all_article_ids, _ = torch.sort(torch.unique(all_touched_edges[1]))
+        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
+        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
         user_features, article_features = self.get_features(
-            all_article_ids=all_article_ids, all_customer_ids=all_customer_ids
+            all_customer_ids=buckets_customer, all_article_ids=buckets_articles
         )
 
         """ Remap Edges """
         # Remap IDs
-        buckets_customer = torch.unique(all_touched_edges[0], sorted=True)
-        buckets_articles = torch.unique(all_touched_edges[1], sorted=True)
 
         subgraph_edges_remapped, all_sampled_edges_remapped = self.remap_edges(
             subgraph_edges,
