@@ -8,6 +8,7 @@ from .matching.type import Matcher
 from utils.constants import Constants
 from config import DataLoaderConfig
 from typing import Tuple
+from utils.tensor_boolean import difference
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -63,22 +64,24 @@ class GraphDataset(InMemoryDataset):
 
             old_users_to_check = users_to_check.copy()
 
-            users_to_check = torch.unique(
-                torch.tensor(
-                    [
-                        a
-                        for node_id in connected_articles
-                        for a in self.article_edges[node_id.item()]
-                    ]
-                )
+            users_to_check = torch.tensor(
+                [
+                    a
+                    for node_id in connected_articles
+                    for a in self.article_edges[node_id.item()]
+                ]
             )
+
+            users_to_check = difference(users_to_check, old_users_to_check)
 
             for user_id in users_to_check:
                 subgraph_edges = self.single_user(user_id.item(), subgraph_edges)
                 subgraph_edges_list.append(subgraph_edges)
 
         subgraph_edges_tensor = torch.cat(subgraph_edges_list, dim=0)
+
         all_touched_edges = torch.concat(subgraph_edges_tensor, all_sampled_edges)
+
         all_customer_ids = torch.unique(all_touched_edges[0])
         all_article_ids = torch.unique(all_touched_edges[1])
         user_features, article_features = self.get_features(
@@ -147,17 +150,8 @@ class GraphDataset(InMemoryDataset):
                 torch.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
-        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
-
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
-        # all_sampled_edges_remapped = torch.stack(
-        #     [
-        #         id_tensor.repeat(len(all_sampled_edges_remapped)),
-        #         all_sampled_edges_remapped,
-        #     ],
-        #     dim=0,
-        # )
         all_sampled_edges = torch.stack(
             [
                 id_tensor.repeat(len(all_sampled_edges)),
@@ -165,13 +159,7 @@ class GraphDataset(InMemoryDataset):
             ],
             dim=0,
         )
-        # subgraph_edges_remapped = torch.stack(
-        #     [
-        #         id_tensor.repeat(len(subgraph_edges_remapped)),
-        #         subgraph_edges_remapped,
-        #     ],
-        #     dim=0,
-        # )
+
         subgraph_edges = torch.stack(
             [
                 id_tensor.repeat(len(subgraph_edges)),
