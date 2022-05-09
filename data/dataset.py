@@ -41,6 +41,9 @@ class GraphDataset(InMemoryDataset):
         positive_article_indices = self.users.get_item(
             idx
         )  # all the positive target indices for the current user
+        positive_article_edges = create_edges_from_target_indices(
+            idx, positive_article_indices
+        )
 
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
@@ -85,18 +88,26 @@ class GraphDataset(InMemoryDataset):
             self.config.num_neighbors_it, idx, self.users, self.articles
         )
 
-        all_subgraph_edges = torch.cat(
+        all_touched_edges = torch.cat(
             [
-                sampled_positive_article_edges,
+                positive_article_edges,
                 sampled_negative_article_edges,
                 n_hop_edges,
             ],
             dim=1,
         )
 
+        all_subgraph_edges = torch.cat(
+            [
+                positive_article_edges,
+                n_hop_edges,
+            ],
+            dim=1,
+        )
+
         """ Node Features """
-        user_buckets = torch.unique(all_subgraph_edges[0], sorted=True)
-        article_buckets = torch.unique(all_subgraph_edges[1], sorted=True)
+        user_buckets = torch.unique(all_touched_edges[0], sorted=True)
+        article_buckets = torch.unique(all_touched_edges[1], sorted=True)
 
         user_features = self.graph[Constants.node_user].x[user_buckets]
         article_features = self.graph[Constants.node_item].x[article_buckets]
