@@ -55,10 +55,13 @@ class GraphDataset(InMemoryDataset):
         sampled_positive_article_indices = positive_article_indices[
             torch.randint(low=0, high=len(positive_article_indices), size=(samp_cut,))
         ]
+        sampled_positive_article_edges = create_edges_from_target_indices(
+            idx, sampled_positive_article_indices
+        )
 
         if self.train:
             # Randomly select from the whole graph
-            sampled_edges_negative = create_edges_from_target_indices(
+            sampled_negative_article_edges = create_edges_from_target_indices(
                 idx,
                 get_negative_edges_random(
                     subgraph_edges_to_filter=sampled_positive_article_indices,
@@ -74,7 +77,7 @@ class GraphDataset(InMemoryDataset):
                 dim=0,
             ).unique()
             # but never add positive edges
-            sampled_edges_negative = create_edges_from_target_indices(
+            sampled_negative_article_edges = create_edges_from_target_indices(
                 idx,
                 only_items_with_count_one(
                     torch.cat([candidates, positive_article_indices], dim=0)
@@ -85,54 +88,43 @@ class GraphDataset(InMemoryDataset):
             self.config.num_neighbors_it, idx, self.users, self.articles
         )
 
-        all_touched_edges = torch.cat(
+        all_edges = torch.cat(
             [
-                positive_article_edges,
-                sampled_edges_negative,
+                sampled_positive_article_edges,
+                sampled_negative_article_edges,
                 n_hop_edges,
             ],
             dim=1,
         )
 
         """ Node Features """
-        # Prepare user features
-        all_user_ids, _ = torch.sort(torch.unique(all_touched_edges[0]))
+        user_buckets = torch.unique(all_edges[0])
+        article_buckets = torch.unique(all_edges[1])
+
+        all_user_ids, _ = torch.sort(user_buckets)
         user_features = self.graph[Constants.node_user].x[all_user_ids]
 
-        # Prepare connected article features
-        all_article_ids, _ = torch.sort(torch.unique(all_touched_edges[1]))
+        all_article_ids, _ = torch.sort(article_buckets)
         article_features = self.graph[Constants.node_item].x[all_article_ids]
 
         """ Remap and Prepare Edges """
-        # Remap IDs
-        buckets = torch.unique(all_touched_edges)
-        subgraph_edges_remapped = remap_indices_to_zero(
-            positive_article_edges, buckets=buckets
+        all_subgraph_edges = remap_edges_to_start_from_zero(
+            all_edges, user_buckets, article_buckets
         )
-        subgraph_sample_positive_remapped = remap_indices_to_zero(
-            subgraph_sample_positive, buckets=buckets
+        sampled_article_edges = remap_edges_to_start_from_zero(
+            torch.cat(
+                [sampled_positive_article_edges, sampled_negative_article_edges], dim=1
+            ),
+            user_buckets,
+            article_buckets,
         )
-        sampled_edges_negative_remapped = remap_indices_to_zero(
-            sampled_edges_negative, buckets=buckets
-        )
-
-        all_sampled_edges_remapped = torch.cat(
-            [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
-        )
-
-        # id_tensor = torch.tensor([0])
-        # all_sampled_edges_remapped = create_edges_from_target_indices(
-        #     id_tensor, all_sampled_edges_remapped
-        # )
-        # subgraph_edges_remapped = create_edges_from_target_indices(
-        #     id_tensor, subgraph_edges_remapped
-        # )
 
         # Prepare identifier of labels
         labels = torch.cat(
             [
-                torch.ones(subgraph_sample_positive.shape[0]),
-                torch.zeros(sampled_edges_negative.shape[0]),
+                torch.ones(sampled_positive_article_edges.shape[0]),
+                torch.zeros(sampled_negative_article_edges.shape[0]),
+                torch.ones(n_hop_edges.shape[0]),
             ],
             dim=0,
         )
@@ -143,14 +135,14 @@ class GraphDataset(InMemoryDataset):
         data[Constants.node_item].x = article_features
 
         # Add original directional edges
-        data[Constants.edge_key].edge_index = subgraph_edges_remapped
-        data[Constants.edge_key].edge_label_index = all_sampled_edges_remapped
+        data[Constants.edge_key].edge_index = all_subgraph_edges
+        data[Constants.edge_key].edge_label_index = sampled_article_edges
         data[Constants.edge_key].edge_label = labels
 
         # Add reverse edges
         reverse_key = torch.LongTensor([1, 0])
-        data[Constants.rev_edge_key].edge_index = subgraph_edges_remapped[reverse_key]
-        data[Constants.rev_edge_key].edge_label_index = all_sampled_edges_remapped[
+        data[Constants.rev_edge_key].edge_index = all_subgraph_edges[reverse_key]
+        data[Constants.rev_edge_key].edge_label_index = sampled_article_edges[
             reverse_key
         ]
         data[Constants.rev_edge_key].edge_label = labels
@@ -195,8 +187,15 @@ def get_negative_edges_random(
         return negative_edges
 
 
-def remap_indices_to_zero(all_edges: Tensor, buckets: Tensor) -> Tensor:
-    return torch.bucketize(all_edges, buckets)
+def remap_edges_to_start_from_zero(
+    edges: Tensor, buckets_1st_dim: Tensor, buckets_2nd_dim: Tensor
+) -> Tensor:
+    return torch.stack(
+        (
+            torch.bucketize(edges[0], buckets_1st_dim),
+            torch.bucketize(edges[1], buckets_2nd_dim),
+        )
+    )
 
 
 def create_edges_from_target_indices(
@@ -224,11 +223,13 @@ def fetch_n_hop_neighbourhood(
     users_queue = set([user_id])
     articles_queue = []
 
-    for i in range(0, n):
+    for i in range(n):
         new_articles_and_edges = [
             create_neighbouring_article_edges(user, users) for user in users_queue
         ]
         users_explored = users_explored | users_queue
+        if len(new_articles_and_edges) == 0:
+            break
         new_articles = flatten([x[0] for x in new_articles_and_edges])
         new_edges = torch.cat([x[1] for x in new_articles_and_edges], dim=1)
 
