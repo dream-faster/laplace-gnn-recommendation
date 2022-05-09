@@ -2,11 +2,12 @@ import torch
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
 from torch import Tensor
-from typing import Union, Optional, List
+from typing import Tuple, Union, Optional, List
 from .matching.type import Matcher
 from utils.constants import Constants
 from config import DataLoaderConfig
 from .query_server.queries import ArticleQueryServer, UserQueryServer
+from utils.flatten import flatten
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -41,10 +42,6 @@ class GraphDataset(InMemoryDataset):
             idx
         )  # all the positive edges for the current user
 
-        # if self.config.num_neighbors > 1:
-        #     for i in range(self.config.num_neighbors - 1):
-        #         subgraph_edges = torch.cat([subgraph_edges, self.users.get_item(idx)], dim=0)
-
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
@@ -71,6 +68,10 @@ class GraphDataset(InMemoryDataset):
             sampled_edges_negative = only_items_with_count_one(
                 torch.cat([candidates, subgraph_edges], dim=0)
             )
+
+        n_hop_edges = fetch_n_hop_neighbourhood(
+            self.config.num_neighbors_it, idx, self.users, self.articles
+        )
 
         all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
 
@@ -176,13 +177,72 @@ def remap_indices_to_zero(all_edges: Tensor, buckets: Tensor) -> Tensor:
 
 
 def create_edges_from_target_indices(
-    source_index: Tensor, target_indices: Tensor
+    source_index: int, target_indices: Tensor
 ) -> Tensor:
     """Expand target indices list with user's id to have shape [2, num_nodes]"""
+
     return torch.stack(
         [
-            source_index.repeat(len(target_indices)),
+            torch.Tensor([source_index])
+            .to(dtype=torch.long)
+            .repeat(len(target_indices)),
             target_indices,
         ],
         dim=0,
     )
+
+
+def fetch_n_hop_neighbourhood(
+    n: int, user_id: int, users: UserQueryServer, articles: ArticleQueryServer
+) -> torch.Tensor:
+    """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
+    accum_edges = torch.Tensor([[], []])
+    users_explored = set([])
+    users_queue = set([user_id])
+    articles_queue = []
+
+    for i in range(0, n):
+        new_articles_and_edges = [
+            create_neighbouring_article_edges(user, users) for user in users_queue
+        ]
+        users_explored = users_explored | users_queue
+        new_articles = flatten([x[0] for x in new_articles_and_edges])
+        new_edges = torch.cat([x[1] for x in new_articles_and_edges], dim=1)
+
+        if i != 0:
+            accum_edges = torch.cat(
+                [accum_edges, new_edges], dim=1
+            )  # here we may need to do something about the dimensionality of the edges
+
+        articles_queue.extend(new_articles)
+        new_users = (
+            set(
+                flatten(
+                    [articles.get_item(article).tolist() for article in articles_queue]
+                )
+            )
+            - users_explored
+        )  # remove the intersection between the two sets, so we only explore a user once
+        users_queue = users_queue | new_users
+
+    return accum_edges
+
+
+def create_neighbouring_article_edges(
+    user_id: int, users: UserQueryServer
+) -> Tuple[List[int], Tensor]:
+    """Fetch neighbouring articles for a user, returns the article ids (list[int]) & edges (Tensor)"""
+    articles_purchased = users.get_item(user_id)
+    edges_to_articles = create_edges_from_target_indices(user_id, articles_purchased)
+    return articles_purchased.tolist(), edges_to_articles
+
+
+# def create_neighbouring_user_edges(
+#     article_id: int, articles: ArticleQueryServer
+# ) -> tuple[Tensor, list[int]]:
+#     """Fetch neighbouring users for an article, returns the edges (Tensor) and the user list"""
+#     users_who_purchased = articles.get_item(article_id)
+#     edges_to_users = create_edges_from_target_indices(
+#         torch.Tensor(article_id).to(torch.long), users_who_purchased
+#     )
+#     return edges_to_users, users_who_purchased.tolist()
