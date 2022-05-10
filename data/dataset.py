@@ -189,34 +189,7 @@ class GraphDataset(InMemoryDataset):
                 torch.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
-        all_touched_edges = torch.cat([subgraph_edges, sampled_edges_negative], dim=0)
-
-        """ Node Features """
-        # Prepare user features
-        user_features = self.graph[Constants.node_user].x[idx]
-
-        # Prepare connected article features
-        article_features = self.graph[Constants.node_item].x[
-            torch.sort(all_touched_edges)[0]
-        ]
-        print("FASDFSDFAD")
-        print(all_touched_edges)
-
         """ Remap and Prepare Edges """
-        # Remap IDs
-        buckets = torch.unique(all_touched_edges)
-        subgraph_edges_remapped = remap_indexes_to_zero(subgraph_edges, buckets=buckets)
-        subgraph_sample_positive_remapped = remap_indexes_to_zero(
-            subgraph_sample_positive, buckets=buckets
-        )
-        sampled_edges_negative_remapped = remap_indexes_to_zero(
-            sampled_edges_negative, buckets=buckets
-        )
-
-        all_sampled_edges_remapped = torch.cat(
-            [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=0
-        )
-
         # Expand flat edge list with user's id to have shape [2, num_nodes]
         id_tensor = torch.tensor([0])
 
@@ -308,10 +281,6 @@ class GraphDataset(InMemoryDataset):
         sampled_edges_negative[1] = remap_indexes_to_zero(
             sampled_edges_negative[1], buckets=all_touched_edges_ids
         )
-        # Shift negative edges to be after the subgraph edges
-        # sampled_edges_negative[1] = torch.add(
-        #     sampled_edges_negative[1], torch.max(subgraph_edges[1]) + 1
-        # )
 
         return subgraph_edges, subgraph_sample_positive, sampled_edges_negative
 

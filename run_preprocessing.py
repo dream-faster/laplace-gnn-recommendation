@@ -289,10 +289,6 @@ def extract_reverse_edges(transactions: pd.DataFrame) -> dict:
     return transactions.groupby("article_id")["customer_id"].apply(list).to_dict()
 
 
-def extract_edges_articles(transactions: pd.DataFrame) -> dict:
-    return transactions.groupby("article_id")["customer_id"].apply(list).to_dict()
-
-
 def extract_users_per_location(customers: pd.DataFrame) -> dict:
     return customers.groupby("postal_code")["index"].apply(list).to_dict()
 
