@@ -314,7 +314,7 @@ def get_negative_edges_random(
         only_negative_edges = only_items_with_count_one(
             torch.cat(
                 (
-                    torch.range(start=0, end=id_max, dtype=torch.int64),
+                    torch.arange(start=0, end=id_max + 1, dtype=torch.int64),
                     subgraph_edges_to_filter,
                 ),
                 dim=0,

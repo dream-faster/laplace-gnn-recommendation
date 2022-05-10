@@ -10,8 +10,8 @@ def get_raw_data():
     )
     article_features = torch.stack(
         [
-            torch.tensor([0.2, 0.3, 0.4, 0.5]),
-            torch.tensor([1.2, 1.4, 1.5, 1.6]),
+            torch.tensor([0.1, 0.2, 0.3, 0.4]),
+            torch.tensor([1.1, 1.2, 1.3, 1.4]),
             torch.tensor([2.1, 2.2, 2.3, 2.4]),
             torch.tensor([3.1, 3.2, 3.3, 3.4]),
             torch.tensor([4.1, 4.2, 4.3, 4.4]),
