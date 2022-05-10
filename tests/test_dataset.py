@@ -46,9 +46,7 @@ def test_integrity_nodes(data: HeteroData = data):
     print(edge_label)
     print(torch.unique(torch.concat([edge_index[1], edge_label_index[1]])))
 
-    assert torch.equal(
-        user_features.type(torch.float), torch.tensor([[0.0, 0.1]]).type(torch.float)
-    )
+    assert torch.equal(user_features, torch.tensor([[0.0, 0.1]]))
     assert (
         user_features.shape[0] == all_touched_users.shape[0]
     ), "User features are not the same as existing and sampled edges."
@@ -58,12 +56,12 @@ def test_integrity_nodes(data: HeteroData = data):
     ), "Article features are not the same as existing and sampled edges."
 
     assert torch.equal(
-        article_features.type(torch.float),
+        article_features,
         torch.tensor(
             [
                 [0.0, 0.1, 0.2, 0.3, 0.4],
                 [1.0, 1.1, 1.2, 1.3, 1.4],
                 [2.0, 2.1, 2.2, 2.3, 2.4],
             ]
-        ).type(torch.float),
+        ),
     )
