@@ -1,5 +1,5 @@
 from config import Config
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from reporting.types import Stats, BaseStats
 
 import wandb
@@ -69,7 +69,7 @@ def send_report_to_wandb(
 
 def setup_config(
     project_name: str, with_wandb: bool, raw_config: Config
-) -> tuple[Optional[object], Config]:
+) -> Tuple[Optional[object], Config]:
 
     wandb = None
     config = raw_config
