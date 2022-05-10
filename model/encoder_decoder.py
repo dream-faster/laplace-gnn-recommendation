@@ -140,15 +140,10 @@ class Encoder_Decoder_Model(torch.nn.Module):
         out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         
         # Rebatching by user.
+        users = edge_label_index[0].unique(sorted=True)
+        users = torch.bucketize(users, users)
+        out_per_user = [out[edge_label_index[0]==user] for user in users]
         
-        out_per_user = []
-        for i, user_index in enumerate(edge_label_index[0]):
-            user_id = user_index.item()
-            score = out[i].unsqueeze(0)
-            if user_id >= len(out_per_user):
-                out_per_user.append(score)
-            else:
-                out_per_user[user_id] = torch.concat([out_per_user[user_id], score])
 
         max_output_length = max([element.shape[0] for element in out_per_user])
         
