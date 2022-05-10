@@ -17,5 +17,5 @@ def create_data():
 
     first_data = train_dataset[0]
 
-    raw_data = get_raw_sample(first_data.graph)
+    raw_data = get_raw_sample(train_dataset.graph)
     return first_data, raw_data
