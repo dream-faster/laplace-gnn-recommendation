@@ -12,6 +12,7 @@ def create_data():
         config=link_pred_config.dataloader_config,
         edge_path=data_dir + "dummy_edges_train.pt",
         graph_path=data_dir + "dummy_graph_train.pt",
+        article_edge_path=data_dir + "dummy_rev_edges_train.pt",
         train=True,
     )
 
