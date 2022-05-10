@@ -6,7 +6,7 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
-from .dataset import GraphDataset
+from .dataset_alt import GraphDataset
 from .matching.lightgcn import LightGCNMatcher
 from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
 from .matching.users_same_location import UsersSameLocationMatcher
@@ -21,16 +21,16 @@ def create_dataloaders(
     data_dir = "data/derived/"
     train_dataset = GraphDataset(
         config=config,
-        edge_path=data_dir + "edges_train.pt",
         graph_path=data_dir + "train_graph.pt",
-        article_edge_path=data_dir + "rev_edges_train.pt",
+        users_adj_list=data_dir + "edges_train.pt",
+        articles_adj_list=data_dir + "rev_edges_train.pt",
         train=True,
     )
     val_dataset = GraphDataset(
         config=config,
-        edge_path=data_dir + "edges_val.pt",
         graph_path=data_dir + "val_graph.pt",
-        article_edge_path=data_dir + "rev_edges_val.pt",
+        users_adj_list=data_dir + "edges_val.pt",
+        articles_adj_list=data_dir + "rev_edges_val.pt",
         train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
@@ -41,9 +41,9 @@ def create_dataloaders(
     )
     test_dataset = GraphDataset(
         config=config,
-        edge_path=data_dir + "edges_test.pt",
         graph_path=data_dir + "test_graph.pt",
-        article_edge_path=data_dir + "rev_edges_test.pt",
+        users_adj_list=data_dir + "edges_test.pt",
+        articles_adj_list=data_dir + "rev_edges_test.pt",
         train=False,
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
