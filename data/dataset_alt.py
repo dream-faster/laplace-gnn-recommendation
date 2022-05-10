@@ -23,8 +23,8 @@ class GraphDataset(InMemoryDataset):
     ):
 
         self.graph = torch.load(graph_path)
-        self.articles = torch.load(users_adj_list)
-        self.users = torch.load(articles_adj_list)
+        self.articles = torch.load(articles_adj_list)
+        self.users = torch.load(users_adj_list)
         self.matchers = matchers
         self.config = config
         self.train = train
