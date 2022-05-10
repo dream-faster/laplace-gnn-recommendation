@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 from data.types import (
-    DataLoaderConfig,
     PreprocessingConfig,
     UserColumn,
     ArticleColumn,
@@ -32,11 +31,21 @@ class Config:
     conv_agg_type: str  # "add", "mean", "max", "lstm"
     heterogeneous_prop_agg_type: str  # "sum", "mean", "min", "max", "mul"
     save_model: bool
-    dataloader_config: DataLoaderConfig
     eval_every: int  # (LightGCN) evaluation to run every n epoch
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
     save_every: float  # How often the model should be saved, Ratio of epochs (eg.: 0.2 * epoch_num)
+
+    batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
+    val_split: float
+    test_split: float
+    num_neighbors: int  # sample n neighbors for each node for num_neighbors_it iterations
+    num_neighbors_it: int
+    num_workers: int  # number of workers to use for data loading
+    candidate_pool_size: int  # How many precalculated candidates we should give over
+    positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
+    negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
         int
@@ -62,17 +71,15 @@ link_pred_config = Config(
     heterogeneous_prop_agg_type="sum",
     learning_rate=0.01,
     save_model=False,
-    dataloader_config=DataLoaderConfig(
-        test_split=0.1,
-        val_split=0.1,
-        batch_size=128,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
-        num_neighbors=64,  # -1 takes all neighbors
-        num_neighbors_it=2,
-        num_workers=1,
-        candidate_pool_size=20,
-        positive_edges_ratio=0.5,
-        negative_edges_ratio=1.0,
-    ),
+    test_split=0.1,
+    val_split=0.1,
+    batch_size=128,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+    num_neighbors=64,  # -1 takes all neighbors
+    num_neighbors_it=2,
+    num_workers=1,
+    candidate_pool_size=20,
+    positive_edges_ratio=0.5,
+    negative_edges_ratio=1.0,
     eval_every=1,
     lr_decay_every=1,
     Lambda=1e-6,
@@ -94,17 +101,15 @@ lightgcn_config = Config(
     conv_agg_type="add",  # IGNORE for LightGCN
     heterogeneous_prop_agg_type="sum",  # IGNORE for LightGCN
     save_model=False,
-    dataloader_config=DataLoaderConfig(
-        test_split=0.1,
-        val_split=0.1,
-        batch_size=128,
-        num_neighbors=0,  # IGNORE for LightGCN
-        num_neighbors_it=0,  # IGNORE for LightGCN
-        num_workers=1,
-        candidate_pool_size=0,  # IGNORE for LightGCN
-        positive_edges_ratio=1.0,  # IGNORE for LightGCN
-        negative_edges_ratio=1.0,  # IGNORE for LightGCN
-    ),
+    test_split=0.1,
+    val_split=0.1,
+    batch_size=128,
+    num_neighbors=0,  # IGNORE for LightGCN
+    num_neighbors_it=0,  # IGNORE for LightGCN
+    num_workers=1,
+    candidate_pool_size=0,  # IGNORE for LightGCN
+    positive_edges_ratio=1.0,  # IGNORE for LightGCN
+    negative_edges_ratio=1.0,  # IGNORE for LightGCN
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,

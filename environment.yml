@@ -21,6 +21,7 @@ dependencies:
   - fastparquet
   - pyright
   - wandb
+  - optuna
   - pip
   - pip:
       - https://github.com/pyg-team/pytorch_geometric/archive/master.zip

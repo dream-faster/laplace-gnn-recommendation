@@ -23,7 +23,7 @@ from reporting.types import (
 )
 
 
-def run_pipeline(config: Config):
+def run_pipeline(config: Config) -> Stats:
     config.print()
     wandb, config = setup_config("Fashion-Recomm-GNN", config.wandb_enabled, config)
 
@@ -31,7 +31,7 @@ def run_pipeline(config: Config):
     seed_everything(5)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     assert (
-        config.k <= config.dataloader_config.candidate_pool_size
+        config.k <= config.candidate_pool_size
     ), "k must be smaller than candidate_pool_size"
 
     print("| Creating Datasets...")
@@ -42,7 +42,7 @@ def run_pipeline(config: Config):
         customer_id_map,
         article_id_map,
         full_data,
-    ) = create_dataloaders(config.dataloader_config)
+    ) = create_dataloaders(config)
 
     print("| Creating Model...")
     model = Encoder_Decoder_Model(
@@ -139,6 +139,13 @@ def run_pipeline(config: Config):
         ),
         wandb=wandb,
         final=True,
+    )
+    return Stats(
+        loss=loss_mean,
+        recall_val=val_recall_mean,
+        recall_test=np.mean(test_recalls),
+        precision_val=val_precision_mean,
+        precision_test=np.mean(test_precisions),
     )
 
 

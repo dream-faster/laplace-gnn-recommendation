@@ -1,5 +1,5 @@
 import torch
-from data.types import DataLoaderConfig, FeatureInfo
+from data.types import FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
@@ -135,7 +135,7 @@ class Encoder_Decoder_Model(torch.nn.Module):
         return output
 
 
-    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor)->Tensor:
+    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor) -> Tensor:
         self.eval()
         out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
         

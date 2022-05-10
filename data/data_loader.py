@@ -1,6 +1,6 @@
-from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
-from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
+from config import Config
+from data.types import ArticleIdMap, CustomerIdMap
 import torch
 import json
 from typing import Tuple
@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def create_dataloaders(
-    config: DataLoaderConfig,
+    config: Config,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap, HeteroData]:
     data_dir = "data/derived/"
     train_dataset = GraphDataset(

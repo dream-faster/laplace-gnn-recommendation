@@ -133,7 +133,7 @@ def train(config: Config):
 
         # mini batching
         user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(
-            config.dataloader_config.batch_size, train_edge_index
+            config.batch_size, train_edge_index
         )
         user_indices, pos_item_indices, neg_item_indices = (
             user_indices.to(device),

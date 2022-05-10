@@ -1,6 +1,7 @@
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
-from data.types import DataLoaderConfig, ArticleIdMap, CustomerIdMap
+from data.types import ArticleIdMap, CustomerIdMap
+from config import Config
 import torch
 import json
 from typing import Tuple
@@ -22,7 +23,7 @@ def shuffle_data(data: HeteroData) -> HeteroData:
 
 
 def create_dataloaders(
-    config: DataLoaderConfig,
+    config: Config,
 ) -> Tuple[
     LinkNeighborLoader,
     LinkNeighborLoader,
