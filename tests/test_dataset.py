@@ -40,7 +40,7 @@ def node_features(data: HeteroData):
     print(article_features)
 
     assert torch.equal(
-        user_features.type(torch.float), torch.tensor([[0.3, 0.2]]).type(torch.float)
+        user_features.type(torch.float), torch.tensor([[0.0, 0.1]]).type(torch.float)
     )
     assert torch.equal(
         article_features.type(torch.float),
