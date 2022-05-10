@@ -235,9 +235,9 @@ def fetch_n_hop_neighbourhood(
         if len(new_articles_and_edges) == 0:
             break
         new_articles = flatten([x[0] for x in new_articles_and_edges])
-        new_edges = torch.cat([x[1] for x in new_articles_and_edges], dim=1)
 
         if i != 0:
+            new_edges = torch.cat([x[1] for x in new_articles_and_edges], dim=1)
             accum_edges = torch.cat([accum_edges, new_edges], dim=1)
 
         articles_queue.extend(new_articles)
