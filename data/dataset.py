@@ -28,7 +28,6 @@ class GraphDataset(InMemoryDataset):
         self.matchers = matchers
         self.config = config
         self.train = train
-        print("")
 
     def __len__(self) -> int:
         return len(self.edges)
@@ -164,9 +163,10 @@ class GraphDataset(InMemoryDataset):
         )
 
         # Sample positive edges from subgraph
-        subgraph_sample_positive = subgraph_edges[
-            torch.randint(low=0, high=len(self.edges[idx]), size=(samp_cut,))
-        ]
+        random_integers = torch.randint(
+            low=0, high=len(self.edges[idx]), size=(samp_cut,)
+        )
+        subgraph_sample_positive = subgraph_edges[random_integers]
 
         if self.train:
             # Randomly select from the whole graph
@@ -304,7 +304,10 @@ def get_negative_edges_random(
 
     if all_edges.shape[1] / num_negative_edges > 100:
         # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
-        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
+        random_integers = torch.randint(
+            low=0, high=id_max.item(), size=(num_negative_edges,)
+        )
+        return random_integers
 
     else:
         # Create list of potential negative edges, filter out positive edges
@@ -319,9 +322,8 @@ def get_negative_edges_random(
         )
 
         # Randomly sample negative edges
-        negative_edges = only_negative_edges[
-            torch.randperm(only_negative_edges.nelement())
-        ][:num_negative_edges]
+        random_integer = torch.randperm(only_negative_edges.nelement())
+        negative_edges = only_negative_edges[random_integer][:num_negative_edges]
 
         return negative_edges
 
