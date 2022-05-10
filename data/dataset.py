@@ -38,8 +38,8 @@ class GraphDataset(InMemoryDataset):
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
-        positive_article_indices = self.users.get_item(
-            idx
+        positive_article_indices = torch.as_tensor(
+            self.users.get_item(idx), dtype=torch.long
         )  # all the positive target indices for the current user
         positive_article_edges = create_edges_from_target_indices(
             idx, positive_article_indices
@@ -212,7 +212,7 @@ def create_edges_from_target_indices(
             torch.Tensor([source_index])
             .to(dtype=torch.long)
             .repeat(len(target_indices)),
-            target_indices,
+            torch.as_tensor(target_indices, dtype=torch.long),
         ],
         dim=0,
     )
@@ -244,7 +244,7 @@ def fetch_n_hop_neighbourhood(
         new_users = (
             set(
                 flatten(
-                    [articles.get_item(article).tolist() for article in articles_queue]
+                    [articles.get_item(article) for article in articles_queue]
                 )
             )
             - users_explored
@@ -259,8 +259,10 @@ def create_neighbouring_article_edges(
 ) -> Tuple[List[int], Tensor]:
     """Fetch neighbouring articles for a user, returns the article ids (list[int]) & edges (Tensor)"""
     articles_purchased = users.get_item(user_id)
-    edges_to_articles = create_edges_from_target_indices(user_id, articles_purchased)
-    return articles_purchased.tolist(), edges_to_articles
+    edges_to_articles = create_edges_from_target_indices(
+        user_id, torch.as_tensor(articles_purchased, dtype=torch.long)
+    )
+    return articles_purchased, edges_to_articles
 
 
 def shuffle_edges_and_labels(edges: Tensor, labels: Tensor) -> Tuple[Tensor, Tensor]:

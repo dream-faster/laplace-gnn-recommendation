@@ -16,10 +16,13 @@ class ArticlesWithCommonUsersMatcher(Matcher):
     def get_matches(self, user_id: int) -> torch.Tensor:
         articles_purchased = self.users.get_item(user_id)
         users_with_same_articles = flatten(
-            [self.articles.get_item(article.item()) for article in articles_purchased]
+            [self.articles.get_item(article) for article in articles_purchased]
         )
         articles_purchased_by_common_users = torch.cat(
-            [self.users.get_item(user.item()) for user in users_with_same_articles],
+            [
+                torch.as_tensor(self.users.get_item(user), dtype=torch.long)
+                for user in users_with_same_articles
+            ],
             dim=0,
         )
         return articles_purchased_by_common_users[: self.k]
