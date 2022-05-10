@@ -1,13 +1,17 @@
 from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch
-from tests.util import get_raw_sample
+from tests.test_utils import get_raw_sample
 
 
 def get_data():
-    node_features = torch.stack([[0.3, 0.2], [0.8, 0.9]])
+    node_features = torch.stack([torch.tensor([0.3, 0.2]), torch.tensor([0.8, 0.9])])
     article_features = torch.stack(
-        [[0.2, 0.3, 0.4, 0.5], [1.2, 1.4, 1.5, 1.6], [2.1, 2.2, 2.3, 2.4]]
+        [
+            torch.tensor([0.2, 0.3, 0.4, 0.5]),
+            torch.tensor([1.2, 1.4, 1.5, 1.6]),
+            torch.tensor([2.1, 2.2, 2.3, 2.4]),
+        ]
     )
     graph_edges = torch.tensor([[0, 0, 1], [0, 2, 1]])
     sampled_edges = torch.tensor([[0, 0], [2, 3]])

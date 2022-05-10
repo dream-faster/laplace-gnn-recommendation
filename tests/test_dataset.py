@@ -13,16 +13,15 @@ def node_features(data: HeteroData, raw_data: dict):
         data[Constants.node_user].x,
         data[Constants.node_item].x,
     )
-    assert user_feature[0].tolist() == node_1_features
-    assert user_feature[0].tolist() == node_1_features
-    assert user_feature[1].tolist() == node_2_features
+    assert torch.equal(user_feature[0], raw_data["node_features_first"])
+    assert torch.equal(user_feature[-1], raw_data["node_features_last"])
 
-    assert article_feature[0].tolist() == article_1_features
-    assert article_feature[0].tolist()[1] == article_1_features[1]
-    assert article_feature[1].tolist() == article_2_features
-    assert article_feature[1].tolist()[2] == article_2_features[2]
-    assert article_feature[2].tolist() == article_3_features
-    assert article_feature[2].tolist()[0] == article_3_features[0]
+    assert torch.equal(
+        article_feature[0], raw_data["article_features_first"]
+    ), "Article wrong"
+    assert torch.equal(
+        article_feature[-1], raw_data["article_features_last"]
+    ), "Article wrong"
 
 
 def edge_features(data: HeteroData):
@@ -42,4 +41,8 @@ def test_integrity():
 
     data, raw_data = create_dummy_data()  # create_data()
     node_features(data, raw_data)
-    edge_features(data, raw_data)
+    # edge_features(data, raw_data)
+
+
+if __name__ == "__main__":
+    test_integrity()
