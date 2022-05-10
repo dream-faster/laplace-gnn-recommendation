@@ -3,7 +3,7 @@ from utils.constants import Constants
 import torch
 from tests.data_generator import save_dummy_data
 from torch_geometric import seed_everything
-from .utils import get_first_item_from_dataset
+from tests.util import get_first_item_from_dataset
 
 seed_everything(5)
 save_dummy_data()

@@ -2,7 +2,7 @@ from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch
 from torch import Tensor
-from .utils import get_raw_sample, get_raw_all
+from .util import get_raw_sample, get_raw_all
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 
 
