@@ -15,17 +15,16 @@ data = create_data()
 def edge_features(data: HeteroData):
 
     # Basic Testing of edges if they fit size expectations
-    edges = data[Constants.edge_key]
-    assert edges.edge_index.shape[0] == 2
-    assert edges.edge_index.shape[1] > 0
-    assert edges.edge_label_index.shape[0] == 2
-    assert edges.edge_label_index.shape[1] > 0
-    assert edges.edge_label.shape[0] == 2
-    assert edges.edge_label.shape[0] > 0
-    assert len(edges.edge_label.shape) == 1
-    assert edges.edge_label.shape[0] == edges.edge_label_index.shape[1]
-
-    # Assertions for reverse edges
+    for edge_type in [Constants.edge_key, Constants.rev_edge_key]:
+        edges = data[edge_type]
+        assert edges.edge_index.shape[0] == 2
+        assert edges.edge_index.shape[1] > 0
+        assert edges.edge_label_index.shape[0] == 2
+        assert edges.edge_label_index.shape[1] > 0
+        assert edges.edge_label.shape[0] == 2
+        assert edges.edge_label.shape[0] > 0
+        assert len(edges.edge_label.shape) == 1
+        assert edges.edge_label.shape[0] == edges.edge_label_index.shape[1]
 
 
 def node_features(data: HeteroData):
@@ -33,7 +32,7 @@ def node_features(data: HeteroData):
         data[Constants.node_user].x,
         data[Constants.node_item].x,
     )
-    # print(data)
+
     print(data[Constants.edge_key].edge_index)
     print(data[Constants.edge_key].edge_label_index)
     print(data[Constants.edge_key].edge_label)
@@ -47,9 +46,9 @@ def node_features(data: HeteroData):
         article_features.type(torch.float),
         torch.tensor(
             [
-                [0.1, 0.2, 0.3, 0.4],
-                [1.1, 1.2, 1.3, 1.4],
-                [2.1, 2.2, 2.3, 2.4],
+                [0.0, 0.1, 0.2, 0.3, 0.4],
+                [1.0, 1.1, 1.2, 1.3, 1.4],
+                [2.0, 2.1, 2.2, 2.3, 2.4],
             ]
         ).type(torch.float),
     )
@@ -61,7 +60,3 @@ def test_integrity_nodes():
 
 def test_integrity_edges():
     edge_features(data)
-
-
-if __name__ == "__main__":
-    test_integrity_nodes()
