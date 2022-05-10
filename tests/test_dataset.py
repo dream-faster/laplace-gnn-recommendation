@@ -39,7 +39,8 @@ def edge_features(data: HeteroData):
 
 def test_integrity():
 
-    data, raw_data = create_dummy_data()  # create_data()
+    # data, raw_data = create_dummy_data()
+    data, raw_data = create_data()
     node_features(data, raw_data)
     # edge_features(data, raw_data)
 
