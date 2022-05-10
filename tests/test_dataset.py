@@ -28,20 +28,37 @@ def edge_features(data: HeteroData):
 
 
 def node_features(data: HeteroData):
-    user_features, article_features = (
+    user_features, article_features, edge_index, edge_label_index, edge_label = (
         data[Constants.node_user].x,
         data[Constants.node_item].x,
+        data[Constants.edge_key].edge_index,
+        data[Constants.edge_key].edge_label_index,
+        data[Constants.edge_key].edge_label,
     )
-
-    print(data[Constants.edge_key].edge_index)
-    print(data[Constants.edge_key].edge_label_index)
-    print(data[Constants.edge_key].edge_label)
+    all_touched_users = torch.unique(torch.concat([edge_index[0], edge_label_index[0]]))
+    all_touched_articles = torch.unique(torch.concat([edge_index[1], edge_label_index[1]]))
+    
     print(user_features)
     print(article_features)
+    print(edge_index)
+    print(edge_label_index)
+    print(edge_label)
+    print(torch.unique(torch.concat([edge_index[1], edge_label_index[1]])))
+    
 
     assert torch.equal(
         user_features.type(torch.float), torch.tensor([[0.0, 0.1]]).type(torch.float)
     )
+    assert (
+        user_features.shape[0]
+        == all_touched_users.shape[0]
+    ), "User features are not the same as existing and sampled edges."
+
+    assert (
+        article_features.shape[0]
+        == all_touched_articles.shape[0]
+    ), "Article features are not the same as existing and sampled edges."
+
     assert torch.equal(
         article_features.type(torch.float),
         torch.tensor(
