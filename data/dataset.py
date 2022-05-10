@@ -72,7 +72,11 @@ class GraphDataset(InMemoryDataset):
         user_features = self.graph[Constants.node_user].x[idx]
 
         # Prepare connected article features
-        article_features = self.graph[Constants.node_item].x[all_touched_edges]
+        article_features = self.graph[Constants.node_item].x[
+            torch.sort(all_touched_edges)[0]
+        ]
+        print("FASDFSDFAD")
+        print(all_touched_edges)
 
         """ Remap and Prepare Edges """
         # Remap IDs
