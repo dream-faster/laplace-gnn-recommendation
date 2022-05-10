@@ -3,7 +3,7 @@ from utils.constants import Constants
 import torch
 from data.dataset import GraphDataset
 from config import link_pred_config
-from tests.util import get_raw_sample
+from tests.test_utils import get_raw_sample
 
 
 def create_data():
