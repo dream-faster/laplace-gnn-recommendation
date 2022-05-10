@@ -1,18 +1,17 @@
-from email.contentmanager import raw_data_manager
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch
-from data.dataset import GraphDataset
-from config import link_pred_config
-from tests.dummy_data import create_dummy_data, get_raw_data
-from tests.actual_data import create_data
+from tests.data_generator import save_dummy_data
 from torch_geometric import seed_everything
+from .utils import get_first_item_from_dataset
 
 seed_everything(5)
-data = create_data()
+save_dummy_data()
+
+data = get_first_item_from_dataset()
 
 
-def edge_features(data: HeteroData):
+def test_integrity_edges(data: HeteroData = data):
 
     # Basic Testing of edges if they fit size expectations
     for edge_type in [Constants.edge_key, Constants.rev_edge_key]:
@@ -27,7 +26,7 @@ def edge_features(data: HeteroData):
         assert edges.edge_label.shape[0] == edges.edge_label_index.shape[1]
 
 
-def node_features(data: HeteroData):
+def test_integrity_nodes(data: HeteroData = data):
     user_features, article_features, edge_index, edge_label_index, edge_label = (
         data[Constants.node_user].x,
         data[Constants.node_item].x,
@@ -36,27 +35,26 @@ def node_features(data: HeteroData):
         data[Constants.edge_key].edge_label,
     )
     all_touched_users = torch.unique(torch.concat([edge_index[0], edge_label_index[0]]))
-    all_touched_articles = torch.unique(torch.concat([edge_index[1], edge_label_index[1]]))
-    
+    all_touched_articles = torch.unique(
+        torch.concat([edge_index[1], edge_label_index[1]])
+    )
+
     print(user_features)
     print(article_features)
     print(edge_index)
     print(edge_label_index)
     print(edge_label)
     print(torch.unique(torch.concat([edge_index[1], edge_label_index[1]])))
-    
 
     assert torch.equal(
         user_features.type(torch.float), torch.tensor([[0.0, 0.1]]).type(torch.float)
     )
     assert (
-        user_features.shape[0]
-        == all_touched_users.shape[0]
+        user_features.shape[0] == all_touched_users.shape[0]
     ), "User features are not the same as existing and sampled edges."
 
     assert (
-        article_features.shape[0]
-        == all_touched_articles.shape[0]
+        article_features.shape[0] == all_touched_articles.shape[0]
     ), "Article features are not the same as existing and sampled edges."
 
     assert torch.equal(
@@ -69,11 +67,3 @@ def node_features(data: HeteroData):
             ]
         ).type(torch.float),
     )
-
-
-def test_integrity_nodes():
-    node_features(data)
-
-
-def test_integrity_edges():
-    edge_features(data)
