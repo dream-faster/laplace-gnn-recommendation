@@ -1,21 +1,13 @@
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch
-from data.dataset import GraphDataset
-from config import link_pred_config
-
-
-node_1_features = [0.3, 0.2]
-node_2_features = [0.8, 0.9]
-article_1_features = [0.2, 0.3, 0.4, 0.5]
-article_2_features = [1.2, 1.4, 1.5, 1.6]
-article_3_features = [2.1, 2.2, 2.3, 2.4]
+from tests.util import get_raw_sample
 
 
 def get_data():
-    node_features = torch.stack([node_1_features, node_2_features])
+    node_features = torch.stack([[0.3, 0.2], [0.8, 0.9]])
     article_features = torch.stack(
-        [article_1_features, article_2_features, article_3_features]
+        [[0.2, 0.3, 0.4, 0.5], [1.2, 1.4, 1.5, 1.6], [2.1, 2.2, 2.3, 2.4]]
     )
     graph_edges = torch.tensor([[0, 0, 1], [0, 2, 1]])
     sampled_edges = torch.tensor([[0, 0], [2, 3]])
@@ -46,54 +38,6 @@ def create_dummy_data():
     edges_dict = {"0": [0, 2], "1": [1]}
     rev_edges_dict = {"0": [0], "1": [1], "2": [0]}
 
-    return data, edges_dict, rev_edges_dict
+    raw_data = get_raw_sample(data)
 
-
-def create_data():
-    data_dir = "data/derived/"
-    train_dataset = GraphDataset(
-        config=link_pred_config.dataloader_config,
-        edge_path=data_dir + "edges_train.pt",
-        graph_path=data_dir + "train_graph.pt",
-        train=True,
-    )
-
-    return train_dataset
-
-
-def node_features(data: HeteroData):
-    # Basic Testing of node features (if they get mixed up or not)
-    user_feature, article_feature = (
-        data[Constants.node_user].x,
-        data[Constants.node_item].x,
-    )
-    assert user_feature[0].tolist() == node_1_features
-    assert user_feature[0].tolist() == node_1_features
-    assert user_feature[1].tolist() == node_2_features
-
-    assert article_feature[0].tolist() == article_1_features
-    assert article_feature[0].tolist()[1] == article_1_features[1]
-    assert article_feature[1].tolist() == article_2_features
-    assert article_feature[1].tolist()[2] == article_2_features[2]
-    assert article_feature[2].tolist() == article_3_features
-    assert article_feature[2].tolist()[0] == article_3_features[0]
-
-
-def edge_features(data: HeteroData):
-
-    # Basic Testing of edges
-    edges = data[Constants.edge_key]
-    assert edges.edge_label_index.shape[0] == 2
-    assert edges.edge_label.shape[0] == 2
-    assert len(edges.label.shape[0]) == 1
-
-    assert edges.edge_label_index.shape[1] == 2
-
-    # Assertions for reverse edges
-
-
-def test_integrity():
-
-    data, edges, rev_edges = create_dummy_data()  # create_data()
-    node_features(data)
-    edge_features(data)
+    return data, raw_data
