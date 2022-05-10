@@ -71,7 +71,7 @@ link_pred_config = Config(
         num_workers=1,
         candidate_pool_size=20,
         positive_edges_ratio=0.5,
-        negative_edges_ratio=10.0,
+        negative_edges_ratio=1.0,
     ),
     eval_every=1,
     lr_decay_every=1,

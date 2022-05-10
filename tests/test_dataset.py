@@ -6,23 +6,7 @@ from data.dataset import GraphDataset
 from config import link_pred_config
 from tests.dummy_data import create_dummy_data, get_raw_data
 from tests.actual_data import create_data
-
-
-def node_features(data: HeteroData, raw_data: dict):
-    # Basic Testing of node features (if they get mixed up or not)
-    user_feature, article_feature = (
-        data[Constants.node_user].x,
-        data[Constants.node_item].x,
-    )
-    assert torch.equal(user_feature[0], raw_data["node_features_first"])
-    # assert torch.equal(user_feature[-1], raw_data["node_features_last"])
-
-    # assert torch.equal(
-    #     article_feature[0], raw_data["article_features_first"]
-    # ), "Article wrong"
-    # assert torch.equal(
-    #     article_feature[-1], raw_data["article_features_last"]
-    # ), "Article wrong"
+from torch_geometric import seed_everything
 
 
 def edge_features(data: HeteroData):
@@ -38,13 +22,7 @@ def edge_features(data: HeteroData):
     # Assertions for reverse edges
 
 
-def node_features_manual(data: HeteroData, raw_data: dict):
-    # positive_node_edges_random_id = torch.tensor([0])
-    # # Taken from a run through the dataset
-    # negative_node_edges_random_id = torch.tensor(
-    #     [0]
-    # )  # Taken from a run through the dataset
-
+def node_features(data: HeteroData, raw_data: dict):
     user_features, article_features = (
         data[Constants.node_user].x,
         data[Constants.node_item].x,
@@ -61,14 +39,25 @@ def node_features_manual(data: HeteroData, raw_data: dict):
     )
     assert torch.equal(
         article_features.type(torch.float),
-        torch.tensor([[0.2, 0.3, 0.4, 0.5]]).type(torch.float),
+        torch.tensor(
+            [[0.1, 0.2, 0.3, 0.4], [1.1, 2.2, 2.3, 2.4], [2.1, 2.2, 2.3, 2.4]]
+        ).type(torch.float),
     )
 
 
-def test_integrity():
+def test_integrity_nodes():
+    seed_everything(5)
     data = create_data()
     _, _, raw_all = create_dummy_data()
-    node_features_manual(data, raw_all)
+    node_features(data, raw_all)
+    # edge_features(data, raw_data)
+
+
+def test_integrity_edges():
+    seed_everything(5)
+    data = create_data()
+    _, _, raw_all = create_dummy_data()
+    assert True
     # edge_features(data, raw_data)
 
 
@@ -79,4 +68,4 @@ def test_integrity():
 
 
 if __name__ == "__main__":
-    test_integrity()
+    test_integrity_nodes()
