@@ -16,15 +16,15 @@ class GraphDataset(InMemoryDataset):
     def __init__(
         self,
         config: Config,
-        edge_path: str,
         graph_path: str,
-        article_edge_path: str,
+        users_adj_list: str,
+        articles_adj_list: str,
         train: bool,
         matchers: Optional[List[Matcher]] = None,
     ):
-        self.edges = torch.load(edge_path)
+        self.edges = torch.load(users_adj_list)
         self.graph = torch.load(graph_path)
-        self.article_edges = torch.load(article_edge_path)
+        self.article_edges = torch.load(articles_adj_list)
         self.matchers = matchers
         self.config = config
         self.train = train
