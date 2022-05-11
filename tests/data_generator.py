@@ -4,6 +4,7 @@ import torch as t
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 from typing import Optional
 from .util import deconstruct_heterodata, get_edge_dicts
+from torch import Tensor
 
 
 def create_dummy_data(save=False) -> HeteroData:
@@ -105,17 +106,17 @@ def __construct_heterodata(
 
     # Add original directional edges
     data[Constants.edge_key].edge_index = edge_index
-    if edge_label_index:
+    if type(edge_label_index) is SampledEdges:
         data[Constants.edge_key].edge_label_index = edge_label_index
-    if edge_label:
+    if type(edge_label) is Labels:
         data[Constants.edge_key].edge_label = edge_label
 
     # Add reverse edges
     reverse_key = t.LongTensor([1, 0])
     data[Constants.rev_edge_key].edge_index = edge_index[reverse_key]
-    if edge_label_index:
+    if type(edge_label_index) is SampledEdges:
         data[Constants.rev_edge_key].edge_label_index = edge_label_index[reverse_key]
-    if edge_label:
+    if type(edge_label) is Labels:
         data[Constants.rev_edge_key].edge_label = edge_label
 
     return data

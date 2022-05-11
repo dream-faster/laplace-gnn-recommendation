@@ -63,10 +63,10 @@ def deconstruct_heterodata(
         hdata[Constants.node_item].x,
         hdata[Constants.edge_key].edge_index,
         hdata[Constants.edge_key].edge_label_index
-        if hdata[Constants.edge_key].edge_label_index is not None
+        if hasattr(hdata[Constants.edge_key], "edge_label_index")
         else None,
         hdata[Constants.edge_key].edge_label
-        if hdata[Constants.edge_key].edge_label is not None
+        if hasattr(hdata[Constants.edge_key], "edge_label")
         else None,
     )
 

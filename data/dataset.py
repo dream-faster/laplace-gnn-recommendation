@@ -170,7 +170,9 @@ class GraphDataset(InMemoryDataset):
                 low=0, high=len(self.edges[idx]), size=(samp_cut,)
             )
         else:
-            random_integers = torch.tensor([0, torch.max(subgraph_edges).item()])
+            random_integers = torch.tensor(
+                [0, torch.max(subgraph_edges, dim=0)[1].item()]
+            )
 
         subgraph_sample_positive = subgraph_edges[random_integers]
 
@@ -334,7 +336,9 @@ def get_negative_edges_random(
         if randomization:
             random_integers = torch.randperm(only_negative_edges.nelement())
         else:
-            random_integers = torch.tensor([0, only_negative_edges.nelement()])
+            random_integers = torch.tensor(
+                [torch.max(only_negative_edges, dim=0)[1].item()]
+            )
 
         negative_edges = only_negative_edges[random_integers][:num_negative_edges]
 
