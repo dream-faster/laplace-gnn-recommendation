@@ -1,7 +1,7 @@
 from numpy import column_stack
 from torch_geometric.data import HeteroData
 from utils.constants import Constants
-import torch
+import torch as t
 from torch import Tensor
 from .util import get_raw_sample, get_raw_all
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
@@ -49,9 +49,9 @@ def create_dummy_data(save=False):
     raw_all = get_raw_all(data)
 
     if save:
-        torch.save(subgraph_data, "data/derived/dummy_graph_train.pt")
-        torch.save(edges_dict, "data/derived/dummy_edges_train.pt")
-        torch.save(rev_edges_dict, "data/derived/dummy_rev_edges_train.pt")
+        t.save(subgraph_data, "data/derived/dummy_graph_train.pt")
+        t.save(edges_dict, "data/derived/dummy_edges_train.pt")
+        t.save(rev_edges_dict, "data/derived/dummy_rev_edges_train.pt")
 
     return subgraph_data, raw_data, raw_all
 
@@ -73,24 +73,24 @@ def __deconstruct_heterodata(
 def __create_final_subgraph(
     entire_graph: HeteroData, edges_dict: dict, rev_edges_dict: dict, n_hop: int
 ) -> HeteroData:
-    user_id = Tensor([0])
-    art_id = torch.empty(0)
+    user_ids = t.tensor([0], dtype=t.long)
+    art_ids = t.empty(0, dtype=t.long)
 
     """ Collect ids """
     for _ in range(n_hop):
-        art_id = torch.unique(
-            torch.cat(
+        art_ids = t.unique(
+            t.cat(
                 [
-                    art_id,
-                    Tensor([i for id in user_id for i in edges_dict[id.item()]]),
+                    art_ids,
+                    t.tensor([i for id in user_ids for i in edges_dict[id.item()]]),
                 ]
             )
         )
-        user_id = torch.unique(
-            torch.cat(
+        user_ids = t.unique(
+            t.cat(
                 [
-                    user_id,
-                    Tensor([i for id in art_id for i in rev_edges_dict[id.item()]]),
+                    user_ids,
+                    t.tensor([i for id in art_ids for i in rev_edges_dict[id.item()]]),
                 ]
             )
         )
@@ -99,12 +99,21 @@ def __create_final_subgraph(
 
     """ Get Features """
     user_features, article_features = (
-        user_features[user_id],
-        article_features[art_id],
+        user_features[user_ids],
+        article_features[art_ids],
     )
 
     """ Get Edges """
-    graph_edges = [edge_index[:, edge_index[0] == user_id] for user_id in user_id]
+    subgraph_edges = t.cat(
+        [edge_index[:, edge_index[0] == user_id] for user_id in user_ids], dim=1
+    )
+
+    # Here we sample as positive edges: 0, the biggest connected edge and the last edge in the entire graph as negative edges
+    sampled_edges = t.tensor(
+        [[0, 0, 0], [0, max(edges_dict[0]), t.max(edge_index[1]).item()]],
+        dtype=t.long,
+    )
+    labels = t.tensor([1, 1, 0])
 
     """Create Data"""
     subgraph = HeteroData()
@@ -112,13 +121,13 @@ def __create_final_subgraph(
     subgraph[Constants.node_item].x = article_features
 
     # Add original directional edges
-    subgraph[Constants.edge_key].edge_index = graph_edges
+    subgraph[Constants.edge_key].edge_index = subgraph_edges
     subgraph[Constants.edge_key].edge_label_index = sampled_edges
     subgraph[Constants.edge_key].edge_label = labels
 
     # Add reverse edges
-    reverse_key = torch.LongTensor([1, 0])
-    subgraph[Constants.rev_edge_key].edge_index = graph_edges[reverse_key]
+    reverse_key = t.LongTensor([1, 0])
+    subgraph[Constants.rev_edge_key].edge_index = subgraph_edges[reverse_key]
     subgraph[Constants.rev_edge_key].edge_label_index = sampled_edges[reverse_key]
     subgraph[Constants.rev_edge_key].edge_label = labels
 
@@ -128,22 +137,23 @@ def __create_final_subgraph(
 def __get_raw_data() -> tuple[
     NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 ]:
-    node_features = torch.stack(
-        [torch.tensor([0.0, 0.1]), torch.tensor([1.0, 1.1]), torch.tensor([2.0, 2.1])]
+    node_features = t.stack(
+        [t.tensor([0.0, 0.1]), t.tensor([1.0, 1.1]), t.tensor([2.0, 2.1])]
     )
-    article_features = torch.stack(
+    article_features = t.stack(
         [
-            torch.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
-            torch.tensor([1.0, 1.1, 1.2, 1.3, 1.4]),
-            torch.tensor([2.0, 2.1, 2.2, 2.3, 2.4]),
-            torch.tensor([3.0, 3.1, 3.2, 3.3, 3.4]),
-            torch.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
+            t.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
+            t.tensor([1.0, 1.1, 1.2, 1.3, 1.4]),
+            t.tensor([2.0, 2.1, 2.2, 2.3, 2.4]),
+            t.tensor([3.0, 3.1, 3.2, 3.3, 3.4]),
+            t.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
+            t.tensor([5.0, 5.1, 5.2, 5.3, 5.4]),
         ]
     )
-    graph_edges = torch.tensor([[0, 0, 0, 1, 2, 2], [0, 2, 4, 1, 3, 0]])
+    graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]])
 
     # Last sample: We simulate how the last edge is taken from the larger graph, 5 > len(article_features)
-    sampled_edges = torch.tensor([[0, 0, 0], [2, 3, 5]])
-    labels = torch.tensor([1, 0, 0])
+    sampled_edges = t.tensor([[0, 0, 0], [2, 3, 5]])
+    labels = t.tensor([1, 0, 0])
 
     return node_features, article_features, graph_edges, sampled_edges, labels
