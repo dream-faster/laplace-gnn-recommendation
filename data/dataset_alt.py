@@ -20,6 +20,7 @@ class GraphDataset(InMemoryDataset):
         articles_adj_list: str,
         train: bool,
         matchers: Optional[List[Matcher]] = None,
+        randomization: bool = True,
     ):
 
         self.graph = torch.load(graph_path)
@@ -28,6 +29,7 @@ class GraphDataset(InMemoryDataset):
         self.matchers = matchers
         self.config = config
         self.train = train
+        self.randomization = randomization
 
     def __len__(self) -> int:
         return len(self.users)
@@ -49,9 +51,17 @@ class GraphDataset(InMemoryDataset):
                 len(positive_article_indices) * self.config.positive_edges_ratio
             ),
         )
-        sampled_positive_article_indices = positive_article_indices[
-            torch.randint(low=0, high=len(positive_article_indices), size=(samp_cut,))
-        ]
+
+        if self.randomization:
+            random_integers = torch.randint(
+                low=0, high=len(positive_article_indices), size=(samp_cut,)
+            )
+        else:
+            random_integers = torch.tensor(
+                [0, torch.max(positive_article_indices, dim=0)[1].item()]
+            )
+
+        sampled_positive_article_indices = positive_article_indices[random_integers]
         sampled_positive_article_edges = create_edges_from_target_indices(
             idx, sampled_positive_article_indices
         )
@@ -64,6 +74,7 @@ class GraphDataset(InMemoryDataset):
                     subgraph_edges_to_filter=sampled_positive_article_indices,
                     all_edges=all_edges,
                     num_negative_edges=int(self.config.negative_edges_ratio * samp_cut),
+                    randomization=self.randomization,
                 ),
             )
         else:
@@ -159,6 +170,7 @@ def get_negative_edges_random(
     subgraph_edges_to_filter: Tensor,
     all_edges: Tensor,
     num_negative_edges: int,
+    randomization: bool,
 ) -> Tensor:
 
     # Get the biggest value available in articles (potential edges to sample from)
@@ -166,14 +178,21 @@ def get_negative_edges_random(
 
     if all_edges.shape[1] / num_negative_edges > 100:
         # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
-        return torch.randint(low=0, high=id_max.item(), size=(num_negative_edges,))
+        if randomization:
+            random_integers = torch.randint(
+                low=0, high=id_max.item(), size=(num_negative_edges,)
+            )
+        else:
+            random_integers = torch.tensor([0, id_max.item()])
+
+        return random_integers
 
     else:
         # Create list of potential negative edges, filter out positive edges
         only_negative_edges = only_items_with_count_one(
             torch.cat(
                 (
-                    torch.arange(start=0, end=id_max, dtype=torch.int64),
+                    torch.arange(start=0, end=id_max + 1, dtype=torch.int64),
                     subgraph_edges_to_filter,
                 ),
                 dim=0,
@@ -181,9 +200,14 @@ def get_negative_edges_random(
         )
 
         # Randomly sample negative edges
-        negative_edges = only_negative_edges[
-            torch.randperm(only_negative_edges.nelement())
-        ][:num_negative_edges]
+        if randomization:
+            random_integers = torch.randperm(only_negative_edges.nelement())
+        else:
+            random_integers = torch.tensor(
+                [torch.max(only_negative_edges, dim=0)[1].item()]
+            )
+
+        negative_edges = only_negative_edges[random_integers][:num_negative_edges]
 
         return negative_edges
 

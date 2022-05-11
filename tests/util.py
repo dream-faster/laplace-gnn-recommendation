@@ -2,6 +2,7 @@ from utils.constants import Constants
 from torch_geometric.data import HeteroData
 from config import Config
 from data.dataset import GraphDataset
+from data.dataset_alt import GraphDataset as GraphDatasetAlt
 from torch import Tensor
 import torch as t
 import pandas as pd
@@ -9,7 +10,7 @@ from typing import Tuple, Optional
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 
 
-def get_first_item_from_dataset() -> HeteroData:
+def get_first_item_from_dataset(alternative: bool) -> HeteroData:
     data_dir = "data/derived/"
 
     config = Config(
@@ -40,15 +41,24 @@ def get_first_item_from_dataset() -> HeteroData:
         profiler=None,  # Profiler(every=20),
         evaluate_break_at=None,
     )
-
-    train_dataset = GraphDataset(
-        config=config,
-        users_adj_list=data_dir + "dummy_edges_train.pt",
-        graph_path=data_dir + "dummy_graph_train.pt",
-        articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
-        train=True,
-        randomization=False,
-    )
+    if not alternative:
+        train_dataset = GraphDataset(
+            config=config,
+            users_adj_list=data_dir + "dummy_edges_train.pt",
+            graph_path=data_dir + "dummy_graph_train.pt",
+            articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
+            train=True,
+            randomization=False,
+        )
+    else:
+        train_dataset = GraphDatasetAlt(
+            config=config,
+            users_adj_list=data_dir + "dummy_edges_train.pt",
+            graph_path=data_dir + "dummy_graph_train.pt",
+            articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
+            train=True,
+            randomization=False,
+        )
 
     return train_dataset[0]  # type: ignore
 

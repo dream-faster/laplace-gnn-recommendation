@@ -10,7 +10,7 @@ seed_everything(5)
 original_data = create_entire_graph_data(save=True)
 
 # This is the data we are testing:
-data_from_dataset = get_first_item_from_dataset()
+data_from_dataset = get_first_item_from_dataset(alternative=True)
 
 # This is the data we are comparing it to:
 data_comparison = create_subgraph_comparison(n_hop=2)
