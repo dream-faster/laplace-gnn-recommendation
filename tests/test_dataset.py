@@ -1,13 +1,13 @@
 from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch as t
-from tests.data_generator import create_dummy_data, create_subgraph_comparison
+from tests.data_generator import create_entire_graph_data, create_subgraph_comparison
 from torch_geometric import seed_everything
 from tests.util import get_first_item_from_dataset, deconstruct_heterodata
 
 seed_everything(5)
 # Generate and save entire graph data:
-original_data = create_dummy_data(save=True)
+original_data = create_entire_graph_data(save=True)
 
 # This is the data we are testing:
 data_from_dataset = get_first_item_from_dataset()

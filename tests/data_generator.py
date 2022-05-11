@@ -3,11 +3,11 @@ from utils.constants import Constants
 import torch as t
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 from typing import Optional
-from .util import deconstruct_heterodata, get_edge_dicts
+from .util import construct_heterodata, deconstruct_heterodata, get_edge_dicts
 from torch import Tensor
 
 
-def create_dummy_data(save=False) -> HeteroData:
+def create_entire_graph_data(save=False) -> HeteroData:
     (
         node_features,
         article_features,
@@ -75,7 +75,7 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
         [[0, 0, 0], [0, max(edges_dict[0]), t.max(edge_index[1]).item()]],
         dtype=t.long,
     )
-    labels = t.tensor([1, 1, 0])
+    labels = t.tensor([1, 1, 0], dtype=t.long)
 
     """ Get Features """
     user_features, article_features = (
@@ -90,48 +90,17 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
         sampled_edges[i] = t.bucketize(sampled_edges[i], boundaries=buckets)
 
     """ Create Subgraph Heterodata """
-    subgraph = __construct_heterodata(
+    subgraph = construct_heterodata(
         user_features, article_features, subgraph_edges, sampled_edges, labels
     )
 
     return subgraph
 
 
-def __construct_heterodata(
-    user_features: NodeFeatures,
-    article_features: ArticleFeatures,
-    edge_index: AllEdges,
-    edge_label_index: Optional[SampledEdges],
-    edge_label: Optional[Labels],
-) -> HeteroData:
-
-    """Create Data"""
-    data = HeteroData()
-    data[Constants.node_user].x = user_features
-    data[Constants.node_item].x = article_features
-
-    # Add original directional edges
-    data[Constants.edge_key].edge_index = edge_index
-    if type(edge_label_index) is SampledEdges:
-        data[Constants.edge_key].edge_label_index = edge_label_index
-    if type(edge_label) is Labels:
-        data[Constants.edge_key].edge_label = edge_label
-
-    # Add reverse edges
-    reverse_key = t.LongTensor([1, 0])
-    data[Constants.rev_edge_key].edge_index = edge_index[reverse_key]
-    if type(edge_label_index) is SampledEdges:
-        data[Constants.rev_edge_key].edge_label_index = edge_label_index[reverse_key]
-    if type(edge_label) is Labels:
-        data[Constants.rev_edge_key].edge_label = edge_label
-
-    return data
-
-
 def __get_raw_data() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
     node_features = t.stack(
         [t.tensor([0.0, 0.1]), t.tensor([1.0, 1.1]), t.tensor([2.0, 2.1])]
-    )
+    ).type(t.long)
     article_features = t.stack(
         [
             t.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
@@ -141,7 +110,7 @@ def __get_raw_data() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
             t.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
             t.tensor([5.0, 5.1, 5.2, 5.3, 5.4]),
         ]
-    )
-    graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]])
+    ).type(t.long)
+    graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]]).type(t.long)
 
     return node_features, article_features, graph_edges

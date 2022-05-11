@@ -3,8 +3,10 @@ from torch_geometric.data import HeteroData
 from config import Config
 from data.dataset import GraphDataset
 from torch import Tensor
+import torch as t
 import pandas as pd
 from typing import Tuple, Optional
+from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 
 
 def get_first_item_from_dataset() -> HeteroData:
@@ -51,8 +53,35 @@ def get_first_item_from_dataset() -> HeteroData:
     return train_dataset[0]  # type: ignore
 
 
-def extract_edges(edges: pd.DataFrame, by: str, get: str) -> dict:
-    return edges.groupby(by)[get].apply(list).to_dict()
+def construct_heterodata(
+    user_features: NodeFeatures,
+    article_features: ArticleFeatures,
+    edge_index: AllEdges,
+    edge_label_index: Optional[SampledEdges],
+    edge_label: Optional[Labels],
+) -> HeteroData:
+
+    """Create Data"""
+    data = HeteroData()
+    data[Constants.node_user].x = user_features
+    data[Constants.node_item].x = article_features
+
+    # Add original directional edges
+    data[Constants.edge_key].edge_index = edge_index
+    if type(edge_label_index) is SampledEdges:
+        data[Constants.edge_key].edge_label_index = edge_label_index
+    if type(edge_label) is Labels:
+        data[Constants.edge_key].edge_label = edge_label
+
+    # Add reverse edges
+    reverse_key = t.LongTensor([1, 0])
+    data[Constants.rev_edge_key].edge_index = edge_index[reverse_key]
+    if type(edge_label_index) is SampledEdges:
+        data[Constants.rev_edge_key].edge_label_index = edge_label_index[reverse_key]
+    if type(edge_label) is Labels:
+        data[Constants.rev_edge_key].edge_label = edge_label
+
+    return data
 
 
 def deconstruct_heterodata(
@@ -77,15 +106,19 @@ def get_edge_dicts(edge_index: Tensor) -> Tuple[dict, dict]:
         .transpose()
         .rename({0: "user", 1: "article"}, axis=1)
     )
-    edges_dict = extract_edges(
+    edges_dict = __extract_edges(
         edge_index_pd,
         by="user",
         get="article",
     )
-    rev_edges_dict = extract_edges(
+    rev_edges_dict = __extract_edges(
         edge_index_pd,
         by="article",
         get="user",
     )
 
     return edges_dict, rev_edges_dict
+
+
+def __extract_edges(edges: pd.DataFrame, by: str, get: str) -> dict:
+    return edges.groupby(by)[get].apply(list).to_dict()
