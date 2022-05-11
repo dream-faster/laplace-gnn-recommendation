@@ -166,7 +166,6 @@ def get_metrics_universal(
 
     # get all unique users in evaluated split
     users = edge_label_index[0].unique()
-    # users = edge_index[0].unique()
 
     test_user_pos_items = get_user_positive_items(edge_index)
 

@@ -9,6 +9,7 @@ from torch import Tensor
 from typing import Union, Optional
 from torch_geometric.data import Data, HeteroData
 from utils.constants import Constants
+from utils.tensor import padded_stack
 
 
 class GNNEncoder(torch.nn.Module):
@@ -18,7 +19,6 @@ class GNNEncoder(torch.nn.Module):
     ):
         super().__init__()
         self.layers = layers
-        
 
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
@@ -41,7 +41,10 @@ class EdgeDecoder(torch.nn.Module):
     def forward(self, z_dict: dict, edge_label_index: dict) -> torch.Tensor:
         customer_index, article_index = edge_label_index
         z = torch.cat(
-            [z_dict[Constants.node_user][customer_index], z_dict[Constants.node_item][article_index]],
+            [
+                z_dict[Constants.node_user][customer_index],
+                z_dict[Constants.node_item][article_index],
+            ],
             dim=-1,
         )
         for index, layer in enumerate(self.layers):
@@ -61,14 +64,16 @@ class Encoder_Decoder_Model(torch.nn.Module):
         feature_info: FeatureInfo,
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
-        heterogeneous_prop_agg_type: str, # "sum", "mean", "min", "max", "mul"
+        heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul"
     ):
         super().__init__()
         self.embedding: bool = embedding
         self.encoder = GNNEncoder(encoder_layers)
-        self.encoder = to_hetero(self.encoder, metadata, aggr=heterogeneous_prop_agg_type)
+        self.encoder = to_hetero(
+            self.encoder, metadata, aggr=heterogeneous_prop_agg_type
+        )
         self.decoder = EdgeDecoder(decoder_layers)
-        
+
         self.encoder_layer_norm_customer = BatchNorm1d(encoder_layers[-1].out_channels)
         self.encoder_layer_norm_article = BatchNorm1d(encoder_layers[-1].out_channels)
 
@@ -79,18 +84,18 @@ class Encoder_Decoder_Model(torch.nn.Module):
 
             embedding_customers = [
                 Embedding(
-                    num_embeddings = int(customer_info.num_cat[i] + 1),
-                    embedding_dim = int(customer_info.embedding_size[i]),
-                    max_norm = 1
+                    num_embeddings=int(customer_info.num_cat[i] + 1),
+                    embedding_dim=int(customer_info.embedding_size[i]),
+                    max_norm=1,
                 )
                 for i in range(customer_info.num_feat)
             ]
 
             embedding_articles = [
                 Embedding(
-                    num_embeddings = int(article_info.num_cat[i] + 1),
-                    embedding_dim = int(article_info.embedding_size[i]),
-                    max_norm = 1
+                    num_embeddings=int(article_info.num_cat[i] + 1),
+                    embedding_dim=int(article_info.embedding_size[i]),
+                    max_norm=1,
                 )
                 for i in range(article_info.num_feat)
             ]
@@ -129,26 +134,23 @@ class Encoder_Decoder_Model(torch.nn.Module):
         if self.embedding:
             x_dict = self.__embedding(x_dict)
         z_dict = self.encoder(x_dict, edge_index_dict)
-        z_dict[Constants.node_user] = self.encoder_layer_norm_customer(z_dict[Constants.node_user])
-        z_dict[Constants.node_item] = self.encoder_layer_norm_article(z_dict[Constants.node_item])
+        z_dict[Constants.node_user] = self.encoder_layer_norm_customer(
+            z_dict[Constants.node_user]
+        )
+        z_dict[Constants.node_item] = self.encoder_layer_norm_article(
+            z_dict[Constants.node_item]
+        )
         output = self.decoder(z_dict, edge_label_index)
         return output
 
-
-    def infer(self,  x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor) -> Tensor:
+    def infer(
+        self, x_dict, edge_index_dict: dict, edge_label_index: torch.Tensor
+    ) -> Tensor:
         self.eval()
         out = self.forward(x_dict, edge_index_dict, edge_label_index).detach()
-        
+
         # Rebatching by user.
         users = edge_label_index[0].unique(sorted=True)
         users = torch.bucketize(users, users)
-        out_per_user = [out[edge_label_index[0]==user] for user in users]
-        
-
-        max_output_length = max([element.shape[0] for element in out_per_user])
-        
-        padded_tensors = [F.pad(output, (0,max_output_length-output.shape[0]), "constant", -(1 << 50)) for output in out_per_user]
-        
-        
-        return torch.stack(padded_tensors)
-        
+        out_per_user = [out[edge_label_index[0] == user] for user in users]
+        return padded_stack(out_per_user, value=-(1 << 50))
