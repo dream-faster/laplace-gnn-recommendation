@@ -2,6 +2,9 @@ from utils.constants import Constants
 from torch_geometric.data import HeteroData
 from config import Config
 from data.dataset import GraphDataset
+from torch import Tensor
+import pandas as pd
+from typing import Tuple, Optional
 
 
 def get_first_item_from_dataset() -> HeteroData:
@@ -73,3 +76,43 @@ def get_raw_all(data: HeteroData):
     }
 
     return raw_all
+
+
+def extract_edges(edges: pd.DataFrame, by: str, get: str) -> dict:
+    return edges.groupby(by)[get].apply(list).to_dict()
+
+
+def deconstruct_heterodata(
+    hdata: HeteroData,
+) -> tuple[Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]:
+    return (
+        hdata[Constants.node_user].x,
+        hdata[Constants.node_item].x,
+        hdata[Constants.edge_key].edge_index,
+        hdata[Constants.edge_key].edge_label_index
+        if hdata[Constants.edge_key].edge_label_index is not None
+        else None,
+        hdata[Constants.edge_key].edge_label
+        if hdata[Constants.edge_key].edge_label is not None
+        else None,
+    )
+
+
+def get_edge_dicts(edge_index: Tensor) -> Tuple[dict, dict]:
+    edge_index_pd = (
+        pd.DataFrame(edge_index.numpy())
+        .transpose()
+        .rename({0: "user", 1: "article"}, axis=1)
+    )
+    edges_dict = extract_edges(
+        edge_index_pd,
+        by="user",
+        get="article",
+    )
+    rev_edges_dict = extract_edges(
+        edge_index_pd,
+        by="article",
+        get="user",
+    )
+
+    return edges_dict, rev_edges_dict
