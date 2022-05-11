@@ -1,16 +1,12 @@
-from numpy import column_stack
 from torch_geometric.data import HeteroData
 from utils.constants import Constants
 import torch as t
-from torch import Tensor
-from .util import get_raw_sample, get_raw_all
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
-import pandas as pd
 from typing import Optional
 from .util import deconstruct_heterodata, get_edge_dicts
 
 
-def create_dummy_data(save=False):
+def create_dummy_data(save=False) -> HeteroData:
     (
         node_features,
         article_features,
@@ -23,9 +19,6 @@ def create_dummy_data(save=False):
     data[Constants.node_item].x = article_features
     data[Constants.edge_key].edge_index = graph_edges
 
-    raw_data = get_raw_sample(data)
-    raw_all = get_raw_all(data)
-
     edges_dict, rev_edges_dict = get_edge_dicts(data[Constants.edge_key].edge_index)
 
     if save:
@@ -33,7 +26,7 @@ def create_dummy_data(save=False):
         t.save(edges_dict, "data/derived/dummy_edges_train.pt")
         t.save(rev_edges_dict, "data/derived/dummy_rev_edges_train.pt")
 
-    return data, raw_data, raw_all
+    return data
 
 
 def create_subgraph_comparison(n_hop: int) -> HeteroData:

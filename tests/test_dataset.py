@@ -12,7 +12,9 @@ data_from_dataset = get_first_item_from_dataset()
 data_comparison = create_subgraph_comparison(n_hop=2)
 
 
-def test_integrity_edges(data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison):
+def test_integrity_edges(
+    data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison
+):
 
     # Basic Testing of edges if they fit size expectations
     for edge_type in [Constants.edge_key, Constants.rev_edge_key]:
@@ -25,9 +27,10 @@ def test_integrity_edges(data: HeteroData = data_from_dataset, data_comp: Hetero
         assert edges.edge_label.shape[0] > 0
         assert len(edges.edge_label.shape) == 1
         assert edges.edge_label.shape[0] == edges.edge_label_index.shape[1]
-    
-    for key, val in vars(data).items():
-        assert vars(data_comp)[key] == val
+
+    # for key, val in vars(data).items():
+    #     assert vars(data_comp)[key] == val
+
 
 def test_integrity_nodes(data: HeteroData = data_from_dataset):
     user_features, article_features, edge_index, edge_label_index, edge_label = (
