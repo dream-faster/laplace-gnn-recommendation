@@ -42,6 +42,7 @@ def get_first_item_from_dataset() -> HeteroData:
         graph_path=data_dir + "dummy_graph_train.pt",
         articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
         train=True,
+        randomization=False,
     )
 
     return train_dataset[0]  # type: ignore
