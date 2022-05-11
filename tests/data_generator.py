@@ -83,6 +83,13 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
     )
     labels = t.tensor([1, 1, 0])
 
+    """ Remap to 0 """
+    for i in [0, 1]:
+        subgraph_edges[i] = t.bucketize(subgraph_edges[i], t.unique(subgraph_edges[i]))
+        sampled_edges[i] = t.bucketize(
+            sampled_edges[i], t.unique(t.cat([subgraph_edges[i], sampled_edges[i]]))
+        )
+
     """ Create Subgraph Heterodata """
     subgraph = __construct_heterodata(
         user_features, article_features, subgraph_edges, sampled_edges, labels
