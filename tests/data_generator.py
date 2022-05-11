@@ -65,12 +65,6 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
             )
         )
 
-    """ Get Features """
-    user_features, article_features = (
-        user_features[user_ids],
-        article_features[art_ids],
-    )
-
     """ Get Edges """
     subgraph_edges = t.cat(
         [edge_index[:, edge_index[0] == user_id] for user_id in user_ids], dim=1
@@ -83,12 +77,17 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
     )
     labels = t.tensor([1, 1, 0])
 
+    """ Get Features """
+    user_features, article_features = (
+        user_features[user_ids],
+        article_features[t.unique(t.cat([art_ids, sampled_edges[1]]))],
+    )
+
     """ Remap to 0 """
     for i in [0, 1]:
-        subgraph_edges[i] = t.bucketize(subgraph_edges[i], t.unique(subgraph_edges[i]))
-        sampled_edges[i] = t.bucketize(
-            sampled_edges[i], t.unique(t.cat([subgraph_edges[i], sampled_edges[i]]))
-        )
+        buckets = t.unique(t.cat([subgraph_edges[i], sampled_edges[i]]))
+        subgraph_edges[i] = t.bucketize(subgraph_edges[i], boundaries=buckets)
+        sampled_edges[i] = t.bucketize(sampled_edges[i], boundaries=buckets)
 
     """ Create Subgraph Heterodata """
     subgraph = __construct_heterodata(

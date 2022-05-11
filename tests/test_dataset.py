@@ -13,7 +13,7 @@ data_comparison = create_subgraph_comparison(n_hop=2)
 
 
 def test_integrity_edges(
-    data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison
+    data: HeteroData = data_comparison, data_comp: HeteroData = data_comparison
 ):
 
     for edge_type in [Constants.edge_key, Constants.rev_edge_key]:
@@ -36,7 +36,7 @@ def test_integrity_edges(
 
 
 def test_integrity_nodes(
-    data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison
+    data: HeteroData = data_comparison, data_comp: HeteroData = data_comparison
 ):
     (
         user_features,
@@ -60,6 +60,12 @@ def test_integrity_nodes(
     print(edge_index)
     print(edge_label_index)
     print(edge_label)
+    print(all_touched_users)
+    print(all_touched_articles)
+    print(user_features.shape)
+    print(all_touched_users.shape)
+    print(article_features.shape)
+    print(all_touched_articles.shape)
 
     assert (
         user_features.shape[0] == all_touched_users.shape[0]
