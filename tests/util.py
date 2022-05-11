@@ -38,9 +38,9 @@ def get_first_item_from_dataset() -> HeteroData:
 
     train_dataset = GraphDataset(
         config=config,
-        edge_path=data_dir + "dummy_edges_train.pt",
+        users_adj_list=data_dir + "dummy_edges_train.pt",
         graph_path=data_dir + "dummy_graph_train.pt",
-        article_edge_path=data_dir + "dummy_rev_edges_train.pt",
+        articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
         train=True,
     )
 

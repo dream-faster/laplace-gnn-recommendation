@@ -44,7 +44,6 @@ def test_integrity_nodes(data: HeteroData = data):
     print(edge_index)
     print(edge_label_index)
     print(edge_label)
-    print(torch.unique(torch.concat([edge_index[1], edge_label_index[1]])))
 
     assert torch.equal(user_features, torch.tensor([[0.0, 0.1]]))
     assert (
