@@ -17,12 +17,12 @@ original_data = create_entire_graph_data(
 data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighbors)
 
 
-def test_integrity_alt():
-    # This is the data we are testing:
-    data_from_dataset = get_first_item_from_dataset(alternative=True)
+# def test_integrity_alt():
+#     # This is the data we are testing:
+#     data_from_dataset = get_first_item_from_dataset(alternative=True)
 
-    integrity_edges(data=data_from_dataset, data_comp=data_comparison)
-    integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
+#     integrity_edges(data=data_from_dataset, data_comp=data_comparison)
+#     integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
 
 
 def test_integrity_base():

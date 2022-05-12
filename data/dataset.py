@@ -253,7 +253,6 @@ def fetch_n_hop_neighbourhood(
     accum_edges = t.tensor([[], []], dtype=t.long)
     users_explored = set([])
     users_queue = set([user_id])
-    articles_queue = []
 
     for i in range(0, n):
         new_articles_and_edges = [
@@ -268,7 +267,7 @@ def fetch_n_hop_neighbourhood(
             new_edges = t.cat([x[1] for x in new_articles_and_edges], dim=1)
             accum_edges = t.cat([accum_edges, new_edges], dim=1)
 
-        articles_queue.extend(shuffle_and_cut(new_articles, num_neighbors))
+        articles_queue = shuffle_and_cut(new_articles, num_neighbors)
         new_users = (
             set(flatten([articles[article] for article in articles_queue]))
             - users_explored
