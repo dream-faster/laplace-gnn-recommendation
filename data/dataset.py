@@ -96,7 +96,11 @@ class GraphDataset(InMemoryDataset):
             )
 
         n_hop_edges = fetch_n_hop_neighbourhood(
-            self.config.n_hop_neighbors, idx, self.users, self.articles
+            self.config.n_hop_neighbors,
+            idx,
+            self.users,
+            self.articles,
+            num_neighbors=self.config.num_neighbors,
         )
 
         all_touched_edges = t.cat(
@@ -242,7 +246,7 @@ def create_edges_from_target_indices(
 
 
 def fetch_n_hop_neighbourhood(
-    n: int, user_id: int, users: dict, articles: dict
+    n: int, user_id: int, users: dict, articles: dict, num_neighbors: int
 ) -> t.Tensor:
     """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
     accum_edges = t.Tensor([[], []]).to(dtype=t.long)
@@ -263,12 +267,20 @@ def fetch_n_hop_neighbourhood(
             new_edges = t.cat([x[1] for x in new_articles_and_edges], dim=1)
             accum_edges = t.cat([accum_edges, new_edges], dim=1)
 
-        articles_queue.extend(new_articles)
+        articles_queue.extend(
+            t.tensor(new_articles, dtype=t.long)[t.randperm(len(new_articles))][
+                :num_neighbors
+            ].tolist()
+        )
         new_users = (
             set(flatten([articles[article] for article in articles_queue]))
             - users_explored
         )  # remove the intersection between the two sets, so we only explore a user once
-        users_queue = new_users
+        users_queue = set(
+            t.tensor(list(new_users), dtype=t.long)[t.randperm(len(new_users))][
+                :num_neighbors
+            ].tolist()
+        )
 
     return accum_edges
 
