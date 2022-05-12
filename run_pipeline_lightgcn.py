@@ -97,7 +97,7 @@ def train(config: Config):
     ) = create_dataloaders_lightgcn()
 
     # setup
-    device = "cpu"
+    device = t.device("cuda" if t.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
     model = LightGCN(
