@@ -31,14 +31,14 @@ class GNNEncoder(t.nn.Module):
             if index == len(self.layers) - 1:
                 x = layer(x, edge_index)
             else:
-                if self.dropout_edges is not None:
+                if self.p_dropout_edges is not None:
                     edge_index, _ = dropout_adj(
                         edge_index,
                         p=self.p_dropout_edges,
                         force_undirected=True,
                         training=self.training,
                     )
-                if self.dropout_features is not None:
+                if self.p_dropout_features is not None:
                     x = F.dropout(x, p=self.p_dropout_features, training=self.training)
 
                 x = layer(x, edge_index).relu()
@@ -47,12 +47,10 @@ class GNNEncoder(t.nn.Module):
 
 
 class EdgeDecoder(t.nn.Module):
-    def __init__(
-        self,
-        layers: ModuleList,
-    ):
+    def __init__(self, layers: ModuleList, p_dropout_features: Optional[float]):
         super().__init__()
         self.layers = layers
+        self.p_dropout_features = p_dropout_features
 
     def forward(self, z_dict: dict, edge_label_index: dict) -> t.Tensor:
         customer_index, article_index = edge_label_index
@@ -67,6 +65,8 @@ class EdgeDecoder(t.nn.Module):
             if index == len(self.layers) - 1:
                 z = layer(z)
             else:
+                if self.p_dropout_features is not None:
+                    z = F.dropout(z, p=self.p_dropout_features, training=self.training)
                 z = layer(z).relu()
 
         return z.view(-1)
@@ -91,38 +91,37 @@ class Encoder_Decoder_Model(t.nn.Module):
 
         self.encoder = GNNEncoder(encoder_layers, p_dropout_edges, p_dropout_features)
         self.encoder = to_hetero(
-            self.encoder, metadata, aggr=heterogeneous_prop_agg_type
+            self.encoder, metadata, aggr=heterogeneous_prop_agg_type, debug=True
         )
-        self.decoder = EdgeDecoder(decoder_layers)
+        self.decoder = EdgeDecoder(decoder_layers, p_dropout_features)
 
         self.encoder_layer_norm_customer = BatchNorm1d(encoder_layers[-1].out_channels)
         self.encoder_layer_norm_article = BatchNorm1d(encoder_layers[-1].out_channels)
 
         if self.embedding:
             customer_info, article_info = feature_info
-            embedding_articles: List[Embedding] = []
-            embedding_customers: List[Embedding] = []
 
-            embedding_customers = [
-                Embedding(
-                    num_embeddings=int(customer_info.num_cat[i] + 1),
-                    embedding_dim=int(customer_info.embedding_size[i]),
-                    max_norm=1,
-                )
-                for i in range(customer_info.num_feat)
-            ]
+            self.embedding_customers = ModuleList(
+                [
+                    Embedding(
+                        num_embeddings=int(customer_info.num_cat[i] + 1),
+                        embedding_dim=int(customer_info.embedding_size[i]),
+                        max_norm=1,
+                    )
+                    for i in range(customer_info.num_feat)
+                ]
+            )
 
-            embedding_articles = [
-                Embedding(
-                    num_embeddings=int(article_info.num_cat[i] + 1),
-                    embedding_dim=int(article_info.embedding_size[i]),
-                    max_norm=1,
-                )
-                for i in range(article_info.num_feat)
-            ]
-
-            self.embedding_customers = ModuleList(embedding_customers)
-            self.embedding_articles = ModuleList(embedding_articles)
+            self.embedding_articles = ModuleList(
+                [
+                    Embedding(
+                        num_embeddings=int(article_info.num_cat[i] + 1),
+                        embedding_dim=int(article_info.embedding_size[i]),
+                        max_norm=1,
+                    )
+                    for i in range(article_info.num_feat)
+                ]
+            )
 
     def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
