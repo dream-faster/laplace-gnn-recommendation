@@ -104,7 +104,7 @@ def train(config: Config):
         num_users,
         num_articles,
         embedding_dim=config.hidden_layer_size,
-        K=config.num_layers,
+        K=config.num_gnn_layers,
     )
     model = model.to(device)
     model.train()
