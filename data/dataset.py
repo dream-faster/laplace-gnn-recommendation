@@ -7,6 +7,7 @@ from .matching.type import Matcher
 from utils.constants import Constants
 from config import Config
 from utils.flatten import flatten
+import random
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -96,7 +97,11 @@ class GraphDataset(InMemoryDataset):
             )
 
         n_hop_edges = fetch_n_hop_neighbourhood(
-            self.config.num_neighbors_it, idx, self.users, self.articles
+            self.config.n_hop_neighbors,
+            idx,
+            self.users,
+            self.articles,
+            num_neighbors=self.config.num_neighbors,
         )
 
         all_touched_edges = t.cat(
@@ -242,13 +247,12 @@ def create_edges_from_target_indices(
 
 
 def fetch_n_hop_neighbourhood(
-    n: int, user_id: int, users: dict, articles: dict
+    n: int, user_id: int, users: dict, articles: dict, num_neighbors: int
 ) -> t.Tensor:
     """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
-    accum_edges = t.Tensor([[], []]).to(dtype=t.long)
+    accum_edges = t.tensor([[], []], dtype=t.long)
     users_explored = set([])
     users_queue = set([user_id])
-    articles_queue = []
 
     for i in range(0, n):
         new_articles_and_edges = [
@@ -263,14 +267,21 @@ def fetch_n_hop_neighbourhood(
             new_edges = t.cat([x[1] for x in new_articles_and_edges], dim=1)
             accum_edges = t.cat([accum_edges, new_edges], dim=1)
 
-        articles_queue.extend(new_articles)
+        articles_queue = shuffle_and_cut(new_articles, num_neighbors)
         new_users = (
             set(flatten([articles[article] for article in articles_queue]))
             - users_explored
         )  # remove the intersection between the two sets, so we only explore a user once
-        users_queue = new_users
+        users_queue = set(shuffle_and_cut(list(new_users), num_neighbors))
 
     return accum_edges
+
+
+def shuffle_and_cut(array: list, n: int) -> list:
+    if len(array) > n:
+        return random.sample(array, n)
+    else:
+        return array
 
 
 def create_neighbouring_article_edges(
