@@ -45,6 +45,7 @@ class Config:
     candidate_pool_size: int  # How many precalculated candidates we should give over
     positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
     negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+    batch_norm: bool
     p_dropout_edges: Optional[float]  # dropout probability for edges
     p_dropout_features: Optional[float]  # dropout probability for nodes
 
@@ -101,6 +102,7 @@ link_pred_config = Config(
     evaluate_break_at=None,
     p_dropout_edges=0.2,  # Currently not being used!
     p_dropout_features=0.3,
+    batch_norm=True,
 )
 
 
@@ -133,6 +135,7 @@ lightgcn_config = Config(
     evaluate_break_at=None,  # IGNORE for LightGCN
     p_dropout_edges=None,  # IGNORE for LightGCN
     p_dropout_features=None,  # IGNORE for LightGCN
+    batch_norm=True, # IGNORE for LightGCN
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

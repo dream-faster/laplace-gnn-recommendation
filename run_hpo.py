@@ -1,3 +1,4 @@
+from torch import batch_norm, dropout
 from config import Config, link_pred_config
 from run_pipeline import run_pipeline
 import optuna
@@ -42,6 +43,10 @@ def train(trial):
         negative_edges_ratio=trial.suggest_categorical(
             "negative_edges_ratio", [1, 2, 5, 10, 20]
         ),
+        p_dropout_features=trial.suggest_categorical(
+            "p_dropout_features", [0.0, 0.15, 0.3, 0.5]
+        ),
+        batch_norm=trial.suggest_categorical("batch_norm", [True, False]),
     )
     trial_config = Config(**{**vars(config), **search_space})
     stats = run_pipeline(trial_config)

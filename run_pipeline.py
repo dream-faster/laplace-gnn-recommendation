@@ -63,7 +63,7 @@ def run_pipeline(config: Config) -> Stats:
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
         heterogeneous_prop_agg_type=config.heterogeneous_prop_agg_type,
-        batch_normalize=True,
+        batch_normalize=config.batch_norm,
         p_dropout_edges=config.p_dropout_edges,
         p_dropout_features=config.p_dropout_features,
     ).to(device)
