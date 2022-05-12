@@ -7,7 +7,7 @@ from tests.util import get_first_item_from_dataset, deconstruct_heterodata
 
 seed_everything(5)
 # Generate and save entire graph data:
-original_data = create_entire_graph_data(save=True)
+original_data = create_entire_graph_data(save=True, generated=True)
 
 # This is the data we are testing:
 data_from_dataset = get_first_item_from_dataset(alternative=True)
