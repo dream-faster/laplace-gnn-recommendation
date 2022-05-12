@@ -72,7 +72,10 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
 
     # Here we sample as positive edges: 0, the biggest connected edge and the last edge in the entire graph as negative edges
     sampled_edges = t.tensor(
-        [[0, 0, 0], [0, max(edges_dict[0]), t.max(edge_index[1]).item()]],
+        [
+            [0, 0, 0],
+            [min(edges_dict[0]), max(edges_dict[0]), t.max(edge_index[1]).item()],
+        ],
         dtype=t.long,
     )
     labels = t.tensor([1, 1, 0], dtype=t.long)

@@ -58,7 +58,10 @@ class GraphDataset(InMemoryDataset):
             )
         else:
             random_integers = torch.tensor(
-                [0, torch.max(positive_article_indices, dim=0)[1].item()]
+                [
+                    torch.min(positive_article_indices, dim=0)[1].item(),
+                    torch.max(positive_article_indices, dim=0)[1].item(),
+                ]
             )
 
         sampled_positive_article_indices = positive_article_indices[random_integers]
@@ -141,7 +144,7 @@ class GraphDataset(InMemoryDataset):
             dim=0,
         )
 
-        all_sampled_edges, labels = shuffle_edges_and_labels(all_sampled_edges, labels)
+        # all_sampled_edges, labels = shuffle_edges_and_labels(all_sampled_edges, labels)
 
         """ Create Data """
         data = HeteroData()
@@ -183,7 +186,7 @@ def get_negative_edges_random(
                 low=0, high=id_max.item(), size=(num_negative_edges,)
             )
         else:
-            random_integers = torch.tensor([0, id_max.item()])
+            random_integers = torch.tensor([id_max.item()])
 
         return random_integers
 
@@ -202,12 +205,9 @@ def get_negative_edges_random(
         # Randomly sample negative edges
         if randomization:
             random_integers = torch.randperm(only_negative_edges.nelement())
+            negative_edges = only_negative_edges[random_integers][:num_negative_edges]
         else:
-            random_integers = torch.tensor(
-                [torch.max(only_negative_edges, dim=0)[1].item()]
-            )
-
-        negative_edges = only_negative_edges[random_integers][:num_negative_edges]
+            negative_edges = torch.tensor([id_max.item()])
 
         return negative_edges
 
