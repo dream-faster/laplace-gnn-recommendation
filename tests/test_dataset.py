@@ -4,21 +4,36 @@ import torch as t
 from tests.data_generator import create_entire_graph_data, create_subgraph_comparison
 from torch_geometric import seed_everything
 from tests.util import get_first_item_from_dataset, deconstruct_heterodata
+from tests.types import GeneratorConfig, generator_config
+
 
 seed_everything(5)
 # Generate and save entire graph data:
-original_data = create_entire_graph_data(save=True)
-
-# This is the data we are testing:
-data_from_dataset = get_first_item_from_dataset(alternative=True)
+original_data = create_entire_graph_data(
+    save=True, generated=True, config=generator_config
+)
 
 # This is the data we are comparing it to:
 data_comparison = create_subgraph_comparison(n_hop=2)
 
 
-def test_integrity_edges(
-    data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison
-):
+def test_integrity_alt():
+    # This is the data we are testing:
+    data_from_dataset = get_first_item_from_dataset(alternative=True)
+
+    integrity_edges(data=data_from_dataset, data_comp=data_comparison)
+    integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
+
+
+def test_integrity_base():
+    # This is the data we are testing:
+    data_from_dataset = get_first_item_from_dataset(alternative=False)
+
+    integrity_edges(data=data_from_dataset, data_comp=data_comparison)
+    integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
+
+
+def integrity_edges(data: HeteroData, data_comp: HeteroData = data_comparison):
     for edge_type in [Constants.edge_key, Constants.rev_edge_key]:
         edges = data[edge_type]
 
@@ -38,9 +53,7 @@ def test_integrity_edges(
         assert t.equal(edges.edge_label, edges_comp.edge_label)
 
 
-def test_integrity_nodes(
-    data: HeteroData = data_from_dataset, data_comp: HeteroData = data_comparison
-):
+def integrity_nodes(data: HeteroData, data_comp: HeteroData = data_comparison):
     (
         user_features,
         article_features,

@@ -5,14 +5,17 @@ from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, L
 from typing import Optional
 from .util import construct_heterodata, deconstruct_heterodata, get_edge_dicts
 from torch import Tensor
+from tests.types import GeneratorConfig
 
 
-def create_entire_graph_data(save=False) -> HeteroData:
+def create_entire_graph_data(
+    save=False, generated=False, config: Optional[GeneratorConfig] = None
+) -> HeteroData:
     (
         node_features,
         article_features,
         graph_edges,
-    ) = __get_raw_data()
+    ) = __get_raw_data(generated=generated, config=config)
 
     """Create Data"""
     data = HeteroData()
@@ -47,7 +50,7 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
     user_ids = t.tensor([0], dtype=t.long)
     art_ids = t.empty(0, dtype=t.long)
 
-    for _ in range(n_hop):
+    for i in range(n_hop):
         art_ids = t.unique(
             t.cat(
                 [
@@ -56,14 +59,17 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
                 ]
             )
         )
-        user_ids = t.unique(
-            t.cat(
-                [
-                    user_ids,
-                    t.tensor([i for id in art_ids for i in rev_edges_dict[id.item()]]),
-                ]
+        if i != n_hop - 1:
+            user_ids = t.unique(
+                t.cat(
+                    [
+                        user_ids,
+                        t.tensor(
+                            [i for id in art_ids for i in rev_edges_dict[id.item()]]
+                        ),
+                    ]
+                )
             )
-        )
 
     """ Get Edges """
     subgraph_edges = t.cat(
@@ -72,7 +78,10 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
 
     # Here we sample as positive edges: 0, the biggest connected edge and the last edge in the entire graph as negative edges
     sampled_edges = t.tensor(
-        [[0, 0, 0], [0, max(edges_dict[0]), t.max(edge_index[1]).item()]],
+        [
+            [0, 0, 0],
+            [min(edges_dict[0]), max(edges_dict[0]), t.max(edge_index[1]).item()],
+        ],
         dtype=t.long,
     )
     labels = t.tensor([1, 1, 0], dtype=t.long)
@@ -97,10 +106,26 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
     return subgraph
 
 
-def __get_raw_data() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
+def __get_raw_data(
+    generated: bool = False,
+    config: Optional[GeneratorConfig] = None,
+) -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
+    if generated and config is not None:
+        return __generated(
+            config.num_users,
+            config.num_user_features,
+            config.num_articles,
+            config.num_article_features,
+            config.connection_ratio,
+        )
+    else:
+        return __manual()
+
+
+def __manual() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
     node_features = t.stack(
         [t.tensor([0.0, 0.1]), t.tensor([1.0, 1.1]), t.tensor([2.0, 2.1])]
-    ).type(t.long)
+    )
     article_features = t.stack(
         [
             t.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
@@ -110,7 +135,39 @@ def __get_raw_data() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
             t.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
             t.tensor([5.0, 5.1, 5.2, 5.3, 5.4]),
         ]
-    ).type(t.long)
+    )
     graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]]).type(t.long)
+
+    return node_features, article_features, graph_edges
+
+
+def __generated(
+    num_users: int = 3,
+    num_user_features: int = 2,
+    num_articles: int = 10,
+    num_article_features: int = 5,
+    connection_ratio: float = 0.5,
+) -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
+    node_features = t.stack(
+        [
+            t.tensor([i + float(f"0.{j}") for j in range(num_user_features)])
+            for i in range(num_users)
+        ]
+    )
+    article_features = t.stack(
+        [
+            t.tensor([i + float(f"0.{j}") for j in range(num_article_features)])
+            for i in range(num_articles)
+        ]
+    )
+
+    num_connections = int((num_users * num_articles) * connection_ratio)
+
+    graph_edges = t.stack(
+        [
+            t.randint(low=0, high=num_users, size=(num_connections,)),
+            t.randint(low=0, high=num_articles, size=(num_connections,)),
+        ],
+    ).type(t.long)
 
     return node_features, article_features, graph_edges

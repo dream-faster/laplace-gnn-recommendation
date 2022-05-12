@@ -1,8 +1,8 @@
 from utils.constants import Constants
 from torch_geometric.data import HeteroData
 from config import Config
-from data.dataset import GraphDataset
 from data.dataset_alt import GraphDataset as GraphDatasetAlt
+from data.dataset import GraphDataset
 from torch import Tensor
 import torch as t
 import pandas as pd
