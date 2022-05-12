@@ -3,13 +3,15 @@ from run_pipeline import run_pipeline
 import optuna
 
 config = link_pred_config
+config.evaluate_break_at = 50
+config.wandb_enabled = True
 
 
 def train(trial):
     num_gnn_layers = trial.suggest_int("num_gnn_layers", 1, 4)
 
     search_space = dict(
-        epochs=10,
+        epochs=4,
         k=12,
         num_gnn_layers=num_gnn_layers,
         num_linear_layers=trial.suggest_int("num_linear_layers", 1, 4),
@@ -28,10 +30,7 @@ def train(trial):
         learning_rate=trial.suggest_categorical(
             "learning_rate", [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
         ),
-        # batch_size=trial.suggest_categorical("batch_size", [24, 32, 64, 128, 256, 512]),
-        num_neighbors=trial.suggest_categorical(
-            "num_neighbors", [24, 32, 64, 128]
-        ),
+        num_neighbors=trial.suggest_categorical("num_neighbors", [24, 32, 64, 128]),
         n_hop_neighbors=num_gnn_layers,
         candidate_pool_size=trial.suggest_categorical(
             "candidate_pool_size", [24, 64, 128, 256]
