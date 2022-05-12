@@ -2,9 +2,15 @@ from utils.constants import Constants
 from torch_geometric.data import HeteroData
 from config import Config
 from data.dataset import GraphDataset
+from data.dataset_alt import GraphDataset as GraphDatasetAlt
+from torch import Tensor
+import torch as t
+import pandas as pd
+from typing import Tuple, Optional
+from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 
 
-def get_first_item_from_dataset() -> HeteroData:
+def get_first_item_from_dataset(alternative: bool) -> HeteroData:
     data_dir = "data/derived/"
 
     config = Config(
@@ -35,40 +41,94 @@ def get_first_item_from_dataset() -> HeteroData:
         profiler=None,  # Profiler(every=20),
         evaluate_break_at=None,
     )
-
-    train_dataset = GraphDataset(
-        config=config,
-        edge_path=data_dir + "dummy_edges_train.pt",
-        graph_path=data_dir + "dummy_graph_train.pt",
-        article_edge_path=data_dir + "dummy_rev_edges_train.pt",
-        train=True,
-    )
+    if not alternative:
+        train_dataset = GraphDataset(
+            config=config,
+            users_adj_list=data_dir + "dummy_edges_train.pt",
+            graph_path=data_dir + "dummy_graph_train.pt",
+            articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
+            train=True,
+            randomization=False,
+        )
+    else:
+        train_dataset = GraphDatasetAlt(
+            config=config,
+            users_adj_list=data_dir + "dummy_edges_train.pt",
+            graph_path=data_dir + "dummy_graph_train.pt",
+            articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
+            train=True,
+            randomization=False,
+        )
 
     return train_dataset[0]  # type: ignore
 
 
-def get_raw_sample(data: HeteroData):
+def construct_heterodata(
+    user_features: NodeFeatures,
+    article_features: ArticleFeatures,
+    edge_index: AllEdges,
+    edge_label_index: Optional[SampledEdges],
+    edge_label: Optional[Labels],
+) -> HeteroData:
 
-    raw_sample = {
-        "node_features_first": data[Constants.node_user].x[0],
-        "node_features_last": data[Constants.node_user].x[-1],
-        "article_features_first": data[Constants.node_item].x[0],
-        "article_features_last": data[Constants.node_item].x[-1],
-        "edge_index_first": data[Constants.edge_key].edge_index[:, 0],
-        "edge_index_last": data[Constants.edge_key].edge_index[:, -1],
-    }
+    """Create Data"""
+    data = HeteroData()
+    data[Constants.node_user].x = user_features
+    data[Constants.node_item].x = article_features
 
-    return raw_sample
+    # Add original directional edges
+    data[Constants.edge_key].edge_index = edge_index
+    if type(edge_label_index) is SampledEdges:
+        data[Constants.edge_key].edge_label_index = edge_label_index
+    if type(edge_label) is Labels:
+        data[Constants.edge_key].edge_label = edge_label
+
+    # Add reverse edges
+    reverse_key = t.LongTensor([1, 0])
+    data[Constants.rev_edge_key].edge_index = edge_index[reverse_key]
+    if type(edge_label_index) is SampledEdges:
+        data[Constants.rev_edge_key].edge_label_index = edge_label_index[reverse_key]
+    if type(edge_label) is Labels:
+        data[Constants.rev_edge_key].edge_label = edge_label
+
+    return data
 
 
-def get_raw_all(data: HeteroData):
+def deconstruct_heterodata(
+    hdata: HeteroData,
+) -> tuple[Tensor, Tensor, Tensor, Optional[Tensor], Optional[Tensor]]:
+    return (
+        hdata[Constants.node_user].x,
+        hdata[Constants.node_item].x,
+        hdata[Constants.edge_key].edge_index,
+        hdata[Constants.edge_key].edge_label_index
+        if hasattr(hdata[Constants.edge_key], "edge_label_index")
+        else None,
+        hdata[Constants.edge_key].edge_label
+        if hasattr(hdata[Constants.edge_key], "edge_label")
+        else None,
+    )
 
-    raw_all = {
-        "user_features": data[Constants.node_user].x,
-        "article_features": data[Constants.node_item].x,
-        "edge_index": data[Constants.edge_key].edge_index,
-        "edge_label_index": data[Constants.edge_key].edge_label_index,
-        "edge_label": data[Constants.edge_key].edge_label,
-    }
 
-    return raw_all
+def get_edge_dicts(edge_index: Tensor) -> Tuple[dict, dict]:
+    edge_index_pd = (
+        pd.DataFrame(edge_index.numpy())
+        .transpose()
+        .rename({0: "user", 1: "article"}, axis=1)
+    )
+    edges_dict = __extract_edges(
+        edge_index_pd,
+        by="user",
+        get="article",
+    )
+    rev_edges_dict = __extract_edges(
+        edge_index_pd,
+        by="article",
+        get="user",
+    )
+
+    return edges_dict, rev_edges_dict
+
+
+def __extract_edges(edges: pd.DataFrame, by: str, get: str) -> dict:
+    return edges.groupby(by)[get].apply(list).to_dict()
