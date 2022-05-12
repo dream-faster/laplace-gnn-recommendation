@@ -96,7 +96,7 @@ class GraphDataset(InMemoryDataset):
             )
 
         n_hop_edges = fetch_n_hop_neighbourhood(
-            self.config.num_neighbors_it, idx, self.users, self.articles
+            self.config.n_hop_neighbors, idx, self.users, self.articles
         )
 
         all_touched_edges = t.cat(
