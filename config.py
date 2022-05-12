@@ -158,7 +158,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=None,
+    data_size=100000,
     save_to_csv=False,
     data_type=DataType.pyg,
 )
