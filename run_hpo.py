@@ -30,7 +30,7 @@ def train(trial):
         ),
         # batch_size=trial.suggest_categorical("batch_size", [24, 32, 64, 128, 256, 512]),
         num_neighbors=trial.suggest_categorical(
-            "num_neighbors", [24, 32, 64, 128, 256]
+            "num_neighbors", [24, 32, 64, 128]
         ),
         n_hop_neighbors=num_gnn_layers,
         candidate_pool_size=trial.suggest_categorical(
