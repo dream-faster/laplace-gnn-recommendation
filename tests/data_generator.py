@@ -5,14 +5,17 @@ from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, L
 from typing import Optional
 from .util import construct_heterodata, deconstruct_heterodata, get_edge_dicts
 from torch import Tensor
+from tests.types import GeneratorConfig
 
 
-def create_entire_graph_data(save=False, generated=False) -> HeteroData:
+def create_entire_graph_data(
+    save=False, generated=False, config: Optional[GeneratorConfig] = None
+) -> HeteroData:
     (
         node_features,
         article_features,
         graph_edges,
-    ) = __get_raw_data(generated=generated)
+    ) = __get_raw_data(generated=generated, config=config)
 
     """Create Data"""
     data = HeteroData()
@@ -102,9 +105,16 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
 
 def __get_raw_data(
     generated: bool = False,
+    config: Optional[GeneratorConfig] = None,
 ) -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
-    if generated:
-        return __generated()
+    if generated and config is not None:
+        return __generated(
+            config.num_users,
+            config.num_user_features,
+            config.num_articles,
+            config.num_article_features,
+            config.connection_ratio,
+        )
     else:
         return __manual()
 
