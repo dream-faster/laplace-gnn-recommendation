@@ -31,13 +31,13 @@ class GNNEncoder(t.nn.Module):
             if index == len(self.layers) - 1:
                 x = layer(x, edge_index)
             else:
-                if self.p_dropout_edges is not None:
-                    edge_index, _ = dropout_adj(
-                        edge_index,
-                        p=self.p_dropout_edges,
-                        force_undirected=True,
-                        training=self.training,
-                    )
+                # if self.p_dropout_edges is not None:
+                #     edge_index, _ = dropout_adj(
+                #         edge_index,
+                #         p=self.p_dropout_edges,
+                #         force_undirected=True,
+                #         training=self.training,
+                #     )
                 if self.p_dropout_features is not None:
                     x = F.dropout(x, p=self.p_dropout_features, training=self.training)
 
@@ -91,7 +91,7 @@ class Encoder_Decoder_Model(t.nn.Module):
 
         self.encoder = GNNEncoder(encoder_layers, p_dropout_edges, p_dropout_features)
         self.encoder = to_hetero(
-            self.encoder, metadata, aggr=heterogeneous_prop_agg_type, debug=True
+            self.encoder, metadata, aggr=heterogeneous_prop_agg_type
         )
         self.decoder = EdgeDecoder(decoder_layers, p_dropout_features)
 
