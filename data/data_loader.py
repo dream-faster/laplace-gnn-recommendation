@@ -6,7 +6,7 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
-from .dataset import GraphDataset
+from .dataset_alt import GraphDataset
 from .matching.lightgcn import LightGCNMatcher
 from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
 from .matching.users_same_location import UsersSameLocationMatcher
