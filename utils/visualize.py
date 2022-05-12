@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from torch_geometric.data import Data, HeteroData
 from torch_geometric.utils import to_networkx
 from torch import Tensor
-import torch
+import torch as t
 
 from typing import Tuple, Union, Optional, List
 from utils.constants import Constants
@@ -40,9 +40,9 @@ def get_edges(
     edge_label = edge_dicts[0].edge_label.detach().clone()
     edge_label_index = edge_dicts[0].edge_label_index.detach().clone()
 
-    len_customer_indexes = torch.max(all_edges, dim=1)[0][0].item() + 1
-    edge_label_index[1] = torch.add(edge_label_index[1], len_customer_indexes)
-    all_edges[1] = torch.add(all_edges[1], len_customer_indexes)
+    len_customer_indexes = t.max(all_edges, dim=1)[0][0].item() + 1
+    edge_label_index[1] = t.add(edge_label_index[1], len_customer_indexes)
+    all_edges[1] = t.add(all_edges[1], len_customer_indexes)
 
     negative_edges_sampled: Tensor = edge_label_index[:, edge_label == 0]
     positive_edges_sampled: Tensor = edge_label_index[:, edge_label == 1]

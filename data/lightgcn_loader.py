@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
-import torch
+import torch as t
 from torch import nn, optim, Tensor
 
 from torch_sparse import SparseTensor, matmul
@@ -51,8 +51,8 @@ def read_json(filename: str):
 
 
 def both_indexes_from_zero(edge_index):
-    new_edge_index = torch.clone(edge_index)
-    new_edge_index[1] = new_edge_index[1] - (torch.max(new_edge_index[0]) + 1)
+    new_edge_index = t.clone(edge_index)
+    new_edge_index[1] = new_edge_index[1] - (t.max(new_edge_index[0]) + 1)
 
     return new_edge_index
 
@@ -66,7 +66,7 @@ def index_based_mapping(id_based_mapping):
 
 
 def create_dataloaders_lightgcn():
-    data = torch.load("data/derived/test_graph.pt").to_homogeneous()
+    data = t.load("data/derived/test_graph.pt").to_homogeneous()
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
@@ -118,15 +118,15 @@ def sample_mini_batch(batch_size, edge_index):
 
     Args:
         batch_size (int): minibatch size
-        edge_index (torch.Tensor): 2 by N list of edges
+        edge_index (t.Tensor): 2 by N list of edges
 
     Returns:
         tuple: user indices, positive item indices, negative item indices
     """
     edges = structured_negative_sampling(
-        edge_index.to("cpu"), num_nodes=torch.max(edge_index[1]).to("cpu")
+        edge_index.to("cpu"), num_nodes=t.max(edge_index[1]).to("cpu")
     )
-    edges = torch.stack(edges, dim=0)
+    edges = t.stack(edges, dim=0)
     indices = random.choices([i for i in range(edges[0].shape[0])], k=batch_size)
     batch = edges[:, indices]
     user_indices, pos_item_indices, neg_item_indices = batch[0], batch[1], batch[2]

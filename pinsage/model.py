@@ -1,9 +1,9 @@
 import pickle
 import argparse
 import numpy as np
-import torch
+import torch as t
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from t.utils.data import DataLoader
 import torchtext
 import dgl
 import tqdm
@@ -43,12 +43,12 @@ def train(dataset, args):
     user_to_item_etype = dataset["user-to-item-type"]
     timestamp = dataset["timestamp-edge-column"]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
     # Assign user and movie IDs and use them as features (to learn an individual trainable
     # embedding for each entity)
-    g.nodes[user_ntype].data["id"] = torch.arange(g.number_of_nodes(user_ntype))
-    g.nodes[item_ntype].data["id"] = torch.arange(g.number_of_nodes(item_ntype))
+    g.nodes[user_ntype].data["id"] = t.arange(g.number_of_nodes(user_ntype))
+    g.nodes[item_ntype].data["id"] = t.arange(g.number_of_nodes(item_ntype))
 
     # Prepare torchtext dataset and vocabulary
     fields = {}
@@ -87,7 +87,7 @@ def train(dataset, args):
         batch_sampler, collate_fn=collator.collate_train, num_workers=args.num_workers
     )
     dataloader_test = DataLoader(
-        torch.arange(g.number_of_nodes(item_ntype)),
+        t.arange(g.number_of_nodes(item_ntype)),
         batch_size=args.batch_size,
         collate_fn=collator.collate_test,
         num_workers=args.num_workers,
@@ -99,7 +99,7 @@ def train(dataset, args):
         device
     )
     # Optimizer
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+    opt = t.optim.Adam(model.parameters(), lr=args.lr)
 
     # For each batch of head-tail-negative triplets...
     for epoch_id in range(args.num_epochs):
@@ -119,8 +119,8 @@ def train(dataset, args):
 
         # Evaluate
         model.eval()
-        with torch.no_grad():
-            item_batches = torch.arange(g.number_of_nodes(item_ntype)).split(
+        with t.no_grad():
+            item_batches = t.arange(g.number_of_nodes(item_ntype)).split(
                 args.batch_size
             )
             h_item_batches = []
@@ -129,7 +129,7 @@ def train(dataset, args):
                     blocks[i] = blocks[i].to(device)
 
                 h_item_batches.append(model.get_repr(blocks))
-            h_item = torch.cat(h_item_batches, 0)
+            h_item = t.cat(h_item_batches, 0)
 
             print(evaluation.evaluate_nn(dataset, h_item, args.k, args.batch_size))
 

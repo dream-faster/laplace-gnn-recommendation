@@ -1,4 +1,4 @@
-import torch
+import torch as t
 from torch import Tensor
 from torch_geometric.data import HeteroData, Data
 from data.types import FeatureInfo
@@ -18,8 +18,8 @@ def __heterogenous_features(full_data: HeteroData) -> Tuple[FeatureInfo, Feature
     customer_features = full_data.x_dict[Constants.node_user]
     article_features = full_data.x_dict[Constants.node_item]
 
-    customer_num_cat = torch.max(customer_features, dim=0)[0].tolist()
-    article_num_cat = torch.max(article_features, dim=0)[0].tolist()
+    customer_num_cat = t.max(customer_features, dim=0)[0].tolist()
+    article_num_cat = t.max(article_features, dim=0)[0].tolist()
 
     customer_feat_info, article_feat_info = FeatureInfo(
         num_feat=customer_features.shape[1],

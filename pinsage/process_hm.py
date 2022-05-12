@@ -1,7 +1,7 @@
 import pickle
 import pandas as pd
 import dgl
-import torch
+import torch as t
 from pinsage.data_utils import *
 from utils.constants import Constants
 
@@ -11,15 +11,15 @@ def process_hm():
     output_path = "data/derived/pinsage_dataset.pkl"
 
     print("| Loading Graph...")
-    g = torch.load("data/derived/test_graph.pt")
+    g = t.load("data/derived/test_graph.pt")
 
     print("| Loading Transactions...")
     transactions = pd.read_parquet("data/original/transactions_splitted.parquet")
 
-    g.edges["buys"].data["timestamp"] = torch.LongTensor(
+    g.edges["buys"].data["timestamp"] = t.LongTensor(
         pd.DatetimeIndex(transactions["t_dat"]).asi8
     )
-    g.edges["rev_buys"].data["timestamp"] = torch.LongTensor(
+    g.edges["rev_buys"].data["timestamp"] = t.LongTensor(
         pd.DatetimeIndex(transactions["t_dat"]).asi8
     )
 
@@ -29,7 +29,7 @@ def process_hm():
     test_indices = transactions["test_mask"].to_numpy().nonzero()[0]
 
     print("| Building Train Graph...")
-    train_g = torch.load("data/derived/train_graph.pt")
+    train_g = t.load("data/derived/train_graph.pt")
     assert train_g.out_degrees(etype="buys").min() > 0
 
     # Build the user-item sparse matrix for validation and test set.

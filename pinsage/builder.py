@@ -3,13 +3,15 @@ from collections import namedtuple
 from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_categorical
 import dgl
 
-__all__ = ['PandasGraphBuilder']
+__all__ = ["PandasGraphBuilder"]
+
 
 def _series_to_tensor(series):
     if is_categorical(series):
-        return torch.LongTensor(series.cat.codes.values.astype('int64'))
-    else:       # numeric
-        return torch.FloatTensor(series.values)
+        return t.LongTensor(series.cat.codes.values.astype("int64"))
+    else:  # numeric
+        return t.FloatTensor(series.values)
+
 
 class PandasGraphBuilder(object):
     """Creates a heterogeneous graph from multiple pandas dataframes.
@@ -60,23 +62,24 @@ class PandasGraphBuilder(object):
     >>> g.number_of_edges('plays')
     4
     """
+
     def __init__(self):
         self.entity_tables = {}
         self.relation_tables = {}
 
-        self.entity_pk_to_name = {}     # mapping from primary key name to entity name
-        self.entity_pk = {}             # mapping from entity name to primary key
-        self.entity_key_map = {}        # mapping from entity names to primary key values
+        self.entity_pk_to_name = {}  # mapping from primary key name to entity name
+        self.entity_pk = {}  # mapping from entity name to primary key
+        self.entity_key_map = {}  # mapping from entity names to primary key values
         self.num_nodes_per_type = {}
         self.edges_per_relation = {}
         self.relation_name_to_etype = {}
-        self.relation_src_key = {}      # mapping from relation name to source key
-        self.relation_dst_key = {}      # mapping from relation name to destination key
+        self.relation_src_key = {}  # mapping from relation name to source key
+        self.relation_dst_key = {}  # mapping from relation name to destination key
 
     def add_entities(self, entity_table, primary_key, name):
-        entities = entity_table[primary_key].astype('category')
+        entities = entity_table[primary_key].astype("category")
         if not (entities.value_counts() == 1).all():
-            raise ValueError('Different entity with the same primary key detected.')
+            raise ValueError("Different entity with the same primary key detected.")
         # preserve the category order in the original entity table
         entities = entities.cat.reorder_categories(entity_table[primary_key].values)
 
@@ -87,26 +90,33 @@ class PandasGraphBuilder(object):
         self.entity_tables[name] = entity_table
 
     def add_binary_relations(self, relation_table, source_key, destination_key, name):
-        src = relation_table[source_key].astype('category')
+        src = relation_table[source_key].astype("category")
         src = src.cat.set_categories(
-            self.entity_key_map[self.entity_pk_to_name[source_key]].cat.categories)
-        dst = relation_table[destination_key].astype('category')
+            self.entity_key_map[self.entity_pk_to_name[source_key]].cat.categories
+        )
+        dst = relation_table[destination_key].astype("category")
         dst = dst.cat.set_categories(
-            self.entity_key_map[self.entity_pk_to_name[destination_key]].cat.categories)
+            self.entity_key_map[self.entity_pk_to_name[destination_key]].cat.categories
+        )
         if src.isnull().any():
             raise ValueError(
-                'Some source entities in relation %s do not exist in entity %s.' %
-                (name, source_key))
+                "Some source entities in relation %s do not exist in entity %s."
+                % (name, source_key)
+            )
         if dst.isnull().any():
             raise ValueError(
-                'Some destination entities in relation %s do not exist in entity %s.' %
-                (name, destination_key))
+                "Some destination entities in relation %s do not exist in entity %s."
+                % (name, destination_key)
+            )
 
         srctype = self.entity_pk_to_name[source_key]
         dsttype = self.entity_pk_to_name[destination_key]
         etype = (srctype, name, dsttype)
         self.relation_name_to_etype[name] = etype
-        self.edges_per_relation[etype] = (src.cat.codes.values.astype('int64'), dst.cat.codes.values.astype('int64'))
+        self.edges_per_relation[etype] = (
+            src.cat.codes.values.astype("int64"),
+            dst.cat.codes.values.astype("int64"),
+        )
         self.relation_tables[name] = relation_table
         self.relation_src_key[name] = source_key
         self.relation_dst_key[name] = destination_key
@@ -115,4 +125,3 @@ class PandasGraphBuilder(object):
         # Create heterograph
         graph = dgl.heterograph(self.edges_per_relation, self.num_nodes_per_type)
         return graph
-

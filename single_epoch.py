@@ -2,7 +2,7 @@ from config import Config
 from typing import Union, Tuple
 import numpy as np
 
-import torch
+import torch as t
 from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
@@ -15,7 +15,7 @@ from utils.get_info import select_properties
 
 from utils.constants import Constants
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
 def train(
@@ -25,7 +25,7 @@ def train(
 ) -> Tensor:
 
     x, edge_index, edge_label_index, edge_label = select_properties(train_data)
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = t.nn.BCEWithLogitsLoss()
 
     optimizer.zero_grad()
 
@@ -36,7 +36,7 @@ def train(
     return loss
 
 
-@torch.no_grad()
+@t.no_grad()
 def test(
     data: Union[HeteroData, Data], model: Module, exclude_edge_indices: list, k: int
 ) -> Tuple[float, float]:

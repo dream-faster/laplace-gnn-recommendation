@@ -1,4 +1,4 @@
-import torch
+import torch as t
 import numpy as np
 from torch import Tensor
 from typing import List, Tuple
@@ -17,16 +17,16 @@ def bpr_loss(
     """Bayesian Personalized Ranking Loss as described in https://arxiv.org/abs/1205.2618
 
     Args:
-        users_emb_final (torch.Tensor): e_u_k
-        users_emb_0 (torch.Tensor): e_u_0
-        pos_items_emb_final (torch.Tensor): positive e_i_k
-        pos_items_emb_0 (torch.Tensor): positive e_i_0
-        neg_items_emb_final (torch.Tensor): negative e_i_k
-        neg_items_emb_0 (torch.Tensor): negative e_i_0
+        users_emb_final (t.Tensor): e_u_k
+        users_emb_0 (t.Tensor): e_u_0
+        pos_items_emb_final (t.Tensor): positive e_i_k
+        pos_items_emb_0 (t.Tensor): positive e_i_0
+        neg_items_emb_final (t.Tensor): negative e_i_k
+        neg_items_emb_0 (t.Tensor): negative e_i_0
         lambda_val (float): lambda value for regularization loss term
 
     Returns:
-        torch.Tensor: scalar bpr loss value
+        t.Tensor: scalar bpr loss value
     """
     reg_loss = lambda_val * (
         users_emb_0.norm(2).pow(2)
@@ -34,12 +34,12 @@ def bpr_loss(
         + neg_items_emb_0.norm(2).pow(2)
     )  # L2 loss
 
-    pos_scores = torch.mul(users_emb_final, pos_items_emb_final)
-    pos_scores = torch.sum(pos_scores, dim=-1)  # predicted scores of positive samples
-    neg_scores = torch.mul(users_emb_final, neg_items_emb_final)
-    neg_scores = torch.sum(neg_scores, dim=-1)  # predicted scores of negative samples
+    pos_scores = t.mul(users_emb_final, pos_items_emb_final)
+    pos_scores = t.sum(pos_scores, dim=-1)  # predicted scores of positive samples
+    neg_scores = t.mul(users_emb_final, neg_items_emb_final)
+    neg_scores = t.sum(neg_scores, dim=-1)  # predicted scores of negative samples
 
-    loss = -torch.mean(torch.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
+    loss = -t.mean(torch.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
 
     return loss
 
@@ -49,7 +49,7 @@ def get_user_positive_items(edge_index: Tensor) -> dict:
     """Generates dictionary of positive items for each user
 
     Args:
-        edge_index (torch.Tensor): 2 by N list of edges
+        edge_index (t.Tensor): 2 by N list of edges
 
     Returns:
         dict: dictionary of positive items for each user
@@ -79,15 +79,11 @@ def RecallPrecision_ATk(
     Returns:
         tuple: recall @ k, precision @ k
     """
-    num_correct_pred = torch.sum(
-        r, dim=-1
-    )  # number of correctly predicted items per user
+    num_correct_pred = t.sum(r, dim=-1)  # number of correctly predicted items per user
     # number of items liked by each user in the test set
-    user_num_liked = torch.Tensor(
-        [len(groundTruth[i]) for i in range(len(groundTruth))]
-    )
-    recall = torch.mean(num_correct_pred / user_num_liked)
-    precision = torch.mean(num_correct_pred) / k
+    user_num_liked = t.Tensor([len(groundTruth[i]) for i in range(len(groundTruth))])
+    recall = t.mean(num_correct_pred / user_num_liked)
+    precision = t.mean(num_correct_pred) / k
     return recall.item(), precision.item()
 
 
@@ -106,19 +102,19 @@ def NDCGatK_r(groundTruth: List[List[int]], r: Tensor, k: int) -> float:
     """
     assert len(r) == len(groundTruth)
 
-    test_matrix = torch.zeros((len(r), k))
+    test_matrix = t.zeros((len(r), k))
 
     for i, items in enumerate(groundTruth):
         length = min(len(items), k)
         test_matrix[i, :length] = 1
     max_r = test_matrix
-    idcg = torch.sum(max_r * 1.0 / torch.log2(torch.arange(2, k + 2)), axis=1)
-    dcg = r * (1.0 / torch.log2(torch.arange(2, k + 2)))
-    dcg = torch.sum(dcg, axis=1)
+    idcg = t.sum(max_r * 1.0 / t.log2(t.arange(2, k + 2)), axis=1)
+    dcg = r * (1.0 / t.log2(t.arange(2, k + 2)))
+    dcg = t.sum(dcg, axis=1)
     idcg[idcg == 0.0] = 1.0
     ndcg = dcg / idcg
-    ndcg[torch.isnan(ndcg)] = 0.0
-    return torch.mean(ndcg).item()
+    ndcg[t.isnan(ndcg)] = 0.0
+    return t.mean(ndcg).item()
 
 
 # wrapper function to get evaluation metrics
@@ -133,7 +129,7 @@ def get_metrics_universal(
 
     Args:
         model (LighGCN): ANY model
-        edge_index (torch.Tensor): 2 by N list of edges for split to evaluate
+        edge_index (t.Tensor): 2 by N list of edges for split to evaluate
         exclude_edge_indices ([type]): 2 by N list of edges for split to discount from evaluation
         k (int): determines the top k items to compute metrics on
 
@@ -162,7 +158,7 @@ def get_metrics_universal(
         ratings[exclude_users, exclude_items] = -(1 << 10)
 
     # get the top k recommended items for each user
-    _, top_K_items = torch.topk(ratings, k=k)
+    _, top_K_items = t.topk(ratings, k=k)
 
     # get all unique users in evaluated split
     users = edge_label_index[0].unique()
@@ -178,7 +174,7 @@ def get_metrics_universal(
         ground_truth_items = test_user_pos_items[user.item()]
         label = [x in ground_truth_items for x in top_K_items[i]]
         r.append(label)
-    r = torch.Tensor(np.array(r).astype("float"))
+    r = t.Tensor(np.array(r).astype("float"))
 
     recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
     ndcg = NDCGatK_r(test_user_pos_items_list, r, k)

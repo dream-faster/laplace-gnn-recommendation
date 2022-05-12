@@ -2,7 +2,7 @@ from torch_sparse import SparseTensor, matmul
 from torch_geometric.nn.conv import MessagePassing
 from torch import nn
 from torch import Tensor
-import torch
+import torch as t
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from typing import Union, Optional
 from torch_geometric.data import Data, HeteroData
@@ -50,7 +50,7 @@ class LightGCN(MessagePassing):
         # compute \tilde{A}: symmetrically normalized adjacency matrix
         edge_index_norm = gcn_norm(edge_index, add_self_loops=self.add_self_loops)
 
-        emb_0 = torch.cat([self.users_emb.weight, self.items_emb.weight])  # E^0
+        emb_0 = t.cat([self.users_emb.weight, self.items_emb.weight])  # E^0
         embs = [emb_0]
         emb_k = emb_0
 
@@ -59,10 +59,10 @@ class LightGCN(MessagePassing):
             emb_k = self.propagate(edge_index_norm, x=emb_k)
             embs.append(emb_k)
 
-        embs = torch.stack(embs, dim=1)
-        emb_final = torch.mean(embs, dim=1)  # E^K
+        embs = t.stack(embs, dim=1)
+        emb_final = t.mean(embs, dim=1)  # E^K
 
-        users_emb_final, items_emb_final = torch.split(
+        users_emb_final, items_emb_final = t.split(
             emb_final, [self.num_users, self.num_items]
         )  # splits into e_u^K and e_i^K
 
@@ -86,6 +86,6 @@ class LightGCN(MessagePassing):
         item_embedding = self.items_emb.weight.to("cpu")
 
         # get ratings between every user and item - shape is num users x num articles
-        ratings = torch.matmul(user_embedding, item_embedding.T)
+        ratings = t.matmul(user_embedding, item_embedding.T)
 
         return ratings

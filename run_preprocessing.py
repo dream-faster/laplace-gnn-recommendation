@@ -5,7 +5,7 @@ from data.types import (
     PreprocessingConfig,
     UserColumn,
 )
-import torch
+import torch as t
 import json
 from utils.labelencoder import encode_labels
 import numpy as np
@@ -102,48 +102,46 @@ def preprocess(config: PreprocessingConfig):
         [transactions_val, transactions[transactions["test_mask"] == True]], axis=0
     )
 
-    per_article_img_embedding = torch.zeros((0, 512))
+    per_article_img_embedding = t.zeros((0, 512))
     if config.load_image_embedding:
         print("| Adding image embeddings...")
-        image_embeddings = torch.load(
+        image_embeddings = t.load(
             "data/derived/fashion-recommendation-image-embeddings-clip-ViT-B-32.pt"
         )
         for index, article in tqdm(articles.iterrows()):
-            per_article_img_embedding = torch.cat(
+            per_article_img_embedding = t.cat(
                 (
                     per_article_img_embedding,
                     image_embeddings.get(
-                        int(article["article_id"]), torch.zeros(512)
+                        int(article["article_id"]), t.zeros(512)
                     ).unsqueeze(0),
                 ),
                 axis=0,
             )
 
-    per_article_text_embedding = torch.zeros((0, 512))
+    per_article_text_embedding = t.zeros((0, 512))
     if config.load_text_embedding:
         print("| Adding text embeddings...")
-        text_embeddings = torch.load(
+        text_embeddings = t.load(
             "data/derived/fashion-recommendation-text-embeddings-clip-ViT-B-32.pt"
         )
 
         for index, article in tqdm(articles.iterrows()):
-            per_article_text_embedding = torch.cat(
+            per_article_text_embedding = t.cat(
                 (
                     per_article_text_embedding,
                     text_embeddings[int(article["article_id"])]
-                    .get(config.text_embedding_colname, torch.zeros(512))
+                    .get(config.text_embedding_colname, t.zeros(512))
                     .unsqueeze(0),
                 ),
                 axis=0,
             )
 
     print("| Exporting per location info...")
-    torch.save(
+    t.save(
         extract_users_per_location(customers), "data/derived/customers_per_location.pt"
     )
-    torch.save(
-        extract_location_for_user(customers), "data/derived/location_for_user.pt"
-    )
+    t.save(extract_location_for_user(customers), "data/derived/location_for_user.pt")
 
     print("| Calculating the most popular products of the month...")
     print("last day:", transactions.tail(1)["t_dat"].item())
@@ -152,7 +150,7 @@ def preprocess(config: PreprocessingConfig):
     most_popular_products = (
         last_month_transactions["article_id"].value_counts().nlargest(1000)
     )
-    torch.save(most_popular_products, "data/derived/most_popular_products.pt")
+    t.save(most_popular_products, "data/derived/most_popular_products.pt")
 
     print("| Removing unused columns...")
     customers.drop(["customer_id"], axis=1, inplace=True)
@@ -162,15 +160,15 @@ def preprocess(config: PreprocessingConfig):
         save_to_csv(customers, articles, transactions)
 
     print("| Converting to tensors...")
-    customers = torch.tensor(customers.to_numpy(), dtype=torch.float)
-    assert torch.isnan(customers).any() == False
+    customers = t.tensor(customers.to_numpy(), dtype=t.float)
+    assert t.isnan(customers).any() == False
 
-    articles = torch.tensor(articles.to_numpy(), dtype=torch.float)
+    articles = t.tensor(articles.to_numpy(), dtype=t.float)
     if config.load_image_embedding:
-        articles = torch.cat((articles, per_article_img_embedding), axis=1)
+        articles = t.cat((articles, per_article_img_embedding), axis=1)
     if config.load_text_embedding:
-        articles = torch.cat((articles, per_article_text_embedding), axis=1)
-    assert torch.isnan(articles).any() == False
+        articles = t.cat((articles, per_article_text_embedding), axis=1)
+    assert t.isnan(articles).any() == False
 
     print("| Creating PyG Data...")
     create_func = (
@@ -196,23 +194,19 @@ def preprocess(config: PreprocessingConfig):
     )
 
     print("| Saving the graph...")
-    torch.save(train_graph, "data/derived/train_graph.pt")
-    torch.save(val_graph, "data/derived/val_graph.pt")
-    torch.save(test_graph, "data/derived/test_graph.pt")
+    t.save(train_graph, "data/derived/train_graph.pt")
+    t.save(val_graph, "data/derived/val_graph.pt")
+    t.save(test_graph, "data/derived/test_graph.pt")
 
     print("| Extracting edges per customer / per article...")
-    torch.save(extract_edges(transactions_train), "data/derived/edges_train.pt")
-    torch.save(
-        extract_reverse_edges(transactions_train), "data/derived/rev_edges_train.pt"
-    )
+    t.save(extract_edges(transactions_train), "data/derived/edges_train.pt")
+    t.save(extract_reverse_edges(transactions_train), "data/derived/rev_edges_train.pt")
 
-    torch.save(extract_edges(transactions_val), "data/derived/edges_val.pt")
-    torch.save(extract_reverse_edges(transactions_val), "data/derived/rev_edges_val.pt")
+    t.save(extract_edges(transactions_val), "data/derived/edges_val.pt")
+    t.save(extract_reverse_edges(transactions_val), "data/derived/rev_edges_val.pt")
 
-    torch.save(extract_edges(transactions_test), "data/derived/edges_test.pt")
-    torch.save(
-        extract_reverse_edges(transactions_test), "data/derived/rev_edges_test.pt"
-    )
+    t.save(extract_edges(transactions_test), "data/derived/edges_test.pt")
+    t.save(extract_reverse_edges(transactions_test), "data/derived/rev_edges_test.pt")
 
     print("| Saving the node-to-id mapping...")
     with open("data/derived/customer_id_map_forward.json", "w") as fp:
@@ -222,8 +216,8 @@ def preprocess(config: PreprocessingConfig):
 
 
 def create_data_pyg(
-    customers: torch.Tensor,
-    articles: torch.Tensor,
+    customers: t.Tensor,
+    articles: t.Tensor,
     transactions_to_customer_id: np.ndarray,
     transactions_to_article_id: np.ndarray,
 ):
@@ -233,16 +227,16 @@ def create_data_pyg(
     data = HeteroData()
     data[Constants.node_user].x = customers
     data[Constants.node_item].x = articles
-    data[Constants.node_user, "buys", Constants.node_item].edge_index = torch.as_tensor(
+    data[Constants.node_user, "buys", Constants.node_item].edge_index = t.as_tensor(
         (transactions_to_customer_id, transactions_to_article_id),
-        dtype=torch.long,
+        dtype=t.long,
     )
     return data
 
 
 def create_data_dgl(
-    customers: torch.Tensor,
-    articles: torch.Tensor,
+    customers: t.Tensor,
+    articles: t.Tensor,
     transactions_to_customer_id: np.ndarray,
     transactions_to_article_id: np.ndarray,
 ):
@@ -252,12 +246,12 @@ def create_data_dgl(
     data = dgl.heterograph(
         {
             Constants.edge_key: (
-                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
-                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
+                t.as_tensor(transactions_to_customer_id, dtype=t.long),
+                t.as_tensor(transactions_to_article_id, dtype=t.long),
             ),
             (Constants.node_item, "rev_buys", Constants.node_user): (
-                torch.as_tensor(transactions_to_article_id, dtype=torch.long),
-                torch.as_tensor(transactions_to_customer_id, dtype=torch.long),
+                t.as_tensor(transactions_to_article_id, dtype=t.long),
+                t.as_tensor(transactions_to_customer_id, dtype=t.long),
             ),
         },
         num_nodes_dict={
