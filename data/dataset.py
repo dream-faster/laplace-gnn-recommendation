@@ -279,8 +279,10 @@ def fetch_n_hop_neighbourhood(
 
 
 def shuffle_and_cut(array: list, n: int) -> list:
-    random.shuffle(array)
-    return array[:n]
+    if len(array) > n:
+        return random.sample(array, n)
+    else:
+        return array
 
 
 def create_neighbouring_article_edges(
