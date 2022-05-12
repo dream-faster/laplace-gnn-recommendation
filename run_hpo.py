@@ -28,7 +28,7 @@ def train(trial):
         learning_rate=trial.suggest_categorical(
             "learning_rate", [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
         ),
-        batch_size=trial.suggest_categorical("batch_size", [24, 32, 64, 128, 256, 512]),
+        # batch_size=trial.suggest_categorical("batch_size", [24, 32, 64, 128, 256, 512]),
         num_neighbors=trial.suggest_categorical(
             "num_neighbors", [24, 32, 64, 128, 256]
         ),
@@ -43,7 +43,7 @@ def train(trial):
             "negative_edges_ratio", [1, 2, 5, 10, 20]
         ),
     )
-    trial_config = Config(**vars(config) | search_space)
+    trial_config = Config(**{**vars(config), **search_space})
     stats = run_pipeline(trial_config)
     return 1 - stats.precision_val
 
