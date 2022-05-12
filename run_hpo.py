@@ -46,7 +46,7 @@ def train(trial):
         p_dropout_features=trial.suggest_categorical(
             "p_dropout_features", [0.0, 0.15, 0.3, 0.5]
         ),
-        batch_norm=trial.suggest_categorical("batch_norm", [True, False]),
+        # batch_norm=trial.suggest_categorical("batch_norm", [True, False]),
     )
     trial_config = Config(**{**vars(config), **search_space})
     stats = run_pipeline(trial_config)

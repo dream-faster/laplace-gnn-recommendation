@@ -86,7 +86,6 @@ def run_pipeline(config: Config) -> Stats:
             optimizer,
             train_loader,
             val_loader,
-            test_loader,
             epoch_id=epoch,
             config=config,
         )

@@ -135,7 +135,7 @@ lightgcn_config = Config(
     evaluate_break_at=None,  # IGNORE for LightGCN
     p_dropout_edges=None,  # IGNORE for LightGCN
     p_dropout_features=None,  # IGNORE for LightGCN
-    batch_norm=True, # IGNORE for LightGCN
+    batch_norm=True,  # IGNORE for LightGCN
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
