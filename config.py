@@ -88,7 +88,7 @@ link_pred_config = Config(
     profiler=None,  # Profiler(every=20),
     evaluate_break_at=None,
     p_dropout_edges=0.2,  # Currently not being used!
-    p_dropout_features=0.92,
+    p_dropout_features=0.3,
 )
 
 
