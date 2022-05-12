@@ -1,9 +1,11 @@
 import torch as t
+import torch_geometric
 from data.types import FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
+from torch_geometric.utils import dropout_adj
 from typing import List, Tuple
 from torch import Tensor
 from typing import Union, Optional
@@ -16,27 +18,39 @@ class GNNEncoder(t.nn.Module):
     def __init__(
         self,
         layers: ModuleList,
+        p_dropout_edges: Optional[float],
+        p_dropout_features: Optional[float],
     ):
         super().__init__()
         self.layers = layers
+        self.p_dropout_edges = p_dropout_edges
+        self.p_dropout_features = p_dropout_features
 
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
             if index == len(self.layers) - 1:
                 x = layer(x, edge_index)
             else:
+                # if self.p_dropout_edges is not None:
+                #     edge_index, _ = dropout_adj(
+                #         edge_index,
+                #         p=self.p_dropout_edges,
+                #         force_undirected=True,
+                #         training=self.training,
+                #     )
+                if self.p_dropout_features is not None:
+                    x = F.dropout(x, p=self.p_dropout_features, training=self.training)
+
                 x = layer(x, edge_index).relu()
 
         return x
 
 
 class EdgeDecoder(t.nn.Module):
-    def __init__(
-        self,
-        layers: ModuleList,
-    ):
+    def __init__(self, layers: ModuleList, p_dropout_features: Optional[float]):
         super().__init__()
         self.layers = layers
+        self.p_dropout_features = p_dropout_features
 
     def forward(self, z_dict: dict, edge_label_index: dict) -> t.Tensor:
         customer_index, article_index = edge_label_index
@@ -51,6 +65,8 @@ class EdgeDecoder(t.nn.Module):
             if index == len(self.layers) - 1:
                 z = layer(z)
             else:
+                if self.p_dropout_features is not None:
+                    z = F.dropout(z, p=self.p_dropout_features, training=self.training)
                 z = layer(z).relu()
 
         return z.view(-1)
@@ -64,44 +80,48 @@ class Encoder_Decoder_Model(t.nn.Module):
         feature_info: FeatureInfo,
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
-        heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul"
+        heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul",
+        batch_normalize: bool,
+        p_dropout_edges: Optional[float],
+        p_dropout_features: Optional[float],
     ):
         super().__init__()
-        self.embedding: bool = embedding
-        self.encoder = GNNEncoder(encoder_layers)
+        self.embedding = embedding
+        self.batch_normalize = batch_normalize
+
+        self.encoder = GNNEncoder(encoder_layers, p_dropout_edges, p_dropout_features)
         self.encoder = to_hetero(
             self.encoder, metadata, aggr=heterogeneous_prop_agg_type
         )
-        self.decoder = EdgeDecoder(decoder_layers)
+        self.decoder = EdgeDecoder(decoder_layers, p_dropout_features)
 
         self.encoder_layer_norm_customer = BatchNorm1d(encoder_layers[-1].out_channels)
         self.encoder_layer_norm_article = BatchNorm1d(encoder_layers[-1].out_channels)
 
         if self.embedding:
             customer_info, article_info = feature_info
-            embedding_articles: List[Embedding] = []
-            embedding_customers: List[Embedding] = []
 
-            embedding_customers = [
-                Embedding(
-                    num_embeddings=int(customer_info.num_cat[i] + 1),
-                    embedding_dim=int(customer_info.embedding_size[i]),
-                    max_norm=1,
-                )
-                for i in range(customer_info.num_feat)
-            ]
+            self.embedding_customers = ModuleList(
+                [
+                    Embedding(
+                        num_embeddings=int(customer_info.num_cat[i] + 1),
+                        embedding_dim=int(customer_info.embedding_size[i]),
+                        max_norm=1,
+                    )
+                    for i in range(customer_info.num_feat)
+                ]
+            )
 
-            embedding_articles = [
-                Embedding(
-                    num_embeddings=int(article_info.num_cat[i] + 1),
-                    embedding_dim=int(article_info.embedding_size[i]),
-                    max_norm=1,
-                )
-                for i in range(article_info.num_feat)
-            ]
-
-            self.embedding_customers = ModuleList(embedding_customers)
-            self.embedding_articles = ModuleList(embedding_articles)
+            self.embedding_articles = ModuleList(
+                [
+                    Embedding(
+                        num_embeddings=int(article_info.num_cat[i] + 1),
+                        embedding_dim=int(article_info.embedding_size[i]),
+                        max_norm=1,
+                    )
+                    for i in range(article_info.num_feat)
+                ]
+            )
 
     def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
@@ -131,15 +151,20 @@ class Encoder_Decoder_Model(t.nn.Module):
     def forward(
         self, x_dict, edge_index_dict: dict, edge_label_index: t.Tensor
     ) -> t.Tensor:
+
         if self.embedding:
             x_dict = self.__embedding(x_dict)
+
         z_dict = self.encoder(x_dict, edge_index_dict)
-        z_dict[Constants.node_user] = self.encoder_layer_norm_customer(
-            z_dict[Constants.node_user]
-        )
-        z_dict[Constants.node_item] = self.encoder_layer_norm_article(
-            z_dict[Constants.node_item]
-        )
+
+        if self.batch_normalize:
+            z_dict[Constants.node_user] = self.encoder_layer_norm_customer(
+                z_dict[Constants.node_user]
+            )
+            z_dict[Constants.node_item] = self.encoder_layer_norm_article(
+                z_dict[Constants.node_item]
+            )
+
         output = self.decoder(z_dict, edge_label_index)
         return output
 
