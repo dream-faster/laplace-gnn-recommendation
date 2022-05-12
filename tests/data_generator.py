@@ -59,7 +59,7 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
                 ]
             )
         )
-        if n_hop != _:
+        if n_hop - 1 != _:
             user_ids = t.unique(
                 t.cat(
                     [
