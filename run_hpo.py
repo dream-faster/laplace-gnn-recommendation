@@ -3,6 +3,9 @@ from run_pipeline import run_pipeline
 import optuna
 
 config = link_pred_config
+config.epochs = 4
+config.k = 12
+config.eval_every = 4
 config.evaluate_break_at = 50
 config.wandb_enabled = True
 
@@ -11,8 +14,6 @@ def train(trial):
     num_gnn_layers = trial.suggest_int("num_gnn_layers", 1, 4)
 
     search_space = dict(
-        epochs=4,
-        k=12,
         num_gnn_layers=num_gnn_layers,
         num_linear_layers=trial.suggest_int("num_linear_layers", 1, 4),
         hidden_layer_size=trial.suggest_categorical(
