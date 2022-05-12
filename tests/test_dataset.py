@@ -4,10 +4,8 @@ import torch as t
 from tests.data_generator import create_entire_graph_data, create_subgraph_comparison
 from torch_geometric import seed_everything
 from tests.util import get_first_item_from_dataset, deconstruct_heterodata
-from tests.types import GeneratorConfig
+from tests.types import GeneratorConfig, generator_config
 
-
-generator_config = GeneratorConfig()
 
 seed_everything(5)
 # Generate and save entire graph data:
