@@ -50,7 +50,7 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
     user_ids = t.tensor([0], dtype=t.long)
     art_ids = t.empty(0, dtype=t.long)
 
-    for _ in range(n_hop):
+    for i in range(n_hop):
         art_ids = t.unique(
             t.cat(
                 [
@@ -59,7 +59,7 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
                 ]
             )
         )
-        if n_hop - 1 != _:
+        if i != n_hop - 1:
             user_ids = t.unique(
                 t.cat(
                     [
