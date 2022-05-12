@@ -59,14 +59,17 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
                 ]
             )
         )
-        user_ids = t.unique(
-            t.cat(
-                [
-                    user_ids,
-                    t.tensor([i for id in art_ids for i in rev_edges_dict[id.item()]]),
-                ]
+        if n_hop != _:
+            user_ids = t.unique(
+                t.cat(
+                    [
+                        user_ids,
+                        t.tensor(
+                            [i for id in art_ids for i in rev_edges_dict[id.item()]]
+                        ),
+                    ]
+                )
             )
-        )
 
     """ Get Edges """
     subgraph_edges = t.cat(
