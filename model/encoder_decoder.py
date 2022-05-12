@@ -1,9 +1,11 @@
 import torch as t
+import torch_geometric
 from data.types import FeatureInfo
 from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
+from torch_geometric.utils import dropout_adj
 from typing import List, Tuple
 from torch import Tensor
 from typing import Union, Optional
@@ -16,15 +18,29 @@ class GNNEncoder(t.nn.Module):
     def __init__(
         self,
         layers: ModuleList,
+        p_dropout_edges: Optional[float],
+        p_dropout_features: Optional[float],
     ):
         super().__init__()
         self.layers = layers
+        self.p_dropout_edges = p_dropout_edges
+        self.p_dropout_features = p_dropout_features
 
     def forward(self, x, edge_index):
         for index, layer in enumerate(self.layers):
             if index == len(self.layers) - 1:
                 x = layer(x, edge_index)
             else:
+                if self.dropout_edges is not None:
+                    edge_index, _ = dropout_adj(
+                        edge_index,
+                        p=self.p_dropout_edges,
+                        force_undirected=True,
+                        training=self.training,
+                    )
+                if self.dropout_features is not None:
+                    x = F.dropout(x, p=self.p_dropout_features, training=self.training)
+
                 x = layer(x, edge_index).relu()
 
         return x
@@ -64,11 +80,16 @@ class Encoder_Decoder_Model(t.nn.Module):
         feature_info: FeatureInfo,
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
-        heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul"
+        heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul",
+        batch_normalize: bool,
+        p_dropout_edges: Optional[float],
+        p_dropout_features: Optional[float],
     ):
         super().__init__()
-        self.embedding: bool = embedding
-        self.encoder = GNNEncoder(encoder_layers)
+        self.embedding = embedding
+        self.batch_normalize = batch_normalize
+
+        self.encoder = GNNEncoder(encoder_layers, p_dropout_edges, p_dropout_features)
         self.encoder = to_hetero(
             self.encoder, metadata, aggr=heterogeneous_prop_agg_type
         )
@@ -131,15 +152,20 @@ class Encoder_Decoder_Model(t.nn.Module):
     def forward(
         self, x_dict, edge_index_dict: dict, edge_label_index: t.Tensor
     ) -> t.Tensor:
+
         if self.embedding:
             x_dict = self.__embedding(x_dict)
+
         z_dict = self.encoder(x_dict, edge_index_dict)
-        z_dict[Constants.node_user] = self.encoder_layer_norm_customer(
-            z_dict[Constants.node_user]
-        )
-        z_dict[Constants.node_item] = self.encoder_layer_norm_article(
-            z_dict[Constants.node_item]
-        )
+
+        if self.batch_normalize:
+            z_dict[Constants.node_user] = self.encoder_layer_norm_customer(
+                z_dict[Constants.node_user]
+            )
+            z_dict[Constants.node_item] = self.encoder_layer_norm_article(
+                z_dict[Constants.node_item]
+            )
+
         output = self.decoder(z_dict, edge_label_index)
         return output
 
