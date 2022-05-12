@@ -1,5 +1,5 @@
 from tqdm import tqdm
-import torch
+import torch as t
 import numpy as np
 
 from torch_geometric import seed_everything
@@ -29,7 +29,7 @@ def run_pipeline(config: Config) -> Stats:
 
     print("| Seeding everything...")
     seed_everything(5)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = t.device("cuda" if t.cuda.is_available() else "cpu")
     assert (
         config.k <= config.candidate_pool_size
     ), "k must be smaller than candidate_pool_size"
@@ -67,11 +67,11 @@ def run_pipeline(config: Config) -> Stats:
     # Due to lazy initialization, we need to run one model step so the number
     # of parameters can be inferred:
     print("| Lazy Initialization of Model...")
-    with torch.no_grad():
+    with t.no_grad():
         model.initialize_encoder_input_size(next(iter(train_loader)).to(device))
 
     print("| Defining Optimizer...")
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    optimizer = t.optim.Adam(model.parameters(), lr=config.learning_rate)
 
     print("| Training Model...")
     old_val_precision = -1
@@ -92,14 +92,14 @@ def run_pipeline(config: Config) -> Stats:
             old_val_precision = val_precision_mean.copy()
         else:
             print("| Saving Best Generalized Model...")
-            torch.save(model.state_dict(), f"model/saved/model_final.pt")
+            t.save(model.state_dict(), f"model/saved/model_final.pt")
             old_val_precision = (
                 -1
             )  # We should only save it at the inflection point from decreasing one step
 
         if epoch % max(1, int(config.epochs * config.save_every)) == 0:
             print("| Saving Model at a regular interval...")
-            torch.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+            t.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
 
         report_results(
             output_stats=ContinousStatsTrain(type="train", loss=loss_mean, epoch=epoch),

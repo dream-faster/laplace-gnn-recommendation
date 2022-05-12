@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import torch
+import torch as t
 from torch import optim
 from tqdm import tqdm
 
@@ -29,7 +29,7 @@ def evaluation(
 
     Args:
         model (LighGCN): lightgcn model
-        edge_index (torch.Tensor): 2 by N list of edges for split to evaluate
+        edge_index (t.Tensor): 2 by N list of edges for split to evaluate
         sparse_edge_index (sparseTensor): sparse adjacency matrix for split to evaluate
         exclude_edge_indices ([type]): 2 by N list of edges for split to discount from evaluation
         k (int): determines the top k items to compute metrics on
@@ -44,7 +44,7 @@ def evaluation(
     )
     edges = structured_negative_sampling(
         edge_index.to("cpu"),
-        num_nodes=torch.max(edge_index[1]).to("cpu"),
+        num_nodes=t.max(edge_index[1]).to("cpu"),
         contains_neg_self_loops=False,
     )
     user_indices, pos_item_indices, neg_item_indices = edges[0], edges[1], edges[2]
@@ -97,7 +97,7 @@ def train(config: Config):
     ) = create_dataloaders_lightgcn()
 
     # setup
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = t.device("cuda" if t.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
 
     model = LightGCN(
@@ -228,8 +228,8 @@ def train(config: Config):
         # scores = model.items_emb.weight @ e_u
 
         print("| Saving the user and article final embeddings...")
-        torch.save(user_embeddings, "data/derived/users_emb_final_lightgcn.pt")
-        torch.save(item_embeddings, "data/derived/items_emb_final_lightgcn.pt")
+        t.save(user_embeddings, "data/derived/users_emb_final_lightgcn.pt")
+        t.save(item_embeddings, "data/derived/items_emb_final_lightgcn.pt")
 
     save_scores()
 
@@ -238,7 +238,7 @@ def train(config: Config):
         e_u = model.users_emb.weight[user]
         scores = model.items_emb.weight @ e_u
 
-        values, indices = torch.topk(scores, k=len(user_pos_items[user]) + num_recs)
+        values, indices = t.topk(scores, k=len(user_pos_items[user]) + num_recs)
 
         articles = [
             index.cpu().item() for index in indices if index in user_pos_items[user]

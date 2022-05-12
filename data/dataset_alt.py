@@ -1,4 +1,4 @@
-import torch
+import torch as t
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
 from torch import Tensor
@@ -9,7 +9,7 @@ from config import Config
 from typing import Tuple
 from utils.tensor_boolean import difference
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
 class GraphDataset(InMemoryDataset):
@@ -23,9 +23,9 @@ class GraphDataset(InMemoryDataset):
         matchers: Optional[List[Matcher]] = None,
         randomization: bool = True,
     ):
-        self.edges = torch.load(users_adj_list)
-        self.graph = torch.load(graph_path)
-        self.article_edges = torch.load(articles_adj_list)
+        self.edges = t.load(users_adj_list)
+        self.graph = t.load(graph_path)
+        self.article_edges = t.load(articles_adj_list)
         self.matchers = matchers
         self.config = config
         self.train = train
@@ -42,8 +42,8 @@ class GraphDataset(InMemoryDataset):
         all_edges = self.graph[Constants.edge_key].edge_index
 
         # Add first user to user_to_check
-        users_to_check = torch.tensor([idx])
-        old_users_to_check = torch.tensor([idx])
+        users_to_check = t.tensor([idx])
+        old_users_to_check = t.tensor([idx])
         subgraph_edges_list = []
 
         for i in range(num_hops):
@@ -60,19 +60,17 @@ class GraphDataset(InMemoryDataset):
                 continue
 
             """ Define new subset of users"""
-            connected_articles = torch.unique(
-                torch.tensor(
-                    [a for _id in users_to_check for a in self.edges[_id.item()]]
-                )
+            connected_articles = t.unique(
+                t.tensor([a for _id in users_to_check for a in self.edges[_id.item()]])
             )
 
             # Keep track of what user we already sampled
-            old_users_to_check = torch.concat(
-                (old_users_to_check, torch.clone(users_to_check)), dim=0
+            old_users_to_check = t.concat(
+                (old_users_to_check, t.clone(users_to_check)), dim=0
             )
 
             # Get new users by looking at all the edges of the articles we were connected to
-            users_to_check = torch.tensor(
+            users_to_check = t.tensor(
                 [
                     a
                     for node_id in connected_articles
@@ -89,23 +87,21 @@ class GraphDataset(InMemoryDataset):
                 subgraph_edges_list.append(subgraph_edges)
 
         # The entire subgraph with positive edges (negative edges excluded)
-        subgraph_edges = torch.concat(subgraph_edges_list, dim=1)
+        subgraph_edges = t.concat(subgraph_edges_list, dim=1)
 
         """ Get Features """
-        all_touched_edges = torch.concat(
-            [subgraph_edges, sampled_edges_negative], dim=1
-        )
+        all_touched_edges = t.concat([subgraph_edges, sampled_edges_negative], dim=1)
 
-        all_customer_ids = torch.unique(all_touched_edges[0])
-        all_article_ids = torch.unique(all_touched_edges[1])
+        all_customer_ids = t.unique(all_touched_edges[0])
+        all_article_ids = t.unique(all_touched_edges[1])
         user_features, article_features = self.get_features(
             all_customer_ids=all_customer_ids, all_article_ids=all_article_ids
         )
 
         """ Remap Edges """
         # Remap IDs
-        buckets_customer = torch.unique(subgraph_edges[0])
-        buckets_articles = torch.unique(subgraph_edges[1])
+        buckets_customer = t.unique(subgraph_edges[0])
+        buckets_articles = t.unique(subgraph_edges[1])
         (
             subgraph_edges_remapped,
             subgraph_sample_positive_remapped,
@@ -120,14 +116,14 @@ class GraphDataset(InMemoryDataset):
         )
 
         # The subgraph and the sampled graph together (with negative and positive samples)
-        all_sampled_edges_remapped = torch.concat(
+        all_sampled_edges_remapped = t.concat(
             [subgraph_sample_positive_remapped, sampled_edges_negative_remapped], dim=1
         )
 
         """ Create Data """
         data = HeteroData()
         if len(user_features.shape) == 1:
-            user_features = torch.unsqueeze(user_features, dim=0)
+            user_features = t.unsqueeze(user_features, dim=0)
         data[Constants.node_user].x = user_features
         data[Constants.node_item].x = article_features
 
@@ -137,7 +133,7 @@ class GraphDataset(InMemoryDataset):
         data[Constants.edge_key].edge_label = labels
 
         # Add reverse edges
-        reverse_key = torch.LongTensor([1, 0])
+        reverse_key = t.LongTensor([1, 0])
         data[Constants.rev_edge_key].edge_index = subgraph_edges_remapped[reverse_key]
         data[Constants.rev_edge_key].edge_label_index = all_sampled_edges_remapped[
             reverse_key
@@ -146,9 +142,9 @@ class GraphDataset(InMemoryDataset):
         return data
 
     def single_user(self, idx: int) -> Tensor:
-        subgraph_edges_flat = torch.tensor(self.edges[idx])
-        id_tensor = torch.tensor([idx])
-        subgraph_edges = torch.stack(
+        subgraph_edges_flat = t.tensor(self.edges[idx])
+        id_tensor = t.tensor([idx])
+        subgraph_edges = t.stack(
             [
                 id_tensor.repeat(len(subgraph_edges_flat)),
                 subgraph_edges_flat,
@@ -158,7 +154,7 @@ class GraphDataset(InMemoryDataset):
         return subgraph_edges
 
     def first_user(self, idx: int, all_edges: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        subgraph_edges = torch.tensor(self.edges[idx])
+        subgraph_edges = t.tensor(self.edges[idx])
 
         samp_cut = max(
             1, math.floor(len(subgraph_edges) * self.config.positive_edges_ratio)
@@ -166,13 +162,11 @@ class GraphDataset(InMemoryDataset):
 
         # Sample positive edges from subgraph
         if self.randomization:
-            random_integers = torch.randint(
+            random_integers = t.randint(
                 low=0, high=len(self.edges[idx]), size=(samp_cut,)
             )
         else:
-            random_integers = torch.tensor(
-                [0, torch.max(subgraph_edges, dim=0)[1].item()]
-            )
+            random_integers = t.tensor([0, t.max(subgraph_edges, dim=0)[1].item()])
 
         subgraph_sample_positive = subgraph_edges[random_integers]
 
@@ -189,27 +183,27 @@ class GraphDataset(InMemoryDataset):
         else:
             assert self.matchers is not None, "Must provide matchers for test"
             # Select according to a heuristic (eg.: lightgcn scores)
-            candidates = torch.cat(
+            candidates = t.cat(
                 [matcher.get_matches(idx) for matcher in self.matchers],
                 dim=0,
             )
             # but never add positive edges
             sampled_edges_negative = only_items_with_count_one(
-                torch.cat([candidates.unique(), subgraph_edges], dim=0)
+                t.cat([candidates.unique(), subgraph_edges], dim=0)
             )
 
         """ Remap and Prepare Edges """
         # Expand flat edge list with user's id to have shape [2, num_nodes]
-        id_tensor = torch.tensor([0])
+        id_tensor = t.tensor([0])
 
-        subgraph_sample_positive = torch.stack(
+        subgraph_sample_positive = t.stack(
             [
                 id_tensor.repeat(len(subgraph_sample_positive)),
                 subgraph_sample_positive,
             ],
             dim=0,
         )
-        sampled_edges_negative = torch.stack(
+        sampled_edges_negative = t.stack(
             [
                 id_tensor.repeat(len(sampled_edges_negative)),
                 sampled_edges_negative,
@@ -217,7 +211,7 @@ class GraphDataset(InMemoryDataset):
             dim=0,
         )
 
-        subgraph_edges = torch.stack(
+        subgraph_edges = t.stack(
             [
                 id_tensor.repeat(len(subgraph_edges)),
                 subgraph_edges,
@@ -226,10 +220,10 @@ class GraphDataset(InMemoryDataset):
         )
 
         # Prepare identifier of labels
-        labels = torch.cat(
+        labels = t.cat(
             [
-                torch.ones(subgraph_sample_positive.shape[1]),
-                torch.zeros(sampled_edges_negative.shape[1]),
+                t.ones(subgraph_sample_positive.shape[1]),
+                t.zeros(sampled_edges_negative.shape[1]),
             ],
             dim=0,
         )
@@ -281,11 +275,11 @@ class GraphDataset(InMemoryDataset):
 
         """ Negative Edges """
         # All negative sampled edges are connected to the root user
-        id_tensor = torch.tensor([0])
+        id_tensor = t.tensor([0])
         sampled_edges_negative[0] = id_tensor.repeat(len(sampled_edges_negative[0]))
 
         # Remap negative edges to start from zero
-        all_touched_edges_ids = torch.unique(all_touched_edges[1])
+        all_touched_edges_ids = t.unique(all_touched_edges[1])
 
         sampled_edges_negative[1] = remap_indexes_to_zero(
             sampled_edges_negative[1], buckets=all_touched_edges_ids
@@ -294,7 +288,7 @@ class GraphDataset(InMemoryDataset):
         return subgraph_edges, subgraph_sample_positive, sampled_edges_negative
 
 
-def only_items_with_count_one(input: torch.Tensor) -> torch.Tensor:
+def only_items_with_count_one(input: t.Tensor) -> t.Tensor:
     uniques, counts = input.unique(return_counts=True)
     return uniques[counts == 1]
 
@@ -307,25 +301,25 @@ def get_negative_edges_random(
 ) -> Tensor:
 
     # Get the biggest value available in articles (potential edges to sample from)
-    id_max = torch.max(all_edges, dim=1)[0][1]
+    id_max = t.max(all_edges, dim=1)[0][1]
 
     if all_edges.shape[1] / num_negative_edges > 100:
         # If the number of edges is high, it is unlikely we get a positive edge, no need for expensive filter operations
         if randomization:
-            random_integers = torch.randint(
+            random_integers = t.randint(
                 low=0, high=id_max.item(), size=(num_negative_edges,)
             )
         else:
-            random_integers = torch.tensor([id_max.item()])
+            random_integers = t.tensor([id_max.item()])
 
         return random_integers
 
     else:
         # Create list of potential negative edges, filter out positive edges
         only_negative_edges = only_items_with_count_one(
-            torch.cat(
+            t.cat(
                 (
-                    torch.arange(start=0, end=id_max + 1, dtype=torch.int64),
+                    t.arange(start=0, end=id_max + 1, dtype=t.int64),
                     subgraph_edges_to_filter,
                 ),
                 dim=0,
@@ -334,13 +328,13 @@ def get_negative_edges_random(
 
         # Randomly sample negative edges
         if randomization:
-            random_integers = torch.randperm(only_negative_edges.nelement())
+            random_integers = t.randperm(only_negative_edges.nelement())
             negative_edges = only_negative_edges[random_integers][:num_negative_edges]
         else:
-            negative_edges = torch.tensor([id_max.item()])
+            negative_edges = t.tensor([id_max.item()])
 
         return negative_edges
 
 
 def remap_indexes_to_zero(all_edges: Tensor, buckets: Tensor) -> Tensor:
-    return torch.bucketize(all_edges, buckets)
+    return t.bucketize(all_edges, buckets)

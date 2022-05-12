@@ -1,9 +1,9 @@
 import pickle
 import argparse
 import numpy as np
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
+import torch as t
+import t.nn as nn
+from t.utils.data import DataLoader
 import torchtext
 import dgl
 import tqdm
@@ -51,7 +51,7 @@ def train(dataset, args):
     user_to_item_etype = dataset["user-to-item-type"]
     timestamp = dataset["timestamp-edge-column"]
 
-    device = torch.device(args.device)
+    device = t.device(args.device)
 
     # Prepare torchtext dataset and vocabulary
     fields = {}
@@ -90,7 +90,7 @@ def train(dataset, args):
         batch_sampler, collate_fn=collator.collate_train, num_workers=args.num_workers
     )
     dataloader_test = DataLoader(
-        torch.arange(g.number_of_nodes(item_ntype)),
+        t.arange(g.number_of_nodes(item_ntype)),
         batch_size=args.batch_size,
         collate_fn=collator.collate_test,
         num_workers=args.num_workers,
@@ -105,8 +105,8 @@ def train(dataset, args):
         g.number_of_nodes(item_ntype), args.hidden_dims, sparse=True
     )
     # Optimizer
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr)
-    opt_emb = torch.optim.SparseAdam(item_emb.parameters(), lr=args.lr)
+    opt = t.optim.Adam(model.parameters(), lr=args.lr)
+    opt_emb = t.optim.SparseAdam(item_emb.parameters(), lr=args.lr)
 
     # For each batch of head-tail-negative triplets...
     for epoch_id in range(args.num_epochs):
@@ -128,8 +128,8 @@ def train(dataset, args):
 
         # Evaluate
         model.eval()
-        with torch.no_grad():
-            item_batches = torch.arange(g.number_of_nodes(item_ntype)).split(
+        with t.no_grad():
+            item_batches = t.arange(g.number_of_nodes(item_ntype)).split(
                 args.batch_size
             )
             h_item_batches = []
@@ -138,7 +138,7 @@ def train(dataset, args):
                     blocks[i] = blocks[i].to(device)
 
                 h_item_batches.append(model.get_repr(blocks, item_emb))
-            h_item = torch.cat(h_item_batches, 0)
+            h_item = t.cat(h_item_batches, 0)
 
             print(evaluation.evaluate_nn(dataset, h_item, args.k, args.batch_size))
 

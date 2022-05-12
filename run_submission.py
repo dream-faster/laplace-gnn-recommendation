@@ -1,5 +1,5 @@
 import pandas as pd
-import torch
+import torch as t
 import numpy as np
 from tqdm import tqdm
 from torch import Tensor
@@ -18,7 +18,7 @@ def load_model(url: str):
     # Get version numbers from the file names
     version_nums = [int(filename.split("_")[1].split(".")[0]) for filename in files]
 
-    return torch.load(url + "/" + files[np.argmax(version_nums)])
+    return t.load(url + "/" + files[np.argmax(version_nums)])
 
 
 def load_dataloaders(config: Config):
@@ -45,7 +45,7 @@ def map_to_id(
     return df
 
 
-@torch.no_grad()
+@t.no_grad()
 def make_predictions(model, dataloader, k: int) -> Tensor:
     predictions = []
 
@@ -61,12 +61,12 @@ def make_predictions(model, dataloader, k: int) -> Tensor:
         filtered_edge_label_index = edge_label_index[:, edge_label == 0]
 
         # Get top k predictions and indecies from only negative edges
-        _, topK_indecies = torch.topk(prediction, k=k)
+        _, topK_indecies = t.topk(prediction, k=k)
         top_articles = filtered_edge_label_index[1][topK_indecies]
 
         predictions.append(top_articles)
 
-    return torch.stack(predictions)
+    return t.stack(predictions)
 
 
 def save_csv(df: pd.DataFrame):

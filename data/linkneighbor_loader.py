@@ -2,7 +2,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.data import HeteroData
 from data.types import ArticleIdMap, CustomerIdMap
 from config import Config
-import torch
+import torch as t
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
@@ -11,7 +11,7 @@ from utils.constants import Constants
 
 
 def shuffle_data(data: HeteroData) -> HeteroData:
-    new_edge_order = torch.randperm(data[Constants.edge_key].edge_label.size(0))
+    new_edge_order = t.randperm(data[Constants.edge_key].edge_label.size(0))
     data[Constants.edge_key].edge_label = data[Constants.edge_key].edge_label[
         new_edge_order
     ]
@@ -31,7 +31,7 @@ def create_dataloaders(
     CustomerIdMap,
     ArticleIdMap,
 ]:
-    data = torch.load("data/derived/graph_pyg.pt")
+    data = t.load("data/derived/graph_pyg.pt")
     # Add a reverse ('article', 'rev_buys', 'customer') relation for message passing:
     data = T.ToUndirected()(data)
 

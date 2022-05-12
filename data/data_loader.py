@@ -1,7 +1,7 @@
 from torch_geometric.data import HeteroData
 from config import Config
 from data.types import ArticleIdMap, CustomerIdMap
-import torch
+import torch as t
 import json
 from typing import Tuple
 import torch_geometric.transforms as T
@@ -12,7 +12,7 @@ from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatche
 from .matching.users_same_location import UsersSameLocationMatcher
 from .matching.popular_items import PopularItemsMatcher
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
 def create_dataloaders(
