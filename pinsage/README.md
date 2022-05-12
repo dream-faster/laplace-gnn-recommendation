@@ -22,7 +22,7 @@ python model.py data.pkl --num-epochs 300 --num-workers 2 --device cuda:0 --hidd
 
 The implementation here also assigns a learnable vector to each item.  If your hidden
 state size is so large that the learnable vectors cannot fit into GPU, use this script
-for sparse embedding update (written with `t.optim.SparseAdam`) instead:
+for sparse embedding update (written with `torch.optim.SparseAdam`) instead:
 
 
 ```

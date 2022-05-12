@@ -2,7 +2,7 @@ import pickle
 import argparse
 import numpy as np
 import torch as t
-import t.nn as nn
+import torch.nn as nn
 from t.utils.data import DataLoader
 import torchtext
 import dgl
@@ -106,7 +106,7 @@ def train(dataset, args):
     )
     # Optimizer
     opt = t.optim.Adam(model.parameters(), lr=args.lr)
-    opt_emb = t.optim.SparseAdam(item_emb.parameters(), lr=args.lr)
+    opt_emb = torch.optim.SparseAdam(item_emb.parameters(), lr=args.lr)
 
     # For each batch of head-tail-negative triplets...
     for epoch_id in range(args.num_epochs):

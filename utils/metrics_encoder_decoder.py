@@ -39,7 +39,7 @@ def bpr_loss(
     neg_scores = t.mul(users_emb_final, neg_items_emb_final)
     neg_scores = t.sum(neg_scores, dim=-1)  # predicted scores of negative samples
 
-    loss = -t.mean(t.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
+    loss = -t.mean(torch.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
 
     return loss
 

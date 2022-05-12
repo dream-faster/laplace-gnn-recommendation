@@ -1,6 +1,6 @@
 from torch import nn
 from copy import deepcopy
-from t.nn import Linear, LayerNorm, BatchNorm2d
+from torch.nn import Linear, LayerNorm, BatchNorm2d
 
 
 def get_SAGEConv_layers(

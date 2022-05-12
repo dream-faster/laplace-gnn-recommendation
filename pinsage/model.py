@@ -2,7 +2,7 @@ import pickle
 import argparse
 import numpy as np
 import torch as t
-import t.nn as nn
+import torch.nn as nn
 from t.utils.data import DataLoader
 import torchtext
 import dgl

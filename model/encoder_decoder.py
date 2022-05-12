@@ -1,7 +1,7 @@
 import torch as t
 from data.types import FeatureInfo
-from t.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
-import t.nn.functional as F
+from torch.nn import Linear, Embedding, ModuleList, LayerNorm, BatchNorm1d
+import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, to_hetero
 from torch_geometric.data import HeteroData
 from typing import List, Tuple

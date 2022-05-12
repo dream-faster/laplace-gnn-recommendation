@@ -1,6 +1,6 @@
 import torch as t
-import t.nn as nn
-import t.nn.functional as F
+import torch.nn as nn
+import torch.nn.functional as F
 import dgl
 import dgl.nn.pytorch as dglnn
 import dgl.function as fn

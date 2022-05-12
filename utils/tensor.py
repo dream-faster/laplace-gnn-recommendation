@@ -1,6 +1,6 @@
 import torch as t
 from typing import List, Union
-import t.nn.functional as F
+import torch.nn.functional as F
 
 
 def padded_stack(

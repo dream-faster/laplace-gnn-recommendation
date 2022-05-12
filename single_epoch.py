@@ -4,8 +4,8 @@ import numpy as np
 
 import torch as t
 from torch import Tensor
-from t.nn import Module
-from t.optim import Optimizer
+from torch.nn import Module
+from torch.optim import Optimizer
 from torch_geometric.data import HeteroData, Data
 from tqdm.autonotebook import tqdm
 from sklearn.metrics import roc_auc_score
