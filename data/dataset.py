@@ -70,7 +70,8 @@ class GraphDataset(InMemoryDataset):
             idx, sampled_positive_article_indices
         )
 
-        if sampled_positive_article_indices.shape[0] <= 1:
+        num_sampled_pos_edges = sampled_positive_article_indices.shape[0]
+        if num_sampled_pos_edges <= 1:
             negative_edges_ratio = self.config.fallback_negative_ratio
         else:
             negative_edges_ratio = self.config.negative_edges_ratio
@@ -82,7 +83,9 @@ class GraphDataset(InMemoryDataset):
                 get_negative_edges_random(
                     subgraph_edges_to_filter=sampled_positive_article_indices,
                     all_edges=all_edges,
-                    num_negative_edges=int(negative_edges_ratio),
+                    num_negative_edges=int(
+                        negative_edges_ratio * num_sampled_pos_edges
+                    ),
                     randomization=self.randomization,
                 ),
             )
