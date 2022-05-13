@@ -59,6 +59,21 @@ class Config:
             print(f"{key:>20}: {value}")
         print("\x1b[0m")
 
+    def check_validity(self):
+        assert (
+            self.negative_edges_ratio >= self.k - 1
+        ), "negative_edges_ratio should be >= k"
+        assert (
+            self.positive_edges_ratio <= 1.0
+        ), "Positive Edges ratio has to be smaller than 1.0"
+        assert (
+            self.val_split + self.test_split <= 1.0
+        ), "Validation + Test split cannot be bigger than 1.0"
+        assert self.p_dropout_edges <= 1.0, "p_dropout_edges cannot be bigger than 1.0"
+        assert (
+            self.p_dropout_features <= 1.0
+        ), "p_dropout_features cannot be bigger than 1.0"
+
 
 link_pred_config = Config(
     wandb_enabled=False,
@@ -80,7 +95,7 @@ link_pred_config = Config(
     num_workers=1,
     candidate_pool_size=20,
     positive_edges_ratio=0.5,
-    negative_edges_ratio=1.0,
+    negative_edges_ratio=11.0,
     eval_every=1,
     lr_decay_every=1,
     Lambda=1e-6,
