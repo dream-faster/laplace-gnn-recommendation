@@ -25,6 +25,7 @@ from reporting.types import (
 
 def run_pipeline(config: Config) -> Stats:
     config.print()
+    config.check_validity()
     wandb, config = setup_config("Fashion-Recomm-GNN", config.wandb_enabled, config)
 
     print("| Seeding everything...")
