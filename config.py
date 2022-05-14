@@ -45,7 +45,6 @@ class Config:
     candidate_pool_size: int  # How many precalculated candidates we should give over
     positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
     negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
-    fallback_negative_ratio: float  # How many negative edfges to sample if the node has too little
     p_dropout_edges: Optional[float]  # dropout probability for edges
     p_dropout_features: Optional[float]  # dropout probability for nodes
 
@@ -61,9 +60,6 @@ class Config:
         print("\x1b[0m")
 
     def check_validity(self):
-        assert (
-            self.fallback_negative_ratio >= self.k - 1
-        ), "negative_edges_ratio should be >= k"
         assert (
             self.positive_edges_ratio <= 1.0
         ), "Positive Edges ratio has to be smaller than 1.0"
@@ -97,7 +93,6 @@ link_pred_config = Config(
     candidate_pool_size=20,
     positive_edges_ratio=0.5,
     negative_edges_ratio=3.0,
-    fallback_negative_ratio=11.0,
     eval_every=1,
     lr_decay_every=1,
     Lambda=1e-6,
@@ -130,7 +125,6 @@ lightgcn_config = Config(
     candidate_pool_size=0,  # IGNORE for LightGCN
     positive_edges_ratio=1.0,  # IGNORE for LightGCN
     negative_edges_ratio=1.0,  # IGNORE for LightGCN
-    fallback_negative_ratio=1.0,  # IGNORE for LightGCN
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
