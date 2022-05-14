@@ -1,4 +1,3 @@
-from torch import batch_norm, dropout
 from config import Config, link_pred_config
 from run_pipeline import run_pipeline
 import optuna

@@ -144,3 +144,4 @@ pinsage/data/derived/
 pinsage/data/original/
 
 stats.dmp
+/wandb/**
