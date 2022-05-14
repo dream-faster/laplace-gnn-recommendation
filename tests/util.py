@@ -40,6 +40,8 @@ def get_first_item_from_dataset(alternative: bool) -> HeteroData:
         save_every=0.2,  #
         profiler=None,  # Profiler(every=20),
         evaluate_break_at=None,
+        p_dropout_edges=0.0,
+        p_dropout_features=0.0,
     )
     if not alternative:
         train_dataset = GraphDataset(
