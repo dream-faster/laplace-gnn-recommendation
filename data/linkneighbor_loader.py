@@ -49,7 +49,7 @@ def create_dataloaders(
 
     train_loader = LinkNeighborLoader(
         train_split,
-        num_neighbors=[config.num_neighbors] * config.num_neighbors_it,
+        num_neighbors=[config.num_neighbors] * config.n_hop_neighbors,
         batch_size=config.batch_size,
         edge_label_index=(
             Constants.edge_key,

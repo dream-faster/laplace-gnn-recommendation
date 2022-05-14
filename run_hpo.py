@@ -32,7 +32,7 @@ def train(trial):
         num_neighbors=trial.suggest_categorical(
             "num_neighbors", [24, 32, 64, 128, 256]
         ),
-        num_neighbors_it=num_gnn_layers,
+        n_hop_neighbors=num_gnn_layers,
         candidate_pool_size=trial.suggest_categorical(
             "candidate_pool_size", [24, 64, 128, 256]
         ),

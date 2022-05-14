@@ -62,6 +62,9 @@ def run_pipeline(config: Config) -> Stats:
         metadata=next(iter(train_loader)).metadata(),
         embedding=True,
         heterogeneous_prop_agg_type=config.heterogeneous_prop_agg_type,
+        batch_normalize=True,
+        p_dropout_edges=config.p_dropout_edges,
+        p_dropout_features=config.p_dropout_features,
     ).to(device)
 
     # Due to lazy initialization, we need to run one model step so the number

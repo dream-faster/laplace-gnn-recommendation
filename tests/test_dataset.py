@@ -5,7 +5,7 @@ from tests.data_generator import create_entire_graph_data, create_subgraph_compa
 from torch_geometric import seed_everything
 from tests.util import get_first_item_from_dataset, deconstruct_heterodata
 from tests.types import GeneratorConfig, generator_config
-
+from config import link_pred_config
 
 seed_everything(5)
 # Generate and save entire graph data:
@@ -14,7 +14,7 @@ original_data = create_entire_graph_data(
 )
 
 # This is the data we are comparing it to:
-data_comparison = create_subgraph_comparison(n_hop=2)
+data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighbors)
 
 
 # the alternative dataset is currently failing the tests

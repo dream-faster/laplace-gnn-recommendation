@@ -27,9 +27,9 @@ def get_first_item_from_dataset(alternative: bool) -> HeteroData:
         save_model=False,
         test_split=0.1,
         val_split=0.1,
-        batch_size=1,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+        batch_size=1,  # combination of batch_size with num_neighbors and n_hop_neighbors and num_workers determines if data would fit on gpu
         num_neighbors=64,  # -1 takes all neighbors
-        num_neighbors_it=2,
+        n_hop_neighbors=2,
         num_workers=1,
         candidate_pool_size=20,
         positive_edges_ratio=0.5,

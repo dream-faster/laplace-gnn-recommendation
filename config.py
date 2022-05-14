@@ -39,12 +39,14 @@ class Config:
     batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
     val_split: float
     test_split: float
-    num_neighbors: int  # sample n neighbors for each node for num_neighbors_it iterations
-    num_neighbors_it: int
+    num_neighbors: int  # sample n neighbors for each node for n_hop_neighbors iterations
+    n_hop_neighbors: int
     num_workers: int  # number of workers to use for data loading
     candidate_pool_size: int  # How many precalculated candidates we should give over
     positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
     negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+    p_dropout_edges: Optional[float]  # dropout probability for edges
+    p_dropout_features: Optional[float]  # dropout probability for nodes
 
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
@@ -72,9 +74,9 @@ link_pred_config = Config(
     save_model=False,
     test_split=0.1,
     val_split=0.1,
-    batch_size=128,  # combination of batch_size with num_neighbors and num_neighbors_it and num_workers determines if data would fit on gpu
+    batch_size=128,  # combination of batch_size with num_neighbors and n_hop_neighbors and num_workers determines if data would fit on gpu
     num_neighbors=64,  # -1 takes all neighbors
-    num_neighbors_it=2,
+    n_hop_neighbors=2,
     num_workers=1,
     candidate_pool_size=20,
     positive_edges_ratio=0.5,
@@ -85,6 +87,8 @@ link_pred_config = Config(
     save_every=0.2,  #
     profiler=None,  # Profiler(every=20),
     evaluate_break_at=None,
+    p_dropout_edges=0.2,  # Currently not being used!
+    p_dropout_features=0.3,
 )
 
 
@@ -104,7 +108,7 @@ lightgcn_config = Config(
     val_split=0.1,
     batch_size=128,
     num_neighbors=0,  # IGNORE for LightGCN
-    num_neighbors_it=0,  # IGNORE for LightGCN
+    n_hop_neighbors=0,  # IGNORE for LightGCN
     num_workers=1,
     candidate_pool_size=0,  # IGNORE for LightGCN
     positive_edges_ratio=1.0,  # IGNORE for LightGCN
@@ -115,6 +119,8 @@ lightgcn_config = Config(
     save_every=0.2,
     profiler=None,  # IGNORE for LightGCN
     evaluate_break_at=None,  # IGNORE for LightGCN
+    p_dropout_edges=None,  # IGNORE for LightGCN
+    p_dropout_features=None,  # IGNORE for LightGCN
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
