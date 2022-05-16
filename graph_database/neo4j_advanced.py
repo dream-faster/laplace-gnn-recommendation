@@ -78,19 +78,24 @@ class App:
             )
             raise
 
-    def find_person(self, person_name):
+    def find_node(self, node_id, node_type):
         with self.driver.session() as session:
-            result = session.read_transaction(self._find_and_return_person, person_name)
+            result = session.read_transaction(
+                self._find_and_return_node, node_id, node_type
+            )
             for row in result:
                 print("Found person: {row}".format(row=row))
 
     @staticmethod
-    def _find_and_return_person(tx, person_name):
+    def _find_and_return_node(tx, node_id, node_type):
         query = (
-            "MATCH (p:Person) " "WHERE p.name = $person_name " "RETURN p.name AS name"
+            f"MATCH (n:Article) "
+            "WHERE n.id = $node_id "
+            "RETURN n"
+            # f"MATCH (p:{node_type}) " "WHERE p.id = $node_id " "RETURN p.name AS name"
         )
-        result = tx.run(query, person_name=person_name)
-        return [row["name"] for row in result]
+        result = tx.run(query, node_id=node_id)
+        return [row for row in result]
 
     @staticmethod
     def _create_constraints(tx):
@@ -103,12 +108,10 @@ class App:
 
 
 if __name__ == "__main__":
-    bolt_url = "bolt://localhost:7687"
-    user = "neo4j"
-    password = "123456"
     App.enable_log(logging.INFO, sys.stdout)
-    app = App(bolt_url, user, password)
-    app.create_transaction("User 3", "Article 2")
+    app = App(uri="bolt://localhost:7687", user="neo4j", password="123456")
+
     app.create_constraints()
-    app.find_person("Alice")
+    app.create_transaction("User 3", "Article 2")
+    app.find_node("Article 2", "Article")
     app.close()
