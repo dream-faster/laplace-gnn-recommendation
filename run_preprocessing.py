@@ -15,12 +15,8 @@ import numpy as np
 from utils.constants import Constants
 
 
-def save_to_csv(
-    customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
-):
-    customers.to_csv("data/saved/customers.csv", index=False)
-    articles.to_csv("data/saved/articles.csv", index=False)
-    transactions.to_csv("data/saved/transactions.csv", index=False)
+def save_to_csv(dataframe: pd.DataFrame, name: str):
+    dataframe.to_csv(f"data/saved/{name}.csv", index=False)
 
 
 def preprocess(config: PreprocessingConfig):
@@ -157,7 +153,29 @@ def preprocess(config: PreprocessingConfig):
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_csv:
-        save_to_csv(customers, articles, transactions)
+        customers_csv = customers.copy()
+        customers_csv[":LABEL"] = "Customer"
+        customers_csv[":ID(Customer)"] = customers["index"]
+        customers_csv.drop(["index"], axis=1, inplace=True)
+        save_to_csv(customers_csv, "customers")
+        articles_csv = articles.copy()
+        articles_csv[":LABEL"] = "Article"
+        articles_csv[":ID(Article)"] = articles_csv["index"]
+        articles_csv.drop(["index"], axis=1, inplace=True)
+        save_to_csv(articles_csv, "articles")
+        transactions_csv = transactions.copy()
+        transactions_csv.rename(
+            columns={
+                "customer_id": ":START_ID(Customer)",
+                "article_id": ":END_ID(Article)",
+            },
+            inplace=True,
+        )
+        transactions_csv.drop(
+            ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
+        )
+        transactions_csv[":TYPE"] = "BUYS"
+        save_to_csv(transactions_csv, "transactions")
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.float)
