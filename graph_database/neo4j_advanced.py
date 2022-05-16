@@ -44,15 +44,10 @@ class App:
     def _create_and_return_transaction(tx, user_id, article_id):
         # To learn more about the Cypher syntax, see https://neo4j.com/docs/cypher-manual/current/
         # The Reference Card is also a good resource for keywords https://neo4j.com/docs/cypher-refcard/current/
-        # query = (
-        #     "CREATE (p:Person { id: $user_id }) "
-        #     "CREATE (a:Article { id: $article_id }) "
-        #     "CREATE (p)-[k:BUYS]->(a) "
-        #     "RETURN p, a"
-        # )
+
         query = (
-            "MERGE (p:Person { id: $user_id }) "
-            "MERGE (a:Article { id: $article_id }) "
+            "MERGE (p:Person { _id: $user_id }) "
+            "MERGE (a:Article { _id: $article_id }) "
             "MERGE (p)-[k:BUYS]->(a) "
             "RETURN p, a"
         )
@@ -64,8 +59,8 @@ class App:
         try:
             return [
                 {
-                    "p": row["p"]["id"],
-                    "a": row["a"]["id"],
+                    "p": row["p"]["_id"],
+                    "a": row["a"]["_id"],
                 }
                 for row in result
             ]
@@ -88,22 +83,17 @@ class App:
 
     @staticmethod
     def _find_and_return_node(tx, node_id, node_type):
-        query = (
-            f"MATCH (n:Article) "
-            "WHERE n.id = $node_id "
-            "RETURN n"
-            # f"MATCH (p:{node_type}) " "WHERE p.id = $node_id " "RETURN p.name AS name"
-        )
-        result = tx.run(query, node_id=node_id)
-        return [row for row in result]
+        query = f"MATCH (n:{node_type}) " "WHERE n._id = $node_id " "RETURN n as node"
+        result = list(tx.run(query, node_id=node_id))
+        return [row["node"] for row in result]
 
     @staticmethod
     def _create_constraints(tx):
         tx.run(
-            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (person:Person) REQUIRE person.id IS UNIQUE"
+            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (person:Person) REQUIRE person._id IS UNIQUE"
         )
         tx.run(
-            "CREATE CONSTRAINT unique_article_id IF NOT EXISTS FOR (article:Article) REQUIRE article.id IS UNIQUE"
+            "CREATE CONSTRAINT unique_article_id IF NOT EXISTS FOR (article:Article) REQUIRE article._id IS UNIQUE"
         )
 
 
