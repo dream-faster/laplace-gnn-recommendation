@@ -73,6 +73,29 @@ class Config:
         ), "p_dropout_features cannot be bigger than 1.0"
 
 
+@dataclass
+class LightGCNConfig:
+    epochs: int  # number of training epochs
+    hidden_layer_size: int
+    k: int  # value of k for recall@k. It is important to set this to a reasonable value!
+    learning_rate: float
+    save_model: bool
+    eval_every: int  # (LightGCN) evaluation to run every n epoch
+    lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
+    Lambda: float  # (LightGCN)
+    batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
+    num_neighbors: int  # sample n neighbors for each node for n_hop_neighbors iterations
+    n_hop_neighbors: int
+    positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
+    negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+
+    def print(self):
+        print("\nConfiguration is:")
+        for key, value in vars(self).items():
+            print(f"{key:>20}: {value}")
+        print("\x1b[0m")
+
+
 link_pred_config = Config(
     wandb_enabled=False,
     epochs=4,
@@ -106,36 +129,20 @@ link_pred_config = Config(
 )
 
 
-lightgcn_config = Config(
-    wandb_enabled=False,
+lightgcn_config = LightGCNConfig(
     epochs=5,
     k=12,
-    num_gnn_layers=3,  # Number of LightGCN steps
-    num_linear_layers=0,  # IGNORE for LightGCN
     hidden_layer_size=32,
-    encoder_layer_output_size=0,  # IGNORE for LightGCN
     learning_rate=1e-3,
-    conv_agg_type="add",  # IGNORE for LightGCN
-    heterogeneous_prop_agg_type="sum",  # IGNORE for LightGCN
     save_model=False,
-    test_split=0.1,
-    val_split=0.1,
     batch_size=128,
     num_neighbors=0,  # IGNORE for LightGCN
     n_hop_neighbors=0,  # IGNORE for LightGCN
-    num_workers=1,
-    candidate_pool_size=0,  # IGNORE for LightGCN
     positive_edges_ratio=1.0,  # IGNORE for LightGCN
     negative_edges_ratio=1.0,  # IGNORE for LightGCN
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
-    save_every=0.2,
-    profiler=None,  # IGNORE for LightGCN
-    evaluate_break_at=None,  # IGNORE for LightGCN
-    p_dropout_edges=None,  # IGNORE for LightGCN
-    p_dropout_features=None,  # IGNORE for LightGCN
-    batch_norm=True,  # IGNORE for LightGCN
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

@@ -1,4 +1,3 @@
-import pandas as pd
 import matplotlib.pyplot as plt
 
 import torch as t
@@ -7,18 +6,15 @@ from tqdm import tqdm
 
 from torch_geometric.utils import structured_negative_sampling
 
-from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.metrics_lightgcn import (
     get_metrics_lightgcn,
     bpr_loss,
-    RecallPrecision_ATk,
-    NDCGatK_r,
     create_edges_dict_indexed_by_user,
 )
 
-from config import Config, lightgcn_config
+from config import LightGCNConfig, lightgcn_config
 
 
 # wrapper function to evaluate model
@@ -78,7 +74,7 @@ def evaluation(
     return loss, recall, precision, ndcg
 
 
-def train(config: Config):
+def train(config: LightGCNConfig):
     config.print()
     (
         train_sparse_edge_index,
@@ -104,7 +100,7 @@ def train(config: Config):
         num_users,
         num_articles,
         embedding_dim=config.hidden_layer_size,
-        K=config.num_gnn_layers,
+        K=config.num_neighbors,
     )
     model = model.to(device)
     model.train()
