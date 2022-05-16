@@ -7,7 +7,7 @@ dependencies:
   - black
   - ipython
   - ipykernel
-  - pytorch=1.10.2
+  - pytorch
   - tqdm
   - numpy
   - pandas
@@ -27,7 +27,6 @@ dependencies:
   - pyg
   - pip
   - pip:
-      - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
       - python-dotenv
 
 prefix: /usr/local/anaconda3/envs/fashion
