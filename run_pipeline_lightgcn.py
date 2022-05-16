@@ -184,14 +184,15 @@ def train(config: LightGCNConfig):
         if iter % config.lr_decay_every == 0 and iter != 0:
             scheduler.step()
 
-    iters = [iter * config.eval_every for iter in range(len(train_losses))]
-    # plt.plot(iters, train_losses, label="train")
-    # plt.plot(iters, val_losses, label="validation")
-    # plt.xlabel("iteration")
-    # plt.ylabel("loss")
-    # plt.title("training and validation loss curves")
-    # plt.legend()
-    # plt.show()
+    if config.show_graph:
+        iters = [iter * config.eval_every for iter in range(len(train_losses))]
+        plt.plot(iters, train_losses, label="train")
+        plt.plot(iters, val_losses, label="validation")
+        plt.xlabel("iteration")
+        plt.ylabel("loss")
+        plt.title("training and validation loss curves")
+        plt.legend()
+        plt.show()
 
     # evaluate on test set
     model.eval()

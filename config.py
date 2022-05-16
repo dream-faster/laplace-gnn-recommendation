@@ -88,6 +88,7 @@ class LightGCNConfig:
     n_hop_neighbors: int
     positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
     negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+    show_graph: bool
 
     def print(self):
         print("\nConfiguration is:")
@@ -143,6 +144,7 @@ lightgcn_config = LightGCNConfig(
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
+    show_graph=False
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
