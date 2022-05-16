@@ -1,4 +1,4 @@
-program: rnn_pipeline.py
+program: run_sweep.py
 method: bayes
 project: fashion-recommendation-GNN
 name: Finding best hyperparameters for a trainingset of 100k
@@ -18,58 +18,24 @@ parameters:
     max: 4
     distribution: int_uniform
   hidden_layer_size:
-    values: -32
-      -64
-      -128
-      -256
-      -512
-    distribution: categorical
+    values: [32, 64, 128, 256, 512]
   encoder_layer_output_size:
-    values: -"add"
-      -"mean"
-      -"max"
-    distribution: categorical
+    values: [32, 64, 128, 256, 512]
+  conv_agg_type:
+    values: ["add", "mean", "max"]
   heterogeneous_prop_agg_type:
-    values: -"sum"
-      -"mean"
-      -"min"
-      -"max"
-      -"mul"
-    distribution: categorical
+    values: ["sum", "mean", "min", "max", "mul"]
   learning_rate:
-    values: -1e-2
-      -1e-3
-      -1e-4
-      -1e-5
-      -1e-6
-    distribution: categorical
-  batch_size:
-    values: -24
-      -32
-      -64
-      -128
-      -256
-    distribution: categorical
+    values: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
   n_hop_neighbors:
     min: 1
     max: 4
     distribution: int_uniform
   candidate_pool_size:
-    values: -24
-      -64
-      -128
-      -256
-    distribution: categorical
+    values: [24, 64, 128, 256]
   positive_edges_ratio:
-    values: -0.2
-      -0.5
-      -0.8
-      -1.0
-    distribution: categorical
+    values: [0.2, 0.5, 0.8, 1.0]
   negative_edges_ratio:
-    values: -1
-      -2
-      -5
-      -10
-      -20
-    distribution: categorical
+    values: [1.0, 2.0, 5.0, 10.0, 20.0]
+  p_dropout_features:
+    values: [0.0, 0.15, 0.3, 0.5, 0.7]

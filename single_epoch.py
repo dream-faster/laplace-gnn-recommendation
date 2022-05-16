@@ -62,7 +62,6 @@ def epoch_with_dataloader(
     optimizer: Optimizer,
     train_loader: Union[LinkNeighborLoader, NeighborLoader],
     val_loader,
-    test_loader,
     epoch_id: int,
     config: Config,
 ):
@@ -78,7 +77,7 @@ def epoch_with_dataloader(
         if config.profiler is not None:
             config.profiler.print_stats(i)
 
-    if epoch_id % config.eval_every == 0:
+    if epoch_id % config.eval_every == 0 and epoch_id != 0:
         val_loop = tqdm(iter(val_loader), colour="yellow")
         for i, data in enumerate(val_loop):
             if config.evaluate_break_at and i == config.evaluate_break_at:
