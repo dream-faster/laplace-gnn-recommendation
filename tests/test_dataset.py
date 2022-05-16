@@ -17,6 +17,7 @@ original_data = create_entire_graph_data(
 data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighbors)
 
 
+# the alternative dataset is currently failing the tests
 # def test_integrity_alt():
 #     # This is the data we are testing:
 #     data_from_dataset = get_first_item_from_dataset(alternative=True)
