@@ -13,7 +13,7 @@ jobs:
         uses: mamba-org/provision-with-micromamba@main
         with:
           cache-downloads: true
-          environment-file: environment.yml
+          environment-file: environment_ci.yml
           environment-name: fashion
       
       - name: Run pytest
