@@ -170,7 +170,7 @@ def preprocess(config: PreprocessingConfig):
         articles = t.cat((articles, per_article_text_embedding), axis=1)
     assert t.isnan(articles).any() == False
 
-    print("| Creating PyG Data...")
+    print("| Creating Data...")
     create_func = (
         create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
     )

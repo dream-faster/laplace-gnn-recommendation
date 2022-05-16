@@ -22,12 +22,12 @@ dependencies:
   - pyright
   - wandb
   - optuna
+  - neo4j-python-driver
   - pip
   - pip:
       - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
       - torch-sparse
       - torch-scatter
       - python-dotenv
-      - neo4j
 
 prefix: /usr/local/anaconda3/envs/fashion
