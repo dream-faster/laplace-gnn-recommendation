@@ -27,7 +27,6 @@ class App:
         result = list(tx.run(query, node_id=node_id))
         return [row["node"] for row in result]
 
-    """ CREATE """
 
     def run_query(self, query: str):
         with self.driver.session() as session:
