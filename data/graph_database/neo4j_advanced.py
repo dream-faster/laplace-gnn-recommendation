@@ -3,11 +3,13 @@ import sys
 
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
+import pandas as pd
 
 
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.enable_log(logging.INFO, sys.stdout)
 
     def close(self):
         # Don't forget to close the driver connection when you are finished with it
@@ -28,12 +30,22 @@ class App:
                 user_name,
                 article_name,
             )
-            for row in result:
-                print(
-                    "Created transaction between: {p} buys {a} ".format(
-                        p=row["p"], a=row["a"]
-                    )
-                )
+            # for row in result:
+            #     print(
+            #         "Created transaction between: {p} buys {a} ".format(
+            #             p=row["p"], a=row["a"]
+            #         )
+            #     )
+
+    def create_entire_database(self, transactions_parquet: pd.DataFrame):
+        with self.driver.session().begin_transaction() as tx:
+            transactions_parquet.apply(
+                lambda x: self._create_and_return_transaction(
+                    tx, x["customer_id"], x["article_id"]
+                ),
+                axis=1,
+            )
+            tx.commit()
 
     def create_constraints(self):
         with self.driver.session() as session:
@@ -46,7 +58,7 @@ class App:
         # The Reference Card is also a good resource for keywords https://neo4j.com/docs/cypher-refcard/current/
 
         query = (
-            "MERGE (p:Person { _id: $user_id }) "
+            "MERGE (p:User { _id: $user_id }) "
             "MERGE (a:Article { _id: $article_id }) "
             "MERGE (p)-[k:BUYS]->(a) "
             "RETURN p, a"
@@ -79,7 +91,7 @@ class App:
                 self._find_and_return_node, node_id, node_type
             )
             for row in result:
-                print("Found person: {row}".format(row=row))
+                print("Found user: {row}".format(row=row))
 
     @staticmethod
     def _find_and_return_node(tx, node_id, node_type):
@@ -90,7 +102,7 @@ class App:
     @staticmethod
     def _create_constraints(tx):
         tx.run(
-            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (person:Person) REQUIRE person._id IS UNIQUE"
+            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (user:User) REQUIRE user._id IS UNIQUE"
         )
         tx.run(
             "CREATE CONSTRAINT unique_article_id IF NOT EXISTS FOR (article:Article) REQUIRE article._id IS UNIQUE"
@@ -98,10 +110,9 @@ class App:
 
 
 if __name__ == "__main__":
-    App.enable_log(logging.INFO, sys.stdout)
     app = App(uri="bolt://localhost:7687", user="neo4j", password="123456")
 
     app.create_constraints()
     app.create_transaction("User 3", "Article 2")
-    app.find_node("Article 2", "Article")
+    app.find_node("User 3", "User")
     app.close()
