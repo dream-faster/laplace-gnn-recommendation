@@ -5,45 +5,6 @@ from typing import List, Tuple
 from utils.constants import Constants
 
 
-def bpr_loss(
-    users_emb_final: Tensor,
-    users_emb_0: Tensor,
-    pos_items_emb_final: Tensor,
-    pos_items_emb_0: Tensor,
-    neg_items_emb_final: Tensor,
-    neg_items_emb_0: Tensor,
-    lambda_val: float,
-) -> Tensor:
-    """Bayesian Personalized Ranking Loss as described in https://arxiv.org/abs/1205.2618
-
-    Args:
-        users_emb_final (t.Tensor): e_u_k
-        users_emb_0 (t.Tensor): e_u_0
-        pos_items_emb_final (t.Tensor): positive e_i_k
-        pos_items_emb_0 (t.Tensor): positive e_i_0
-        neg_items_emb_final (t.Tensor): negative e_i_k
-        neg_items_emb_0 (t.Tensor): negative e_i_0
-        lambda_val (float): lambda value for regularization loss term
-
-    Returns:
-        t.Tensor: scalar bpr loss value
-    """
-    reg_loss = lambda_val * (
-        users_emb_0.norm(2).pow(2)
-        + pos_items_emb_0.norm(2).pow(2)
-        + neg_items_emb_0.norm(2).pow(2)
-    )  # L2 loss
-
-    pos_scores = t.mul(users_emb_final, pos_items_emb_final)
-    pos_scores = t.sum(pos_scores, dim=-1)  # predicted scores of positive samples
-    neg_scores = t.mul(users_emb_final, neg_items_emb_final)
-    neg_scores = t.sum(neg_scores, dim=-1)  # predicted scores of negative samples
-
-    loss = -t.mean(torch.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
-
-    return loss
-
-
 # helper function to get N_u
 def get_user_positive_items(edge_index: Tensor) -> dict:
     """Generates dictionary of positive items for each user
