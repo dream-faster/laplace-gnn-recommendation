@@ -5,6 +5,7 @@ from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 import pandas as pd
 from tqdm import tqdm
+from typing import Optional
 
 tqdm.pandas()
 
@@ -109,19 +110,10 @@ class App:
             )
             tx.commit()
 
-    def create_entire_database_efficient(self, transaction_parquet: pd.DataFrame):
-        # batch = [
-        #     {
-        #         "from": "alice@example.com",
-        #         "to": "bob@example.com",
-        #         "properties": {"since": 2012},
-        #     },
-        #     {
-        #         "from": "alice@example.com",
-        #         "to": "charlie@example.com",
-        #         "properties": {"since": 2016},
-        #     },
-        # ]
+    def create_entire_database_batched(
+        self, transaction_parquet: Optional[pd.DataFrame]
+    ):
+
         batch = transaction_parquet.to_dict("records")
 
         with self.driver.session().begin_transaction() as tx:
@@ -130,14 +122,7 @@ class App:
                 "MERGE (p:User { _id: row.customer_id }) "
                 "MERGE (a:Article { _id: row.article_id }) "
                 "MERGE (p)-[k:BUYS]->(a) "
-                # "RETURN p, a"
             )
-            # query_old = (
-            #     "UNWIND $batch as row "
-            #     "MERGE (from:User {id: row.from}) "
-            #     "MERGE (to:Article {id: row.to}) "
-            #     "MERGE (from)-[rel:KNOWS]->(to) "
-            # )
 
             tx.run(
                 query,

@@ -1,0 +1,16 @@
+LOAD CSV FROM 'file:///articles.csv' AS row
+WITH row[0] AS article_id
+MERGE (a:Article {_id: article_id})
+RETURN count(a);
+
+LOAD CSV FROM 'file:///customers.csv' AS row
+WITH row[0] AS customer_id
+MERGE (p:User {_id: customer_id})
+RETURN count(p);
+
+LOAD CSV WITH HEADERS FROM 'file:///transactions_splitted.csv' AS row
+WITH row.customer_id AS customer_id, row.article_id AS article_id
+MATCH (p:User {_id: customer_id})
+MATCH (a:Article {_id: article_id})
+MERGE (p)-[rel:BUYS]->(a)
+RETURN count(rel), count(p), count(a);
