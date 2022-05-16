@@ -135,6 +135,7 @@ def get_metrics_lightgcn(
     item_embedding = model.items_emb.weight.to("cpu")
 
     # get ratings between every user and item - shape is num users x num articles
+    print("matmul")
     rating = t.matmul(user_embedding, item_embedding.T)
 
     for exclude_edge_index in exclude_edge_indices:
@@ -150,6 +151,7 @@ def get_metrics_lightgcn(
         # set ratings of excluded edges to large negative value
         rating[exclude_users, exclude_items] = -(1 << 10)
 
+    print("rating")
     # get the top k recommended items for each user
     _, top_K_items = t.topk(rating, k=k)
 

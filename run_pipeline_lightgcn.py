@@ -61,6 +61,7 @@ def evaluation(
         items_emb_0[neg_item_indices],
     )
 
+    print("calculate loss")
     loss = bpr_loss(
         users_emb_final,
         users_emb_0,
@@ -71,6 +72,7 @@ def evaluation(
         lambda_val,
     ).item()
 
+    print("get metrics")
     recall, precision, ndcg = get_metrics_lightgcn(
         model, edge_index, exclude_edge_indices, k
     )
