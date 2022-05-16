@@ -4,6 +4,9 @@ import sys
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 import pandas as pd
+from tqdm import tqdm
+
+tqdm.pandas()
 
 
 class App:
@@ -22,35 +25,37 @@ class App:
         logging.getLogger("neo4j").addHandler(handler)
         logging.getLogger("neo4j").setLevel(level)
 
-    def create_transaction(self, user_name, article_name):
-        with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(
-                self._create_and_return_transaction,
-                user_name,
-                article_name,
-            )
-            # for row in result:
-            #     print(
-            #         "Created transaction between: {p} buys {a} ".format(
-            #             p=row["p"], a=row["a"]
-            #         )
-            #     )
+    """ GET """
 
-    def create_entire_database(self, transactions_parquet: pd.DataFrame):
-        with self.driver.session().begin_transaction() as tx:
-            transactions_parquet.apply(
-                lambda x: self._create_and_return_transaction(
-                    tx, x["customer_id"], x["article_id"]
-                ),
-                axis=1,
+    def find_node(self, node_id, node_type):
+        with self.driver.session() as session:
+            result = session.read_transaction(
+                self._find_and_return_node, node_id, node_type
             )
-            tx.commit()
+            for row in result:
+                print("Found user: {row}".format(row=row))
+
+    @staticmethod
+    def _find_and_return_node(tx, node_id, node_type):
+        query = f"MATCH (n:{node_type}) " "WHERE n._id = $node_id " "RETURN n as node"
+        result = list(tx.run(query, node_id=node_id))
+        return [row["node"] for row in result]
+
+    """ CREATE """
 
     def create_constraints(self):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
             session.write_transaction(self._create_constraints)
+
+    @staticmethod
+    def _create_constraints(tx):
+        tx.run(
+            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (user:User) REQUIRE user._id IS UNIQUE"
+        )
+        tx.run(
+            "CREATE CONSTRAINT unique_article_id IF NOT EXISTS FOR (article:Article) REQUIRE article._id IS UNIQUE"
+        )
 
     @staticmethod
     def _create_and_return_transaction(tx, user_id, article_id):
@@ -85,28 +90,24 @@ class App:
             )
             raise
 
-    def find_node(self, node_id, node_type):
+    def create_transaction(self, user_name, article_name):
         with self.driver.session() as session:
-            result = session.read_transaction(
-                self._find_and_return_node, node_id, node_type
+            # Write transactions allow the driver to handle retries and transient errors
+            result = session.write_transaction(
+                self._create_and_return_transaction,
+                user_name,
+                article_name,
             )
-            for row in result:
-                print("Found user: {row}".format(row=row))
 
-    @staticmethod
-    def _find_and_return_node(tx, node_id, node_type):
-        query = f"MATCH (n:{node_type}) " "WHERE n._id = $node_id " "RETURN n as node"
-        result = list(tx.run(query, node_id=node_id))
-        return [row["node"] for row in result]
-
-    @staticmethod
-    def _create_constraints(tx):
-        tx.run(
-            "CREATE CONSTRAINT unique_user_id IF NOT EXISTS FOR (user:User) REQUIRE user._id IS UNIQUE"
-        )
-        tx.run(
-            "CREATE CONSTRAINT unique_article_id IF NOT EXISTS FOR (article:Article) REQUIRE article._id IS UNIQUE"
-        )
+    def create_entire_database(self, transactions_parquet: pd.DataFrame):
+        with self.driver.session().begin_transaction() as tx:
+            transactions_parquet.progress_apply(
+                lambda x: self._create_and_return_transaction(
+                    tx, x["customer_id"], x["article_id"]
+                ),
+                axis=1,
+            )
+            tx.commit()
 
 
 if __name__ == "__main__":
