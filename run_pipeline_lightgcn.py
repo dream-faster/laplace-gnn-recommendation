@@ -127,11 +127,13 @@ def train(config: Config):
     for iter in loop_obj:
         # for iter in range(config.epochs):
         # forward propagation
+        print("get embeddings")
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
         )
 
         # mini batching
+        print("sample mini batch")
         user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(
             config.batch_size, train_edge_index
         )
@@ -153,6 +155,7 @@ def train(config: Config):
             items_emb_0[neg_item_indices],
         )
 
+        print("compute loss")
         # loss computation
         train_loss = bpr_loss(
             users_emb_final,
@@ -164,12 +167,14 @@ def train(config: Config):
             config.Lambda,
         )
 
+        print("optimizer")
         optimizer.zero_grad()
         train_loss.backward()
         optimizer.step()
 
         if iter % config.eval_every == 0:
             model.eval()
+            print("val evaluation")
             val_loss, recall, precision, ndcg = evaluation(
                 model,
                 val_edge_index,
