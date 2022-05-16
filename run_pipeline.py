@@ -9,14 +9,12 @@ from model.encoder_decoder import Encoder_Decoder_Model
 
 from utils.get_info import get_feature_info
 from data.data_loader import create_dataloaders
-from single_epoch import epoch_with_dataloader
+from training import test_with_dataloader, train_with_dataloader
 from model.layers import get_linear_layers, get_SAGEConv_layers
-from single_epoch import test
 
 from reporting.wandb import setup_config, report_results
 from reporting.types import (
     Stats,
-    BaseStats,
     ContinousStatsVal,
     ContinousStatsTest,
     ContinousStatsTrain,
@@ -81,74 +79,75 @@ def run_pipeline(config: Config) -> Stats:
     old_val_precision = -1
     loop_obj = tqdm(range(0, config.epochs))
     for epoch in loop_obj:
-        loss_mean, val_recall_mean, val_precision_mean = epoch_with_dataloader(
-            model,
-            optimizer,
-            train_loader,
-            val_loader,
-            epoch_id=epoch,
-            config=config,
-        )
-
-        # We should save our model if validation precision starts decreasing (it starts to overfit)
-        if val_precision_mean >= old_val_precision:
-            old_val_precision = val_precision_mean.copy()
-        else:
-            print("| Saving Best Generalized Model...")
-            t.save(model.state_dict(), f"model/saved/model_final.pt")
-            old_val_precision = (
-                -1
-            )  # We should only save it at the inflection point from decreasing one step
-
-        if epoch % max(1, int(config.epochs * config.save_every)) == 0:
-            print("| Saving Model at a regular interval...")
-            t.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+        losses = train_with_dataloader(model, optimizer, train_loader, epoch, device)
 
         report_results(
-            output_stats=ContinousStatsTrain(type="train", loss=loss_mean, epoch=epoch),
-            wandb=wandb,
-            final=False,
-        )
-        report_results(
-            output_stats=ContinousStatsVal(
-                type="val",
-                recall_val=val_recall_mean,
-                precision_val=val_precision_mean,
-                epoch=epoch,
+            output_stats=ContinousStatsTrain(
+                type="train", loss=np.mean(losses), epoch=epoch
             ),
             wandb=wandb,
             final=False,
         )
 
-    # Testing loop
-    test_recalls, test_precisions = [], []
-    test_loop = tqdm(iter(test_loader), colour="blue")
-    for i, data in enumerate(test_loop):
-        if config.evaluate_break_at and i == config.evaluate_break_at:
-            break
-        test_loop.set_description("TEST")
-        test_recall, test_precision = test(data.to(device), model, [], k=config.k)
-        test_recalls.append(test_recall)
-        test_precisions.append(test_precision)
-        test_loop.set_postfix_str(
-            f"Recall: {np.mean(test_recalls):.4f} | Precision: {np.mean(test_precisions):.4f}"
-        )
+        if epoch % config.eval_every == 0 and epoch != 0:
+            val_precision, val_recall = test_with_dataloader(
+                "VAL",
+                model,
+                val_loader,
+                device,
+                k=config.k,
+                break_at=config.evaluate_break_at,
+            )
+
+            # We should save our model if validation precision starts decreasing (it starts to overfit)
+            if val_precision >= old_val_precision:
+                old_val_precision = val_precision
+            else:
+                print("| Saving Best Generalized Model...")
+                t.save(model.state_dict(), f"model/saved/model_final.pt")
+                old_val_precision = (
+                    -1
+                )  # We should only save it at the inflection point from decreasing one step
+
+            report_results(
+                output_stats=ContinousStatsVal(
+                    type="val",
+                    recall_val=val_recall,
+                    precision_val=val_precision,
+                    epoch=epoch,
+                ),
+                wandb=wandb,
+                final=False,
+            )
+
+        if epoch % max(1, int(config.epochs * config.save_every)) == 0:
+            print("| Saving Model at a regular interval...")
+            t.save(model.state_dict(), f"model/saved/model_{epoch:03d}.pt")
+
+    test_recall, test_precision = test_with_dataloader(
+        "TEST",
+        model,
+        test_loader,
+        device,
+        k=config.k,
+        break_at=config.evaluate_break_at,
+    )
 
     report_results(
         output_stats=ContinousStatsTest(
             type="test",
-            recall_test=np.mean(test_recalls),
-            precision_test=np.mean(test_precisions),
+            recall_test=test_recall,
+            precision_test=test_precision,
         ),
         wandb=wandb,
         final=True,
     )
     return Stats(
-        loss=loss_mean,
-        recall_val=val_recall_mean,
-        recall_test=np.mean(test_recalls),
-        precision_val=val_precision_mean,
-        precision_test=np.mean(test_precisions),
+        loss=np.mean(losses),
+        recall_val=val_recall,
+        recall_test=test_recall,
+        precision_val=val_precision,
+        precision_test=test_precision,
     )
 
 

@@ -42,6 +42,7 @@ def get_first_item_from_dataset(alternative: bool) -> HeteroData:
         evaluate_break_at=None,
         p_dropout_edges=0.0,
         p_dropout_features=0.0,
+        batch_norm=True,
     )
     if not alternative:
         train_dataset = GraphDataset(
