@@ -75,7 +75,7 @@ class Config:
 
 link_pred_config = Config(
     wandb_enabled=False,
-    epochs=10,
+    epochs=4,
     k=12,
     num_gnn_layers=2,
     num_linear_layers=2,

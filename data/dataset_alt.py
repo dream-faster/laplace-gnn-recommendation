@@ -9,8 +9,6 @@ from config import Config
 from typing import Tuple
 from utils.tensor_boolean import difference
 
-device = t.device("cuda" if t.cuda.is_available() else "cpu")
-
 
 class GraphDataset(InMemoryDataset):
     def __init__(

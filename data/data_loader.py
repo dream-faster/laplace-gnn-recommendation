@@ -12,8 +12,6 @@ from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatche
 from .matching.users_same_location import UsersSameLocationMatcher
 from .matching.popular_items import PopularItemsMatcher
 
-device = t.device("cuda" if t.cuda.is_available() else "cpu")
-
 
 def create_dataloaders(
     config: Config,
