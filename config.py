@@ -108,7 +108,7 @@ link_pred_config = Config(
 
 lightgcn_config = Config(
     wandb_enabled=False,
-    epochs=1000,
+    epochs=5,
     k=12,
     num_gnn_layers=3,  # Number of LightGCN steps
     num_linear_layers=0,  # IGNORE for LightGCN

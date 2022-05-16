@@ -80,12 +80,3 @@ class LightGCN(MessagePassing):
     def message_and_aggregate(self, adj_t: SparseTensor, x: Tensor) -> Tensor:
         # computes \tilde{A} @ x
         return matmul(adj_t, x)
-
-    def infer(self, data: Optional[Union[Data, HeteroData]]) -> Tensor:
-        user_embedding = self.users_emb.weight.to("cpu")
-        item_embedding = self.items_emb.weight.to("cpu")
-
-        # get ratings between every user and item - shape is num users x num articles
-        ratings = t.matmul(user_embedding, item_embedding.T)
-
-        return ratings

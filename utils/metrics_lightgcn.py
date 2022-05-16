@@ -44,8 +44,8 @@ def bpr_loss(
 
 
 # helper function to get N_u
-def get_user_positive_items(edge_index: Tensor) -> dict:
-    """Generates dictionary of positive items for each user
+def create_edges_dict_indexed_by_user(edge_index: Tensor) -> dict:
+    """Generates dictionary of items for each user
 
     Args:
         edge_index (t.Tensor): 2 by N list of edges
@@ -134,31 +134,21 @@ def get_metrics_lightgcn(
     user_embedding = model.users_emb.weight.to("cpu")
     item_embedding = model.items_emb.weight.to("cpu")
 
-    # get ratings between every user and item - shape is num users x num articles
-    print("matmul")
-    rating = t.matmul(user_embedding, item_embedding.T)
-
-    for exclude_edge_index in exclude_edge_indices:
-        # gets all the positive items for each user from the edge index
-        user_pos_items = get_user_positive_items(exclude_edge_index)
-        # get coordinates of all edges to exclude
-        exclude_users = []
-        exclude_items = []
-        for user, items in user_pos_items.items():
-            exclude_users.extend([user] * len(items))
-            exclude_items.extend(items)
-
-        # set ratings of excluded edges to large negative value
-        rating[exclude_users, exclude_items] = -(1 << 10)
-
-    print("rating")
-    # get the top k recommended items for each user
-    _, top_K_items = t.topk(rating, k=k)
+    excluded_edges_per_user = create_edges_dict_indexed_by_user(
+        t.cat(exclude_edge_indices, dim=1)
+    )
 
     # get all unique users in evaluated split
     users = edge_index[0].unique()
 
-    test_user_pos_items = get_user_positive_items(edge_index)
+    # get the top k recommended items for each user
+    top_K_items = {}
+    for user in users:
+        top_K_items[user.item()] = get_topk_items(
+            user_embedding, item_embedding, user.item(), k, excluded_edges_per_user
+        )
+
+    test_user_pos_items = create_edges_dict_indexed_by_user(edge_index)
 
     # convert test user pos items dictionary into a list
     test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
@@ -166,7 +156,8 @@ def get_metrics_lightgcn(
     # determine the correctness of topk predictions
     r = []
     for user in users:
-        ground_truth_items = test_user_pos_items[user.item()]
+        user = user.item()
+        ground_truth_items = test_user_pos_items[user]
         label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
         r.append(label)
     r = t.Tensor(np.array(r).astype("float"))
@@ -175,3 +166,15 @@ def get_metrics_lightgcn(
     ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
 
     return recall, precision, ndcg
+
+
+def get_topk_items(
+    user_embeddings: Tensor,
+    item_embeddings: Tensor,
+    user_id: Tensor,
+    k: int,
+    exclude_edge_indices: dict,
+) -> Tensor:
+    rating = t.matmul(user_embeddings[user_id], item_embeddings.T)
+    _, topK = t.topk(rating, k=k)
+    return topK

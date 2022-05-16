@@ -15,7 +15,7 @@ from utils.metrics_lightgcn import (
     bpr_loss,
     RecallPrecision_ATk,
     NDCGatK_r,
-    get_user_positive_items,
+    create_edges_dict_indexed_by_user,
 )
 
 from config import Config, lightgcn_config
@@ -61,7 +61,6 @@ def evaluation(
         items_emb_0[neg_item_indices],
     )
 
-    print("calculate loss")
     loss = bpr_loss(
         users_emb_final,
         users_emb_0,
@@ -72,7 +71,6 @@ def evaluation(
         lambda_val,
     ).item()
 
-    print("get metrics")
     recall, precision, ndcg = get_metrics_lightgcn(
         model, edge_index, exclude_edge_indices, k
     )
@@ -129,13 +127,11 @@ def train(config: Config):
     for iter in loop_obj:
         # for iter in range(config.epochs):
         # forward propagation
-        print("get embeddings")
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
         )
 
         # mini batching
-        print("sample mini batch")
         user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(
             config.batch_size, train_edge_index
         )
@@ -157,7 +153,6 @@ def train(config: Config):
             items_emb_0[neg_item_indices],
         )
 
-        print("compute loss")
         # loss computation
         train_loss = bpr_loss(
             users_emb_final,
@@ -169,14 +164,12 @@ def train(config: Config):
             config.Lambda,
         )
 
-        print("optimizer")
         optimizer.zero_grad()
         train_loss.backward()
         optimizer.step()
 
         if iter % config.eval_every == 0:
             model.eval()
-            print("val evaluation")
             val_loss, recall, precision, ndcg = evaluation(
                 model,
                 val_edge_index,
@@ -196,13 +189,13 @@ def train(config: Config):
             scheduler.step()
 
     iters = [iter * config.eval_every for iter in range(len(train_losses))]
-    plt.plot(iters, train_losses, label="train")
-    plt.plot(iters, val_losses, label="validation")
-    plt.xlabel("iteration")
-    plt.ylabel("loss")
-    plt.title("training and validation loss curves")
-    plt.legend()
-    plt.show()
+    # plt.plot(iters, train_losses, label="train")
+    # plt.plot(iters, val_losses, label="validation")
+    # plt.xlabel("iteration")
+    # plt.ylabel("loss")
+    # plt.title("training and validation loss curves")
+    # plt.legend()
+    # plt.show()
 
     # evaluate on test set
     model.eval()
@@ -226,7 +219,7 @@ def train(config: Config):
 
     model.eval()
 
-    user_pos_items = get_user_positive_items(edge_index)
+    user_pos_items = create_edges_dict_indexed_by_user(edge_index)
 
     def save_scores():
         # user = user_mapping_index[user_id]
