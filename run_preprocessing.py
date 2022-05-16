@@ -153,6 +153,7 @@ def preprocess(config: PreprocessingConfig):
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_csv:
+        print("| Saving to csv...")
         customers_csv = customers.copy()
         customers_csv[":LABEL"] = "Customer"
         customers_csv[":ID(Customer)"] = customers["index"]
