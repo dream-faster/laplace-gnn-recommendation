@@ -28,5 +28,6 @@ dependencies:
       - torch-sparse
       - torch-scatter
       - python-dotenv
+      - neo4j
 
 prefix: /usr/local/anaconda3/envs/fashion
