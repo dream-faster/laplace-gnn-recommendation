@@ -8,6 +8,9 @@ WITH row[0] AS customer_id
 MERGE (p:User {_id: customer_id})
 RETURN count(p);
 
+CREATE INDEX user_id FOR (p:User) ON (p._id)
+CREATE INDEX article_id FOR (a:Article) ON (a._id)
+
 LOAD CSV WITH HEADERS FROM 'file:///transactions_splitted.csv' AS row
 WITH row.customer_id AS customer_id, row.article_id AS article_id
 MATCH (p:User {_id: customer_id})
