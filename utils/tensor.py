@@ -1,6 +1,22 @@
 import torch as t
+from torch import Tensor
 from typing import List, Union
 import torch.nn.functional as F
+
+
+def intersection(t1: Tensor, t2: Tensor) -> Tensor:
+    # This can be quite costly, seek for alternative implementations before using it in prod
+    combined = t.cat((t1, t2))
+    uniques, counts = combined.unique(return_counts=True)
+    intersection = uniques[counts > 1]
+    return intersection
+
+
+def difference(A: Tensor, B: Tensor):
+    r"""Returns the elements of A without the elements of B (Optimized)"""  # from: https://discuss.pytorch.org/t/any-way-of-filtering-given-rows-from-a-tensor-a/83828/2
+    cdist = t.cdist(A.float(), B.float())
+    min_dist = t.min(cdist, dim=1).values
+    return A[min_dist > 0]
 
 
 def padded_stack(
