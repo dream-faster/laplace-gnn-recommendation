@@ -8,6 +8,8 @@ from utils.constants import Constants
 from config import Config
 from utils.flatten import flatten
 import random
+from data.neo4j.neo4j_database import Database
+from data.neo4j.utils import get_neighborhood
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -20,8 +22,10 @@ class GraphDataset(InMemoryDataset):
         users_adj_list: str,
         articles_adj_list: str,
         train: bool,
+        split_type: str,
         matchers: Optional[List[Matcher]] = None,
         randomization: bool = True,
+        db_param: tuple[str, str, str] = ("bolt://localhost:7687", "neo4j", "password"),
     ):
 
         self.graph = t.load(graph_path)
@@ -31,6 +35,8 @@ class GraphDataset(InMemoryDataset):
         self.config = config
         self.train = train
         self.randomization = randomization
+        self.db = Database(db_param[0], db_param[1], db_param[2])
+        self.split_type = split_type
 
     def __len__(self) -> int:
         return len(self.users)
@@ -38,6 +44,7 @@ class GraphDataset(InMemoryDataset):
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
+
         positive_article_indices = t.as_tensor(
             self.users[idx], dtype=t.long
         )  # all the positive target indices for the current user
@@ -72,7 +79,7 @@ class GraphDataset(InMemoryDataset):
 
         num_sampled_pos_edges = sampled_positive_article_indices.shape[0]
         if num_sampled_pos_edges <= 1:
-            negative_edges_ratio = self.config.k - 1 
+            negative_edges_ratio = self.config.k - 1
         else:
             negative_edges_ratio = self.config.negative_edges_ratio
 
@@ -104,13 +111,24 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        n_hop_edges = fetch_n_hop_neighbourhood(
+        n_hop_edges_old = fetch_n_hop_neighbourhood(
             self.config.n_hop_neighbors,
             idx,
             self.users,
             self.articles,
             num_neighbors=self.config.num_neighbors,
         )
+        n_hop_edges = t.tensor(
+            get_neighborhood(
+                self.db,
+                node_id=idx,
+                n_neighbor=self.config.n_hop_neighbors + 1,
+                split_type=self.split_type,
+            ),
+            dtype=t.long,
+        )
+        # Filter out positive edges
+        n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
 
         all_touched_edges = t.cat(
             [
