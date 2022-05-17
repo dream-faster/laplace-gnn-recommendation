@@ -14,6 +14,7 @@ from config import only_users_and_articles_nodes
 import numpy as np
 from utils.constants import Constants
 import os
+import time
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -323,11 +324,16 @@ def save_to_neo4j(
     )
     os.system("neo4j start")
     # Create the indexes for Customer & Article node types
+    time.sleep(5)
     os.system(
         "echo 'CREATE INDEX ON :Customer(ID)' | cypher-shell -u neo4j -p password --format plain"
     )
     os.system(
         "echo 'CREATE INDEX ON :Article(ID)' | cypher-shell -u neo4j -p password --format plain"
+    )
+    print("Number of nodes in the database:")
+    os.system(
+        "echo 'MATCH (n) RETURN count(n)' | cypher-shell -u neo4j -p password --format plain"
     )
 
 
