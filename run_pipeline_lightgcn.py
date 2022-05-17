@@ -168,7 +168,7 @@ def train(config: LightGCNConfig):
                 config.Lambda,
             )
             print(
-                f"[Iteration {iter}/{config.epochs}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{config.k}: {round(recall, 5)}, val_precision@{config.k}: {round(precision, 5)}, val_ndcg@{config.k}: {round(ndcg, 5)}"
+                f"[Iter {iter}/{config.epochs}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{config.k}: {round(recall, 5)}, val_precision@{config.k}: {round(precision, 5)}, val_ndcg@{config.k}: {round(ndcg, 5)}"
             )
             train_losses.append(train_loss.item())
             val_losses.append(val_loss)

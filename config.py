@@ -129,7 +129,7 @@ link_pred_config = Config(
 
 
 lightgcn_config = LightGCNConfig(
-    epochs=5,
+    epochs=10000,
     k=12,
     hidden_layer_size=32,
     learning_rate=1e-3,
