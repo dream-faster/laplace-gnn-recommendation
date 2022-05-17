@@ -7,7 +7,7 @@ from .matching.type import Matcher
 from utils.constants import Constants
 from config import Config
 from typing import Tuple
-from utils.tensor import difference
+from utils.tensor import difference_1d
 
 
 class GraphDataset(InMemoryDataset):
@@ -77,7 +77,9 @@ class GraphDataset(InMemoryDataset):
             )
 
             # Filter out users we already sampled
-            users_to_check = difference(users_to_check, old_users_to_check)
+            users_to_check = difference_1d(
+                users_to_check, old_users_to_check, assume_unique=True
+            )
 
             """ Loop through and add edges to the subgraph """
             for user_id in users_to_check:

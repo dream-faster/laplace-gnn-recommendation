@@ -1,12 +1,8 @@
-from cgi import test
 import matplotlib.pyplot as plt
-
 import torch as t
 from torch import optim
 from tqdm import tqdm
-
 from torch_geometric.utils import structured_negative_sampling
-
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.metrics_lightgcn import (
@@ -16,7 +12,7 @@ from utils.metrics_lightgcn import (
 )
 
 from config import LightGCNConfig, lightgcn_config
-from utils.tensor import difference
+from utils.tensor import difference_1d
 
 
 # wrapper function to evaluate model
@@ -86,10 +82,6 @@ def train(config: LightGCNConfig):
         val_edge_index,
         test_edge_index,
         edge_index,
-        user_mapping_index,
-        article_mapping_index,
-        user_mapping_id,
-        article_mapping_id,
         num_users,
         num_articles,
     ) = create_dataloaders_lightgcn()
@@ -123,7 +115,6 @@ def train(config: LightGCNConfig):
 
     loop_obj = tqdm(range(0, config.epochs))
     for iter in loop_obj:
-        # for iter in range(config.epochs):
         # forward propagation
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
@@ -226,7 +217,7 @@ def train(config: LightGCNConfig):
             pos_items_per_user,
             config.num_recommendations,
         )
-    t.save(top_items_per_user, "top_items_per_user.pt")
+    t.save(top_items_per_user, "data/derived/lightgcn_output.pt")
 
     save_scores(model)
 
@@ -243,7 +234,7 @@ def make_predictions_for_user(
 
     _, indices = t.topk(scores, k=num_recommendations + len(articles_to_ignore))
     # remove positive items, we don't want to recommend them
-    indices = difference(indices, articles_to_ignore)
+    indices = difference_1d(indices, articles_to_ignore, assume_unique=True)
     return indices[:num_recommendations]
 
 

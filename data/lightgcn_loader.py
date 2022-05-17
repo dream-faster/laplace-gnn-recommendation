@@ -70,9 +70,6 @@ def create_dataloaders_lightgcn():
 
     customer_id_map = read_json("data/derived/customer_id_map_forward.json")
     article_id_map = read_json("data/derived/article_id_map_forward.json")
-    customer_index_map = index_based_mapping(customer_id_map)
-    article_index_map = index_based_mapping(article_id_map)
-
     num_users, num_articles = len(customer_id_map), len(article_id_map)
 
     edge_index = both_indexes_from_zero(data.edge_index)
@@ -103,10 +100,6 @@ def create_dataloaders_lightgcn():
         val_edge_index,
         test_edge_index,
         edge_index,
-        customer_index_map,
-        article_index_map,
-        customer_id_map,
-        article_id_map,
         num_users,
         num_articles,
     )
