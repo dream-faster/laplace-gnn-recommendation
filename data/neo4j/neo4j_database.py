@@ -4,7 +4,7 @@ from typing import Optional
 query_periodic_commit = "USING PERIODIC COMMIT 10000 "
 
 
-class App:
+class Database:
     def __init__(self, uri: str, user: str, password: str):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
@@ -23,10 +23,9 @@ class App:
 
     @staticmethod
     def _find_and_return_node(tx, node_id, node_type):
-        query = f"MATCH (n:{node_type}) " "WHERE n._id = $node_id " "RETURN n as node"
+        query = f"MATCH (n:{node_type}) " "WHERE id(n) = $node_id " "RETURN n as node"
         result = list(tx.run(query, node_id=node_id))
         return [row["node"] for row in result]
-
 
     def run_query(self, query: str):
         with self.driver.session() as session:
