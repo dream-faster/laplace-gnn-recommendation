@@ -7,7 +7,7 @@ from .matching.type import Matcher
 from utils.constants import Constants
 from config import Config
 from typing import Tuple
-from utils.tensor_boolean import difference
+from utils.tensor import difference
 
 
 class GraphDataset(InMemoryDataset):

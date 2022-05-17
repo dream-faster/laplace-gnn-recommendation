@@ -86,6 +86,7 @@ class LightGCNConfig:
     batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
     num_iterations: int
     show_graph: bool
+    num_recommendations: int
 
     def print(self):
         print("\nConfiguration is:")
@@ -139,6 +140,7 @@ lightgcn_config = LightGCNConfig(
     lr_decay_every=100,
     Lambda=1e-6,
     show_graph=False,
+    num_recommendations=256,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(
@@ -164,7 +166,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     K=0,
-    data_size=100_000,
+    data_size=1_000,
     save_to_neo4j=True,
     data_type=DataType.pyg,
 )

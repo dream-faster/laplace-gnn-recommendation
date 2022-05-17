@@ -16,7 +16,7 @@ from utils.metrics_lightgcn import (
 )
 
 from config import LightGCNConfig, lightgcn_config
-from utils.tensor_boolean import difference
+from utils.tensor import difference
 
 
 # wrapper function to evaluate model
@@ -216,8 +216,17 @@ def train(config: LightGCNConfig):
 
     # Save predictions for the matcher
     model.eval()
-    user_pos_items = create_edges_dict_indexed_by_user(edge_index)
-    for user in users:
+    pos_items_per_user = create_edges_dict_indexed_by_user(edge_index)
+    top_items_per_user = {}
+    for user in tqdm(range(0, num_users)):
+        top_items_per_user[user] = make_predictions_for_user(
+            model.users_emb.weight,
+            model.items_emb.weight,
+            user,
+            pos_items_per_user,
+            config.num_recommendations,
+        )
+    t.save(top_items_per_user, "top_items_per_user.pt")
 
     save_scores(model)
 
@@ -225,11 +234,11 @@ def train(config: LightGCNConfig):
 def make_predictions_for_user(
     user_embeddings: t.Tensor,
     article_embeddings: t.Tensor,
-    user_id: t.Tensor,
+    user_id: int,
     positive_items_for_user: dict,
     num_recommendations: int,
 ) -> t.Tensor:
-    articles_to_ignore = positive_items_for_user[user_id.item()]
+    articles_to_ignore = positive_items_for_user[user_id]
     scores = article_embeddings @ user_embeddings[user_id]
 
     _, indices = t.topk(scores, k=num_recommendations + len(articles_to_ignore))
