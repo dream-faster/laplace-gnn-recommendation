@@ -1,3 +1,4 @@
+from cgi import test
 import matplotlib.pyplot as plt
 
 import torch as t
@@ -15,6 +16,7 @@ from utils.metrics_lightgcn import (
 )
 
 from config import LightGCNConfig, lightgcn_config
+from utils.tensor_boolean import difference
 
 
 # wrapper function to evaluate model
@@ -212,47 +214,34 @@ def train(config: LightGCNConfig):
         f"[test_loss: {round(test_loss, 5)}, test_recall@{config.k}: {round(test_recall, 5)}, test_precision@{config.k}: {round(test_precision, 5)}, test_ndcg@{config.k}: {round(test_ndcg, 5)}"
     )
 
-    """# Make New Recommendatios for a Given User"""
-
+    # Save predictions for the matcher
     model.eval()
-
     user_pos_items = create_edges_dict_indexed_by_user(edge_index)
+    for user in users:
 
-    def save_scores():
-        # user = user_mapping_index[user_id]
-        user_embeddings = model.users_emb.weight  # [user]
-        item_embeddings = model.items_emb.weight
-        # scores = model.items_emb.weight @ e_u
+    save_scores(model)
 
-        print("| Saving the user and article final embeddings...")
-        t.save(user_embeddings, "data/derived/users_emb_final_lightgcn.pt")
-        t.save(item_embeddings, "data/derived/items_emb_final_lightgcn.pt")
 
-    save_scores()
+def make_predictions_for_user(
+    user_embeddings: t.Tensor,
+    article_embeddings: t.Tensor,
+    user_id: t.Tensor,
+    positive_items_for_user: dict,
+    num_recommendations: int,
+) -> t.Tensor:
+    articles_to_ignore = positive_items_for_user[user_id.item()]
+    scores = article_embeddings @ user_embeddings[user_id]
 
-    def make_predictions(user_id, num_recs):
-        user = user_mapping_index[user_id]
-        e_u = model.users_emb.weight[user]
-        scores = model.items_emb.weight @ e_u
+    _, indices = t.topk(scores, k=num_recommendations + len(articles_to_ignore))
+    # remove positive items, we don't want to recommend them
+    indices = difference(indices, articles_to_ignore)
+    return indices[:num_recommendations]
 
-        values, indices = t.topk(scores, k=len(user_pos_items[user]) + num_recs)
 
-        articles = [
-            index.cpu().item() for index in indices if index in user_pos_items[user]
-        ][:num_recs]
-        article_ids = [
-            list(article_mapping_index.keys())[
-                list(article_mapping_index.values()).index(article)
-            ]
-            for article in articles
-        ]
-        titles = [article_mapping_id[str(id)] for id in article_ids]
-
-        print(f"Here are some articles that user {user_id} rated highly")
-        for i in range(num_recs):
-            print(f"title: {titles[i]}")
-
-    # make_predictions(1, 10)
+def save_scores(model: LightGCN):
+    print("| Saving the user and article final embeddings...")
+    t.save(model.users_emb.weight, "data/derived/users_emb_final_lightgcn.pt")
+    t.save(model.items_emb.weight, "data/derived/items_emb_final_lightgcn.pt")
 
 
 if __name__ == "__main__":
