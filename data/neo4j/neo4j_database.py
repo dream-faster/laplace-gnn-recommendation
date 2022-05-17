@@ -24,9 +24,14 @@ class Database:
 
     @staticmethod
     def get_n_neighbors(
-        node_id: int, n_neighbor: int, node_type: str, no_return: bool = False
+        node_id: int,
+        n_neighbor: int,
+        node_type: str,
+        split_type: str,
+        no_return: bool = False,
     ) -> str:
-        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})-[r*1..{str(n_neighbor)}]-(m)"
+        split_string = split_type + "_mask"
+        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})-[r*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
         if no_return:
             return query + " "
         else:
