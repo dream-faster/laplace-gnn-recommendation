@@ -84,10 +84,7 @@ class LightGCNConfig:
     lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
     Lambda: float  # (LightGCN)
     batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
-    num_neighbors: int  # sample n neighbors for each node for n_hop_neighbors iterations
-    n_hop_neighbors: int
-    positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
-    negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
+    num_iterations: int
     show_graph: bool
 
     def print(self):
@@ -137,14 +134,11 @@ lightgcn_config = LightGCNConfig(
     learning_rate=1e-3,
     save_model=False,
     batch_size=128,
-    num_neighbors=0,  # IGNORE for LightGCN
-    n_hop_neighbors=0,  # IGNORE for LightGCN
-    positive_edges_ratio=1.0,  # IGNORE for LightGCN
-    negative_edges_ratio=1.0,  # IGNORE for LightGCN
+    num_iterations=4,
     eval_every=100,
     lr_decay_every=100,
     Lambda=1e-6,
-    show_graph=False
+    show_graph=False,
 )
 
 only_users_and_articles_nodes = PreprocessingConfig(

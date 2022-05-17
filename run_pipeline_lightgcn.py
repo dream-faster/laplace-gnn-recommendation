@@ -100,7 +100,7 @@ def train(config: LightGCNConfig):
         num_users,
         num_articles,
         embedding_dim=config.hidden_layer_size,
-        K=config.num_neighbors,
+        num_iterations=config.num_iterations,
     )
     model = model.to(device)
     model.train()
