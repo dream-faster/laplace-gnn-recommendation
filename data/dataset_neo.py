@@ -111,18 +111,11 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        n_hop_edges_old = fetch_n_hop_neighbourhood(
-            self.config.n_hop_neighbors,
-            idx,
-            self.users,
-            self.articles,
-            num_neighbors=self.config.num_neighbors,
-        )
         n_hop_edges = t.tensor(
             get_neighborhood(
                 self.db,
                 node_id=idx,
-                n_neighbor=self.config.n_hop_neighbors + 1,
+                n_neighbor=self.config.n_hop_neighbors,
                 split_type=self.split_type,
             ),
             dtype=t.long,

@@ -12,18 +12,13 @@ def get_neighborhood(
             node_id=node_id, n_neighbor=n_neighbor, node_type="Customer", no_return=True
         )
         + db.get_node(node_id=node_id, node_type="Customer", no_return=True)
-        + "RETURN n,m,r"
+        + "RETURN collect(n), collect(m), collect(r)"
     )
 
-    """ Filter nodes and experiments into lists """
-    nodes = [node for node in result if isinstance(node, Node)]
-
-    relationships = [
-        relship
-        for list in result
-        for relship in list
-        if isinstance(relship, Relationship)
-    ]
+    """ Collect nodes and experiments into lists """
+    user_node = result[0][0]
+    neighbor_nodes = result[1]
+    relationships = [relship for list in result[2] for relship in list]
 
     """ Filter nodes and experiments into lists """
     edge_index = [
