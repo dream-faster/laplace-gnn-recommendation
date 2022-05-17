@@ -316,11 +316,13 @@ def save_to_neo4j(
     )
     transactions[":TYPE"] = "BUYS"
     save_to_csv(transactions, "transactions")
+    # Neo4j needs to be stopped for neo4j-admin import to run
     os.system("neo4j stop")
     os.system(
         "neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force"
     )
     os.system("neo4j start")
+    # Create the indexes for Customer & Article node types
     os.system(
         "echo 'CREATE INDEX ON :Customer(ID)' | cypher-shell -u neo4j -p password --format plain"
     )

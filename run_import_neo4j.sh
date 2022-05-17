@@ -1,1 +1,0 @@
-neo4j-admin import --database=fashion --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force
