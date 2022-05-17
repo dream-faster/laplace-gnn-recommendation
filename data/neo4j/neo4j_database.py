@@ -13,24 +13,38 @@ class Database:
 
     """ GET """
 
-    def find_node(self, node_id, node_type):
-        with self.driver.session() as session:
-            result = session.read_transaction(
-                self._find_and_return_node, node_id, node_type
-            )
-            for row in result:
-                print("Found user: {row}".format(row=row))
+    @staticmethod
+    def get_node(node_id: int, node_type: str, no_return: bool = False) -> str:
+        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})"
+
+        if no_return:
+            return query + " "
+        else:
+            return query + " RETURN n"
 
     @staticmethod
-    def _find_and_return_node(tx, node_id, node_type):
-        query = f"MATCH (n:{node_type}) " "WHERE id(n) = $node_id " "RETURN n as node"
-        result = list(tx.run(query, node_id=node_id))
-        return [row["node"] for row in result]
+    def get_n_neighbors(
+        node_id: int, n_neighbor: int, node_type: str, no_return: bool = False
+    ) -> str:
+        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})-[r*1..{str(n_neighbor)}]-(m)"
+        if no_return:
+            return query + " "
+        else:
+            return query + " RETURN m,r"
+
+    """ UTILITY METHODS """
+
+    def run_match(self, query: str):
+        with self.driver.session() as session:
+            result = list(session.run(query))
+
+            return [record[key] for record in result for key in result[0].keys()]
 
     def run_query(self, query: str):
         with self.driver.session() as session:
             info = session.run(query)
             print(info)
+            return list(info)
 
     def clear(self):
         query = "MATCH (n) DETACH DELETE n"
