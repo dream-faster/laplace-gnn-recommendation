@@ -13,6 +13,7 @@ from typing import Tuple
 from config import only_users_and_articles_nodes
 import numpy as np
 from utils.constants import Constants
+import os
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -152,31 +153,8 @@ def preprocess(config: PreprocessingConfig):
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
-    if config.save_to_csv:
-        print("| Saving to csv...")
-        customers_csv = customers.copy()
-        customers_csv[":LABEL"] = "Customer"
-        customers_csv[":ID(Customer)"] = customers["index"]
-        customers_csv.drop(["index"], axis=1, inplace=True)
-        save_to_csv(customers_csv, "customers")
-        articles_csv = articles.copy()
-        articles_csv[":LABEL"] = "Article"
-        articles_csv[":ID(Article)"] = articles_csv["index"]
-        articles_csv.drop(["index"], axis=1, inplace=True)
-        save_to_csv(articles_csv, "articles")
-        transactions_csv = transactions.copy()
-        transactions_csv.rename(
-            columns={
-                "customer_id": ":START_ID(Customer)",
-                "article_id": ":END_ID(Article)",
-            },
-            inplace=True,
-        )
-        transactions_csv.drop(
-            ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
-        )
-        transactions_csv[":TYPE"] = "BUYS"
-        save_to_csv(transactions_csv, "transactions")
+    if config.save_to_neo4j:
+        save_to_neo4j(customers, articles, transactions)
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.float)
@@ -308,6 +286,47 @@ def extract_users_per_location(customers: pd.DataFrame) -> dict:
 
 def extract_location_for_user(customers: pd.DataFrame) -> dict:
     return customers["postal_code"].to_dict()
+
+
+def save_to_neo4j(
+    customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
+):
+    print("| Saving to neo4j...")
+    customers = customers.copy()
+    customers[":LABEL"] = "Customer"
+    customers.rename(columns={"index": ":ID(Customer)"}, inplace=True)
+    save_to_csv(customers, "customers")
+    articles = articles.copy()
+    articles[":LABEL"] = "Article"
+    articles.rename(columns={"index": ":ID(Article)"}, inplace=True)
+    save_to_csv(articles, "articles")
+    transactions = transactions.copy()
+    transactions.rename(
+        columns={
+            "customer_id": ":START_ID(Customer)",
+            "article_id": ":END_ID(Article)",
+        },
+        inplace=True,
+    )
+    transactions["train_mask"] = transactions["train_mask"].astype(int)
+    transactions["test_mask"] = transactions["test_mask"].astype(int)
+    transactions["val_mask"] = transactions["val_mask"].astype(int)
+    transactions.drop(
+        ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
+    )
+    transactions[":TYPE"] = "BUYS"
+    save_to_csv(transactions, "transactions")
+    os.system("neo4j stop")
+    os.system(
+        "neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force"
+    )
+    os.system("neo4j start")
+    os.system(
+        "echo 'CREATE INDEX ON :Customer(ID)' | cypher-shell -u neo4j -p password --format plain"
+    )
+    os.system(
+        "echo 'CREATE INDEX ON :Article(ID)' | cypher-shell -u neo4j -p password --format plain"
+    )
 
 
 if __name__ == "__main__":
