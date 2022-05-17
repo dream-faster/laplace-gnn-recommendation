@@ -13,7 +13,6 @@ def get_neighborhood(
             split_type=split_type,
             no_return=True,
         )
-        + db.get_node(node_id=node_id, node_type="Customer", no_return=True)
         + "RETURN collect(n), collect(m), collect(r)"
     )
 
