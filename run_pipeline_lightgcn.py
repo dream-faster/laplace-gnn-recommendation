@@ -9,10 +9,10 @@ from utils.metrics_lightgcn import (
     get_metrics_lightgcn,
     bpr_loss,
     create_edges_dict_indexed_by_user,
+    make_predictions_for_user,
 )
 
 from config import LightGCNConfig, lightgcn_config
-from utils.tensor import difference_1d
 
 
 # wrapper function to evaluate model
@@ -220,22 +220,6 @@ def train(config: LightGCNConfig):
     t.save(top_items_per_user, "data/derived/lightgcn_output.pt")
 
     save_scores(model)
-
-
-def make_predictions_for_user(
-    user_embeddings: t.Tensor,
-    article_embeddings: t.Tensor,
-    user_id: int,
-    positive_items_for_user: dict,
-    num_recommendations: int,
-) -> t.Tensor:
-    articles_to_ignore = positive_items_for_user[user_id]
-    scores = article_embeddings @ user_embeddings[user_id]
-
-    _, indices = t.topk(scores, k=num_recommendations + len(articles_to_ignore))
-    # remove positive items, we don't want to recommend them
-    indices = difference_1d(indices, articles_to_ignore, assume_unique=True)
-    return indices[:num_recommendations]
 
 
 def save_scores(model: LightGCN):
