@@ -22,6 +22,7 @@ dependencies:
   - pyright
   - wandb
   - optuna
+  - neo4j-python-driver
   - pip
   - pip:
       - https://github.com/pyg-team/pytorch_geometric/archive/master.zip
