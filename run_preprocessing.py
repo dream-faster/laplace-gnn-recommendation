@@ -296,11 +296,15 @@ def save_to_neo4j(
     customers = customers.copy()
     customers[":LABEL"] = "Customer"
     customers.rename(columns={"index": ":ID(Customer)"}, inplace=True)
+    customers["_id"] = customers[":ID(Customer)"]
     save_to_csv(customers, "customers")
+
     articles = articles.copy()
     articles[":LABEL"] = "Article"
     articles.rename(columns={"index": ":ID(Article)"}, inplace=True)
+    articles["_id"] = articles[":ID(Article)"]
     save_to_csv(articles, "articles")
+
     transactions = transactions.copy()
     transactions.rename(
         columns={
@@ -318,22 +322,34 @@ def save_to_neo4j(
     transactions[":TYPE"] = "BUYS"
     save_to_csv(transactions, "transactions")
     # Neo4j needs to be stopped for neo4j-admin import to run
+    print("| Stopping running instances of Neo4j...")
     os.system("neo4j stop")
+    print("| Importing csv to database...")
     os.system(
         "neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force"
     )
+    print("| Starting Neo4j...")
     os.system("neo4j start")
-    # Create the indexes for Customer & Article node types
     time.sleep(5)
+    # Create the indexes for Customer & Article node types
+    print("| Creating indexes...")
+
     os.system(
         "echo 'CREATE INDEX ON :Customer(ID)' | cypher-shell -u neo4j -p password --format plain"
     )
     os.system(
+        "echo 'CREATE INDEX ON :Customer(_id)' | cypher-shell -u neo4j -p password --format plain"
+    )
+    os.system(
         "echo 'CREATE INDEX ON :Article(ID)' | cypher-shell -u neo4j -p password --format plain"
     )
+    os.system(
+        "echo 'CREATE INDEX ON :Article(_id)' | cypher-shell -u neo4j -p password --format plain"
+
     print("Number of nodes in the database:")
     os.system(
         "echo 'MATCH (n) RETURN count(n)' | cypher-shell -u neo4j -p password --format plain"
+
     )
 
 

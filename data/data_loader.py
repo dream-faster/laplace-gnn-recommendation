@@ -6,7 +6,7 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
-from .dataset import GraphDataset
+from .dataset_neo import GraphDataset
 from .matching.lightgcn import LightGCNMatcher
 from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
 from .matching.users_same_location import UsersSameLocationMatcher
@@ -23,6 +23,7 @@ def create_dataloaders(
         users_adj_list=data_dir + "edges_train.pt",
         articles_adj_list=data_dir + "rev_edges_train.pt",
         train=True,
+        split_type="train",
     )
     val_dataset = GraphDataset(
         config=config,
@@ -30,6 +31,7 @@ def create_dataloaders(
         users_adj_list=data_dir + "edges_val.pt",
         articles_adj_list=data_dir + "rev_edges_val.pt",
         train=False,
+        split_type="val",
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
@@ -43,6 +45,7 @@ def create_dataloaders(
         users_adj_list=data_dir + "edges_test.pt",
         articles_adj_list=data_dir + "rev_edges_test.pt",
         train=False,
+        split_type="test",
         matchers=[
             # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
