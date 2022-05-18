@@ -54,4 +54,3 @@ def test_lightgcn_pipeline():
     assert stats.loss < -0.8
     assert stats.recall_test > 0.01
     assert stats.precision_test > 0.0008
-    print(stats)
