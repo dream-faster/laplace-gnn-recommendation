@@ -3,7 +3,7 @@ import numpy as np
 from torch import Tensor
 from typing import List, Tuple
 from .metrics import RecallPrecision_ATk, NDCGatK_r
-
+from .metrics_lightgcn import create_adj_dict, create_adj_list
 
 # helper function to get N_u
 def get_user_positive_items(edge_index: Tensor) -> dict:
@@ -69,22 +69,18 @@ def get_metrics_universal(
     _, top_K_items = t.topk(ratings, k=k)
 
     # get all unique users in evaluated split
-    users = edge_label_index[0].unique()
-
-    test_user_pos_items = get_user_positive_items(edge_index)
-
-    # convert test user pos items dictionary into a list
-    test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
+    users = edge_label_index[0].unique(sorted=True)
+    test_user_pos_items = create_adj_list(edge_index, users)
 
     # determine the correctness of topk predictions
-    r = []
-    for i, user in enumerate(users):
-        ground_truth_items = test_user_pos_items[user.item()]
-        label = [x in ground_truth_items for x in top_K_items[i]]
-        r.append(label)
-    r = t.Tensor(np.array(r).astype("float"))
+    r = t.stack(
+        [
+            t.isin(top_K_items[i], test_user_pos_items[i])
+            for i, _ in enumerate(users)
+        ]
+    )
 
-    recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
-    ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
+    recall, precision = RecallPrecision_ATk(test_user_pos_items, r, k)
+    ndcg = NDCGatK_r(test_user_pos_items, r, k)
 
     return recall, precision, ndcg

@@ -8,7 +8,7 @@ from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.metrics_lightgcn import (
     get_metrics_lightgcn,
     bpr_loss,
-    create_edges_dict_indexed_by_user,
+    create_adj_dict,
     make_predictions_for_user,
 )
 
@@ -207,7 +207,7 @@ def train(config: LightGCNConfig):
 
     # Save predictions for the matcher
     model.eval()
-    pos_items_per_user = create_edges_dict_indexed_by_user(edge_index)
+    pos_items_per_user = create_adj_dict(edge_index)
     top_items_per_user = {}
     for user in tqdm(range(0, num_users)):
         top_items_per_user[user] = make_predictions_for_user(

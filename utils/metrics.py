@@ -17,7 +17,9 @@ def RecallPrecision_ATk(
     Returns:
         tuple: recall @ k, precision @ k
     """
-    num_correct_pred = t.sum(r, dim=-1)  # number of correctly predicted items per user
+    num_correct_pred = t.sum(
+        r, dim=-1
+    ).float()  # number of correctly predicted items per user
     # number of items liked by each user in the test set
     user_num_liked = t.Tensor([len(groundTruth[i]) for i in range(len(groundTruth))])
     recall = t.mean(num_correct_pred / user_num_liked)

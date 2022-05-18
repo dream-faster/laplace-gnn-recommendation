@@ -1,7 +1,7 @@
 import torch as t
 import numpy as np
 from torch import Tensor
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from utils.tensor import difference_1d
 from .metrics import RecallPrecision_ATk, NDCGatK_r
 
@@ -45,8 +45,7 @@ def bpr_loss(
     return loss
 
 
-# helper function to get N_u
-def create_edges_dict_indexed_by_user(edge_index: Tensor) -> dict:
+def create_adj_dict(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> dict:
     """Generates dictionary of items for each user
 
     Args:
@@ -55,14 +54,26 @@ def create_edges_dict_indexed_by_user(edge_index: Tensor) -> dict:
     Returns:
         dict: dictionary of items for each user
     """
-    users = edge_index[0].unique(sorted=True)
+    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
     items_per_user: dict = {}
     for user in users:
         items_per_user[user.item()] = edge_index[1][edge_index[0] == user]
     return items_per_user
 
 
-# wrapper function to get evaluation metrics
+def create_adj_list(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> List[Tensor]:
+    """Generates tensor of items for each user
+
+    Args:
+        edge_index (t.Tensor): 2 by N list of edges
+
+    Returns:
+        tensor: Tensor (matrix) of items for each user
+    """
+    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
+    return [edge_index[1][edge_index[0] == user] for user in users]
+
+
 def get_metrics_lightgcn(
     model, edge_index: Tensor, exclude_edge_indices: List[Tensor], k: int
 ) -> Tuple[float, float, float]:
@@ -80,9 +91,7 @@ def get_metrics_lightgcn(
     user_embedding = model.users_emb.weight.to("cpu")
     item_embedding = model.items_emb.weight.to("cpu")
 
-    excluded_edges_per_user = create_edges_dict_indexed_by_user(
-        t.cat(exclude_edge_indices, dim=1)
-    )
+    excluded_edges_per_user = create_adj_dict(t.cat(exclude_edge_indices, dim=1))
 
     # get all unique users in evaluated split
     users = edge_index[0].unique()
@@ -94,19 +103,18 @@ def get_metrics_lightgcn(
             user_embedding, item_embedding, user.item(), excluded_edges_per_user, k
         )
 
-    test_user_pos_items = create_edges_dict_indexed_by_user(edge_index)
+    test_user_pos_items = create_adj_dict(edge_index)
 
     # convert test user pos items dictionary into a list
     test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
 
     # determine the correctness of topk predictions
-    r = []
-    for user in users:
-        user = user.item()
-        ground_truth_items = test_user_pos_items[user]
-        label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
-        r.append(label)
-    r = t.Tensor(np.array(r).astype("float"))
+    r = t.stack(
+        [
+            t.isin(top_K_items[user.item()], test_user_pos_items[user.item()])
+            for user in users
+        ]
+    )
 
     recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
     ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
