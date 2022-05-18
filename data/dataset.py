@@ -9,6 +9,12 @@ from config import Config
 from utils.flatten import flatten
 import random
 
+from timeit import default_timer as timer
+from datetime import timedelta
+import numpy as np
+
+times = []
+
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
@@ -22,6 +28,7 @@ class GraphDataset(InMemoryDataset):
         train: bool,
         matchers: Optional[List[Matcher]] = None,
         randomization: bool = True,
+        split_type: Optional[str] = None,
     ):
 
         self.graph = t.load(graph_path)
@@ -36,6 +43,7 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
+        start = timer()
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
         positive_article_indices = t.as_tensor(
@@ -72,7 +80,7 @@ class GraphDataset(InMemoryDataset):
 
         num_sampled_pos_edges = sampled_positive_article_indices.shape[0]
         if num_sampled_pos_edges <= 1:
-            negative_edges_ratio = self.config.k - 1 
+            negative_edges_ratio = self.config.k - 1
         else:
             negative_edges_ratio = self.config.negative_edges_ratio
 
@@ -178,6 +186,10 @@ class GraphDataset(InMemoryDataset):
             reverse_key
         ].type(t.long)
         data[Constants.rev_edge_key].edge_label = labels.type(t.long)
+
+        end = timer()
+        times.append(timedelta(seconds=end - start))
+        print(np.mean(times))
         return data
 
 

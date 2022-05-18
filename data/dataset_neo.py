@@ -12,6 +12,12 @@ from data.neo4j.neo4j_database import Database
 from data.neo4j.utils import get_neighborhood
 from utils.tensor import check_edge_index_flat_unique
 
+from timeit import default_timer as timer
+from datetime import timedelta
+import numpy as np
+
+times = []
+
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
@@ -43,6 +49,8 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
+        start = timer()
+
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
 
@@ -112,14 +120,6 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        # n_hop_edges_old = fetch_n_hop_neighbourhood(
-        #     self.config.n_hop_neighbors,
-        #     idx,
-        #     self.users,
-        #     self.articles,
-        #     num_neighbors=self.config.num_neighbors,
-        # )
-
         n_hop_edges = t.tensor(
             get_neighborhood(
                 self.db,
@@ -129,6 +129,7 @@ class GraphDataset(InMemoryDataset):
             ),
             dtype=t.long,
         )
+
         # Filter out positive edges
         n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
 
@@ -198,6 +199,10 @@ class GraphDataset(InMemoryDataset):
             reverse_key
         ].type(t.long)
         data[Constants.rev_edge_key].edge_label = labels.type(t.long)
+
+        end = timer()
+        times.append(timedelta(seconds=end - start))
+        print(np.mean(times))
         return data
 
 
@@ -272,37 +277,6 @@ def create_edges_from_target_indices(
         ],
         dim=0,
     )
-
-
-def fetch_n_hop_neighbourhood(
-    n: int, user_id: int, users: dict, articles: dict, num_neighbors: int
-) -> t.Tensor:
-    """Returns the edges from the n-hop neighbourhood of the user, without the direct links for the same user"""
-    accum_edges = t.tensor([[], []], dtype=t.long)
-    users_explored = set([])
-    users_queue = set([user_id])
-
-    for i in range(0, n):
-        new_articles_and_edges = [
-            create_neighbouring_article_edges(user, users) for user in users_queue
-        ]
-        users_explored = users_explored | users_queue
-        if len(new_articles_and_edges) == 0:
-            break
-        new_articles = flatten([x[0] for x in new_articles_and_edges])
-
-        if i != 0:
-            new_edges = t.cat([x[1] for x in new_articles_and_edges], dim=1)
-            accum_edges = t.cat([accum_edges, new_edges], dim=1)
-
-        articles_queue = shuffle_and_cut(new_articles, num_neighbors)
-        new_users = (
-            set(flatten([articles[article] for article in articles_queue]))
-            - users_explored
-        )  # remove the intersection between the two sets, so we only explore a user once
-        users_queue = set(shuffle_and_cut(list(new_users), num_neighbors))
-
-    return accum_edges
 
 
 def shuffle_and_cut(array: list, n: int) -> list:
