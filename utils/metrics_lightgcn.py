@@ -61,14 +61,16 @@ def create_adj_dict(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> 
     return items_per_user
 
 
-def create_adj_list(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> List[Tensor]:
-    """Generates tensor of items for each user
+def create_adj_list(
+    edge_index: Tensor, from_nodes: Optional[Tensor] = None
+) -> List[Tensor]:
+    """Generates list of items for each user
 
     Args:
         edge_index (t.Tensor): 2 by N list of edges
 
     Returns:
-        tensor: Tensor (matrix) of items for each user
+        tensor: List[Tensor] of items for each user
     """
     users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
     return [edge_index[1][edge_index[0] == user] for user in users]
@@ -103,9 +105,7 @@ def get_metrics_lightgcn(
             user_embedding, item_embedding, user.item(), excluded_edges_per_user, k
         )
 
-    test_user_pos_items = create_adj_dict(edge_index)
-
-    # convert test user pos items dictionary into a list
+    test_user_pos_items = create_adj_dict(edge_index, from_nodes=users)
     test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
 
     # determine the correctness of topk predictions

@@ -70,14 +70,11 @@ def get_metrics_universal(
 
     # get all unique users in evaluated split
     users = edge_label_index[0].unique(sorted=True)
-    test_user_pos_items = create_adj_list(edge_index, users)
+    test_user_pos_items = create_adj_list(edge_index)
 
     # determine the correctness of topk predictions
     r = t.stack(
-        [
-            t.isin(top_K_items[i], test_user_pos_items[i])
-            for i, _ in enumerate(users)
-        ]
+        [t.isin(top_K_items[i], test_user_pos_items[i]) for i, _ in enumerate(users)]
     )
 
     recall, precision = RecallPrecision_ATk(test_user_pos_items, r, k)

@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 
 def RecallPrecision_ATk(
-    groundTruth: List[List[int]], r: Tensor, k: int
+    groundTruth: List[Tensor], r: Tensor, k: int
 ) -> Tuple[float, float]:
     """Computers recall @ k and precision @ k
 
@@ -28,7 +28,7 @@ def RecallPrecision_ATk(
 
 
 # computes NDCG@K
-def NDCGatK_r(groundTruth: List[List[int]], r: Tensor, k: int) -> float:
+def NDCGatK_r(groundTruth: List[Tensor], r: Tensor, k: int) -> float:
     """Computes Normalized Discounted Cumulative Gain (NDCG) @ k
 
     Args:
