@@ -1,7 +1,9 @@
 import torch as t
 import numpy as np
 from torch import Tensor
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+from utils.tensor import difference_1d
+from .metrics import RecallPrecision_ATk, NDCGatK_r
 
 
 def bpr_loss(
@@ -43,80 +45,37 @@ def bpr_loss(
     return loss
 
 
-# helper function to get N_u
-def get_user_positive_items(edge_index: Tensor) -> dict:
-    """Generates dictionary of positive items for each user
+def create_adj_dict(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> dict:
+    """Generates dictionary of items for each user
 
     Args:
         edge_index (t.Tensor): 2 by N list of edges
 
     Returns:
-        dict: dictionary of positive items for each user
+        dict: dictionary of items for each user
     """
-    user_pos_items: dict = {}
-    for i in range(edge_index.shape[1]):
-        user = edge_index[0][i].item()
-        item = edge_index[1][i].item()
-        if user not in user_pos_items:
-            user_pos_items[user] = []
-        user_pos_items[user].append(item)
-    return user_pos_items
+    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
+    items_per_user: dict = {}
+    for user in users:
+        items_per_user[user.item()] = edge_index[1][edge_index[0] == user]
+    return items_per_user
 
 
-# computes recall@K and precision@K
-def RecallPrecision_ATk(
-    groundTruth: List[List[int]], r: Tensor, k: int
-) -> Tuple[float, float]:
-    """Computers recall @ k and precision @ k
+def create_adj_list(
+    edge_index: Tensor, from_nodes: Optional[Tensor] = None
+) -> List[Tensor]:
+    """Generates list of items for each user
 
     Args:
-        groundTruth (list): list of lists containing highly rated items of each user
-        r (list): list of lists indicating whether each top k item recommended to each user
-            is a top k ground truth item or not
-        k (intg): determines the top k items to compute precision and recall on
+        edge_index (t.Tensor): 2 by N list of edges
 
     Returns:
-        tuple: recall @ k, precision @ k
+        tensor: List[Tensor] of items for each user
     """
-    num_correct_pred = t.sum(r, dim=-1)  # number of correctly predicted items per user
-    # number of items liked by each user in the test set
-    user_num_liked = t.Tensor([len(groundTruth[i]) for i in range(len(groundTruth))])
-    recall = t.mean(num_correct_pred / user_num_liked)
-    precision = t.mean(num_correct_pred) / k
-    return recall.item(), precision.item()
+    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
+    return [edge_index[1][edge_index[0] == user] for user in users]
 
 
-# computes NDCG@K
-def NDCGatK_r(groundTruth: List[List[int]], r: Tensor, k: int) -> float:
-    """Computes Normalized Discounted Cumulative Gain (NDCG) @ k
-
-    Args:
-        groundTruth (list): list of lists containing highly rated items of each user
-        r (list): list of lists indicating whether each top k item recommended to each user
-            is a top k ground truth item or not
-        k (int): determines the top k items to compute ndcg on
-
-    Returns:
-        float: ndcg @ k
-    """
-    assert len(r) == len(groundTruth)
-
-    test_matrix = t.zeros((len(r), k))
-
-    for i, items in enumerate(groundTruth):
-        length = min(len(items), k)
-        test_matrix[i, :length] = 1
-    max_r = test_matrix
-    idcg = t.sum(max_r * 1.0 / t.log2(t.arange(2, k + 2)), axis=1)
-    dcg = r * (1.0 / t.log2(t.arange(2, k + 2)))
-    dcg = t.sum(dcg, axis=1)
-    idcg[idcg == 0.0] = 1.0
-    ndcg = dcg / idcg
-    ndcg[t.isnan(ndcg)] = 0.0
-    return t.mean(ndcg).item()
-
-
-# wrapper function to get evaluation metrics
 def get_metrics_lightgcn(
     model, edge_index: Tensor, exclude_edge_indices: List[Tensor], k: int
 ) -> Tuple[float, float, float]:
@@ -134,42 +93,50 @@ def get_metrics_lightgcn(
     user_embedding = model.users_emb.weight.to("cpu")
     item_embedding = model.items_emb.weight.to("cpu")
 
-    # get ratings between every user and item - shape is num users x num articles
-    rating = t.matmul(user_embedding, item_embedding.T)
-
-    for exclude_edge_index in exclude_edge_indices:
-        # gets all the positive items for each user from the edge index
-        user_pos_items = get_user_positive_items(exclude_edge_index)
-        # get coordinates of all edges to exclude
-        exclude_users = []
-        exclude_items = []
-        for user, items in user_pos_items.items():
-            exclude_users.extend([user] * len(items))
-            exclude_items.extend(items)
-
-        # set ratings of excluded edges to large negative value
-        rating[exclude_users, exclude_items] = -(1 << 10)
-
-    # get the top k recommended items for each user
-    _, top_K_items = t.topk(rating, k=k)
+    excluded_edges_per_user = create_adj_dict(t.cat(exclude_edge_indices, dim=1))
 
     # get all unique users in evaluated split
     users = edge_index[0].unique()
 
-    test_user_pos_items = get_user_positive_items(edge_index)
+    # get the top k recommended items for each user
+    top_K_items = {}
+    for user in users:
+        top_K_items[user.item()] = make_predictions_for_user(
+            user_embedding, item_embedding, user.item(), excluded_edges_per_user, k
+        )
 
-    # convert test user pos items dictionary into a list
+    test_user_pos_items = create_adj_dict(edge_index, from_nodes=users)
     test_user_pos_items_list = [test_user_pos_items[user.item()] for user in users]
 
     # determine the correctness of topk predictions
-    r = []
-    for user in users:
-        ground_truth_items = test_user_pos_items[user.item()]
-        label = list(map(lambda x: x in ground_truth_items, top_K_items[user]))
-        r.append(label)
-    r = t.Tensor(np.array(r).astype("float"))
+    r = t.stack(
+        [
+            t.isin(top_K_items[user.item()], test_user_pos_items[user.item()])
+            for user in users
+        ]
+    )
 
     recall, precision = RecallPrecision_ATk(test_user_pos_items_list, r, k)
     ndcg = NDCGatK_r(test_user_pos_items_list, r, k)
 
     return recall, precision, ndcg
+
+
+def make_predictions_for_user(
+    user_embeddings: t.Tensor,
+    article_embeddings: t.Tensor,
+    user_id: int,
+    positive_items_for_user: dict,
+    num_recommendations: int,
+) -> t.Tensor:
+    articles_to_ignore = (
+        positive_items_for_user[user_id]
+        if user_id in positive_items_for_user
+        else t.tensor([])
+    )
+    scores = user_embeddings[user_id] @ article_embeddings.T
+
+    _, indices = t.topk(scores, k=num_recommendations + len(articles_to_ignore))
+    # remove positive items, we don't want to recommend them
+    indices = difference_1d(indices, articles_to_ignore, assume_unique=True)
+    return indices[:num_recommendations]

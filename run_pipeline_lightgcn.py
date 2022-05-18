@@ -1,24 +1,20 @@
-import pandas as pd
 import matplotlib.pyplot as plt
-
 import torch as t
 from torch import optim
 from tqdm import tqdm
-
 from torch_geometric.utils import structured_negative_sampling
-
-from torch_geometric.typing import Adj
 from model.lightgcn import LightGCN
 from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.metrics_lightgcn import (
     get_metrics_lightgcn,
     bpr_loss,
-    RecallPrecision_ATk,
-    NDCGatK_r,
-    get_user_positive_items,
+    create_adj_dict,
+    make_predictions_for_user,
 )
+from reporting.types import Stats
 
-from config import Config, lightgcn_config
+
+from config import LightGCNConfig, lightgcn_config
 
 
 # wrapper function to evaluate model
@@ -78,7 +74,7 @@ def evaluation(
     return loss, recall, precision, ndcg
 
 
-def train(config: Config):
+def train(config: LightGCNConfig):
     config.print()
     (
         train_sparse_edge_index,
@@ -88,10 +84,6 @@ def train(config: Config):
         val_edge_index,
         test_edge_index,
         edge_index,
-        user_mapping_index,
-        article_mapping_index,
-        user_mapping_id,
-        article_mapping_id,
         num_users,
         num_articles,
     ) = create_dataloaders_lightgcn()
@@ -104,7 +96,7 @@ def train(config: Config):
         num_users,
         num_articles,
         embedding_dim=config.hidden_layer_size,
-        K=config.num_gnn_layers,
+        num_iterations=config.num_iterations,
     )
     model = model.to(device)
     model.train()
@@ -125,7 +117,6 @@ def train(config: Config):
 
     loop_obj = tqdm(range(0, config.epochs))
     for iter in loop_obj:
-        # for iter in range(config.epochs):
         # forward propagation
         users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
             train_sparse_edge_index
@@ -179,7 +170,7 @@ def train(config: Config):
                 config.Lambda,
             )
             print(
-                f"[Iteration {iter}/{config.epochs}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{config.k}: {round(recall, 5)}, val_precision@{config.k}: {round(precision, 5)}, val_ndcg@{config.k}: {round(ndcg, 5)}"
+                f"[Iter {iter}/{config.epochs}] train_loss: {round(train_loss.item(), 5)}, val_loss: {round(val_loss, 5)}, val_recall@{config.k}: {round(recall, 6)}, val_precision@{config.k}: {round(precision, 6)}, val_ndcg@{config.k}: {round(ndcg, 6)}"
             )
             train_losses.append(train_loss.item())
             val_losses.append(val_loss)
@@ -188,14 +179,15 @@ def train(config: Config):
         if iter % config.lr_decay_every == 0 and iter != 0:
             scheduler.step()
 
-    iters = [iter * config.eval_every for iter in range(len(train_losses))]
-    plt.plot(iters, train_losses, label="train")
-    plt.plot(iters, val_losses, label="validation")
-    plt.xlabel("iteration")
-    plt.ylabel("loss")
-    plt.title("training and validation loss curves")
-    plt.legend()
-    plt.show()
+    if config.show_graph:
+        iters = [iter * config.eval_every for iter in range(len(train_losses))]
+        plt.plot(iters, train_losses, label="train")
+        plt.plot(iters, val_losses, label="validation")
+        plt.xlabel("iteration")
+        plt.ylabel("loss")
+        plt.title("training and validation loss curves")
+        plt.legend()
+        plt.show()
 
     # evaluate on test set
     model.eval()
@@ -215,47 +207,35 @@ def train(config: Config):
         f"[test_loss: {round(test_loss, 5)}, test_recall@{config.k}: {round(test_recall, 5)}, test_precision@{config.k}: {round(test_precision, 5)}, test_ndcg@{config.k}: {round(test_ndcg, 5)}"
     )
 
-    """# Make New Recommendatios for a Given User"""
-
+    # Save predictions for the matcher
     model.eval()
+    pos_items_per_user = create_adj_dict(edge_index)
+    top_items_per_user = {}
+    for user in tqdm(range(0, num_users)):
+        top_items_per_user[user] = make_predictions_for_user(
+            model.users_emb.weight,
+            model.items_emb.weight,
+            user,
+            pos_items_per_user,
+            config.num_recommendations,
+        )
+    t.save(top_items_per_user, "data/derived/lightgcn_output.pt")
 
-    user_pos_items = get_user_positive_items(edge_index)
+    save_scores(model)
 
-    def save_scores():
-        # user = user_mapping_index[user_id]
-        user_embeddings = model.users_emb.weight  # [user]
-        item_embeddings = model.items_emb.weight
-        # scores = model.items_emb.weight @ e_u
+    return Stats(
+        loss=train_loss.item(),
+        recall_val=recall,
+        recall_test=test_recall,
+        precision_val=precision,
+        precision_test=test_precision,
+    )
 
-        print("| Saving the user and article final embeddings...")
-        t.save(user_embeddings, "data/derived/users_emb_final_lightgcn.pt")
-        t.save(item_embeddings, "data/derived/items_emb_final_lightgcn.pt")
 
-    save_scores()
-
-    def make_predictions(user_id, num_recs):
-        user = user_mapping_index[user_id]
-        e_u = model.users_emb.weight[user]
-        scores = model.items_emb.weight @ e_u
-
-        values, indices = t.topk(scores, k=len(user_pos_items[user]) + num_recs)
-
-        articles = [
-            index.cpu().item() for index in indices if index in user_pos_items[user]
-        ][:num_recs]
-        article_ids = [
-            list(article_mapping_index.keys())[
-                list(article_mapping_index.values()).index(article)
-            ]
-            for article in articles
-        ]
-        titles = [article_mapping_id[str(id)] for id in article_ids]
-
-        print(f"Here are some articles that user {user_id} rated highly")
-        for i in range(num_recs):
-            print(f"title: {titles[i]}")
-
-    # make_predictions(1, 10)
+def save_scores(model: LightGCN):
+    print("| Saving the user and article final embeddings...")
+    t.save(model.users_emb.weight, "data/derived/users_emb_final_lightgcn.pt")
+    t.save(model.items_emb.weight, "data/derived/items_emb_final_lightgcn.pt")
 
 
 if __name__ == "__main__":

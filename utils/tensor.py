@@ -1,6 +1,24 @@
 import torch as t
+from torch import Tensor
 from typing import List, Union
 import torch.nn.functional as F
+import numpy as np
+
+
+def intersection_1d(t1: Tensor, t2: Tensor) -> Tensor:
+    # This can be quite costly, seek for alternative implementations before using it in prod
+    combined = t.cat((t1, t2))
+    uniques, counts = combined.unique(return_counts=True)
+    intersection = uniques[counts > 1]
+    return intersection
+
+
+def difference_1d(a: Tensor, b: Tensor, assume_unique: bool) -> Tensor:
+    r"""Returns the elements of A without the elements of B 1D"""
+    diff = np.setdiff1d(
+        a.detach().numpy(), b.detach().numpy(), assume_unique=assume_unique
+    )
+    return t.tensor(diff)
 
 
 def padded_stack(

@@ -176,6 +176,5 @@ class Encoder_Decoder_Model(t.nn.Module):
 
         # Rebatching by user.
         users = edge_label_index[0].unique(sorted=True)
-        users = t.bucketize(users, users)
         out_per_user = [out[edge_label_index[0] == user] for user in users]
         return padded_stack(out_per_user, value=-(1 << 50))

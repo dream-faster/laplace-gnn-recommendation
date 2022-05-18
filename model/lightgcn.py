@@ -12,7 +12,12 @@ class LightGCN(MessagePassing):
     """LightGCN Model as proposed in https://arxiv.org/abs/2002.02126"""
 
     def __init__(
-        self, num_users, num_items, embedding_dim: int, K: int, add_self_loops=False
+        self,
+        num_users,
+        num_items,
+        embedding_dim: int,
+        num_iterations: int,
+        add_self_loops=False,
     ):
         """Initializes LightGCN Model
 
@@ -25,7 +30,7 @@ class LightGCN(MessagePassing):
         """
         super().__init__()
         self.num_users, self.num_items = num_users, num_items
-        self.embedding_dim, self.K = embedding_dim, K
+        self.embedding_dim, self.num_iterations = embedding_dim, num_iterations
         self.add_self_loops = add_self_loops
 
         self.users_emb = nn.Embedding(
@@ -55,7 +60,7 @@ class LightGCN(MessagePassing):
         emb_k = emb_0
 
         # multi-scale diffusion
-        for i in range(self.K):
+        for _ in range(self.num_iterations):
             emb_k = self.propagate(edge_index_norm, x=emb_k)
             embs.append(emb_k)
 
@@ -80,12 +85,3 @@ class LightGCN(MessagePassing):
     def message_and_aggregate(self, adj_t: SparseTensor, x: Tensor) -> Tensor:
         # computes \tilde{A} @ x
         return matmul(adj_t, x)
-
-    def infer(self, data: Optional[Union[Data, HeteroData]]) -> Tensor:
-        user_embedding = self.users_emb.weight.to("cpu")
-        item_embedding = self.items_emb.weight.to("cpu")
-
-        # get ratings between every user and item - shape is num users x num articles
-        ratings = t.matmul(user_embedding, item_embedding.T)
-
-        return ratings
