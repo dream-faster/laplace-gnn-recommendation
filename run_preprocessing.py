@@ -316,9 +316,15 @@ def save_to_neo4j(
     transactions["train_mask"] = transactions["train_mask"].astype(int)
     transactions["test_mask"] = transactions["test_mask"].astype(int)
     transactions["val_mask"] = transactions["val_mask"].astype(int)
-    transactions.drop(
-        ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
-    )
+
+    if bool(
+        set(["t_dat", "price", "sales_channel_id", "year-month"])
+        & set(transactions.columns)
+    ):
+        transactions.drop(
+            ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
+        )
+
     transactions[":TYPE"] = "BUYS"
     save_to_csv(transactions, "transactions")
     # Neo4j needs to be stopped for neo4j-admin import to run

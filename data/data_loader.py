@@ -6,7 +6,8 @@ import json
 from typing import Tuple
 import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
-from .dataset_neo import GraphDataset
+from .dataset import GraphDataset
+from .dataset_neo import GraphDataset as GraphDatasetNeo
 from .matching.lightgcn import LightGCNMatcher
 from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
 from .matching.users_same_location import UsersSameLocationMatcher
@@ -16,8 +17,13 @@ from .matching.popular_items import PopularItemsMatcher
 def create_dataloaders(
     config: Config,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap, HeteroData]:
+    if config.neo4j:
+        SelectDataset = GraphDatasetNeo
+    else:
+        SelectDataset = GraphDataset
+
     data_dir = "data/derived/"
-    train_dataset = GraphDataset(
+    train_dataset = SelectDataset(
         config=config,
         graph_path=data_dir + "train_graph.pt",
         users_adj_list=data_dir + "edges_train.pt",
@@ -25,7 +31,8 @@ def create_dataloaders(
         train=True,
         split_type="train",
     )
-    val_dataset = GraphDataset(
+
+    val_dataset = SelectDataset(
         config=config,
         graph_path=data_dir + "val_graph.pt",
         users_adj_list=data_dir + "edges_val.pt",
@@ -39,7 +46,7 @@ def create_dataloaders(
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
         ],
     )
-    test_dataset = GraphDataset(
+    test_dataset = SelectDataset(
         config=config,
         graph_path=data_dir + "test_graph.pt",
         users_adj_list=data_dir + "edges_test.pt",

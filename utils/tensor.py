@@ -59,3 +59,7 @@ def padded_stack(
         dim=0,
     )
     return out
+
+
+def check_edge_index_flat_unique(edge_index: t.Tensor) -> t.Tensor:
+    return t.tensor(list(set(tuple(pair) for pair in edge_index.t().tolist())))
