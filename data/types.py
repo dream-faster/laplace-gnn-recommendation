@@ -42,7 +42,6 @@ class PreprocessingConfig:
     text_embedding_colname: Optional[
         str
     ]  # ["derived_name", "derived_look", "derived_category"]
-    K: int
     data_size: Optional[int]
     save_to_neo4j: Optional[bool]
     data_type: DataType

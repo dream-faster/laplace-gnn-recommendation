@@ -1,6 +1,6 @@
 from config import LightGCNConfig, DataType, PreprocessingConfig
 from data.types import UserColumn, ArticleColumn
-from run_preprocessing import preprocess
+from run_preprocessing_fashion import preprocess
 from run_pipeline_lightgcn import train
 from torch_geometric import seed_everything
 
@@ -25,7 +25,6 @@ preprocessing_config = PreprocessingConfig(
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
-    K=0,
     data_size=1_000,
     save_to_neo4j=False,
     data_type=DataType.pyg,

@@ -165,8 +165,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
-    K=0,
-    data_size=100000,
+    data_size=100_000,
     save_to_neo4j=False,
     data_type=DataType.pyg,
 )
