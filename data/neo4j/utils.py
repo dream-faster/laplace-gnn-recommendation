@@ -6,7 +6,7 @@ def get_neighborhood(
     db: Database, node_id: int, n_neighbor: int, split_type: str
 ) -> list:
     result = db.run_match(
-        db.get_n_neighbors(
+        db.query_n_neighbors(
             node_id=node_id,
             n_neighbor=n_neighbor,
             node_type="Customer",

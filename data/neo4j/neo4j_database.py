@@ -14,7 +14,7 @@ class Database:
     """ GET """
 
     @staticmethod
-    def get_node(node_id: int, node_type: str, no_return: bool = False) -> str:
+    def query_node(node_id: int, node_type: str, no_return: bool = False) -> str:
         query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})"
 
         if no_return:
@@ -23,7 +23,7 @@ class Database:
             return query + " RETURN n"
 
     @staticmethod
-    def get_n_neighbors(
+    def query_n_neighbors(
         node_id: int,
         n_neighbor: int,
         node_type: str,
