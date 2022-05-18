@@ -11,6 +11,8 @@ from utils.metrics_lightgcn import (
     create_adj_dict,
     make_predictions_for_user,
 )
+from reporting.types import Stats
+
 
 from config import LightGCNConfig, lightgcn_config
 
@@ -220,6 +222,14 @@ def train(config: LightGCNConfig):
     t.save(top_items_per_user, "data/derived/lightgcn_output.pt")
 
     save_scores(model)
+
+    return Stats(
+        loss=train_loss.item(),
+        recall_val=recall,
+        recall_test=test_recall,
+        precision_val=precision,
+        precision_test=test_precision,
+    )
 
 
 def save_scores(model: LightGCN):
