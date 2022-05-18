@@ -112,7 +112,7 @@ link_pred_config = Config(
     val_split=0.1,
     batch_size=128,  # combination of batch_size with num_neighbors and n_hop_neighbors and num_workers determines if data would fit on gpu
     num_neighbors=64,  #
-    n_hop_neighbors=3,
+    n_hop_neighbors=2,
     num_workers=1,
     candidate_pool_size=20,
     positive_edges_ratio=0.5,
@@ -126,7 +126,7 @@ link_pred_config = Config(
     p_dropout_edges=0.2,  # Currently not being used!
     p_dropout_features=0.3,
     batch_norm=True,
-    neo4j=False,
+    neo4j=True,
 )
 
 
@@ -167,6 +167,6 @@ only_users_and_articles_nodes = PreprocessingConfig(
     text_embedding_colname="derived_look",
     K=0,
     data_size=100000,
-    save_to_neo4j=False,
+    save_to_neo4j=True,
     data_type=DataType.pyg,
 )
