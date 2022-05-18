@@ -9,12 +9,6 @@ from config import Config
 from utils.flatten import flatten
 import random
 
-from timeit import default_timer as timer
-from datetime import timedelta
-import numpy as np
-
-times = []
-
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 
@@ -43,7 +37,6 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
-        start = timer()
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
         positive_article_indices = t.as_tensor(
@@ -186,10 +179,6 @@ class GraphDataset(InMemoryDataset):
             reverse_key
         ].type(t.long)
         data[Constants.rev_edge_key].edge_label = labels.type(t.long)
-
-        end = timer()
-        times.append(timedelta(seconds=end - start))
-        print(np.mean(times))
         return data
 
 
