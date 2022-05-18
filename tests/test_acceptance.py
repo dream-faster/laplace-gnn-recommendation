@@ -47,10 +47,10 @@ lightgcn_config = LightGCNConfig(
 )
 
 
-def test_lightgcn_pipeline():
-    seed_everything(42)
-    preprocess(preprocessing_config)
-    stats = train(lightgcn_config)
-    assert stats.loss < -0.8
-    assert stats.recall_test > 0.01
-    assert stats.precision_test > 0.0008
+# def test_lightgcn_pipeline():
+#     seed_everything(42)
+#     preprocess(preprocessing_config)
+#     stats = train(lightgcn_config)
+#     assert stats.loss < -0.8
+#     assert stats.recall_test > 0.01
+#     assert stats.precision_test > 0.0008
