@@ -12,7 +12,7 @@ import pandas as pd
 seed_everything(5)
 # Generate and save entire graph data:
 original_data = create_entire_graph_data(
-    save=True, config=generator_config, type="random"
+    save=True, config=generator_config, type="star"
 )
 
 # This is the data we are comparing it to:
