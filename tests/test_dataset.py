@@ -3,10 +3,13 @@ from utils.constants import Constants
 import torch as t
 from tests.data_generator import create_entire_graph_data, create_subgraph_comparison
 from torch_geometric import seed_everything
-from tests.util import get_first_item_from_dataset, deconstruct_heterodata
+from tests.util import (
+    get_first_item_from_dataset,
+    deconstruct_heterodata,
+    preprocess_and_load_to_neo4j,
+)
 from tests.types import GeneratorConfig, generator_config
 from config import link_pred_config
-from run_preprocessing import save_to_csv, save_to_neo4j
 import pandas as pd
 
 seed_everything(5)
@@ -21,10 +24,7 @@ data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighb
 
 def test_integrity_base(graph_database: bool = True):
     if graph_database:
-        customers = pd.read_csv("data/saved/customers_mock.csv")
-        articles = pd.read_csv("data/saved/articles_mock.csv")
-        transactions = pd.read_csv("data/saved/transactions_mock.csv")
-        save_to_neo4j(customers, articles, transactions)
+        preprocess_and_load_to_neo4j(original_data)
 
     # This is the data we are testing:
     data_from_dataset = get_first_item_from_dataset(graph_database=graph_database)

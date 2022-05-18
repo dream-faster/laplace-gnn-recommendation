@@ -8,6 +8,7 @@ import torch as t
 import pandas as pd
 from typing import Tuple, Optional
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
+from run_preprocessing import save_to_neo4j
 
 
 def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
@@ -138,3 +139,64 @@ def get_edge_dicts(edge_index: Tensor) -> Tuple[dict, dict]:
 
 def __extract_edges(edges: pd.DataFrame, by: str, get: str) -> dict:
     return edges.groupby(by)[get].apply(list).to_dict()
+
+
+def preprocess_and_load_to_neo4j(
+    original_data: HeteroData,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    customers = pd.DataFrame(original_data[Constants.node_user].x)
+    customers.rename(
+        columns={
+            i: column_name
+            for i, column_name in enumerate(
+                [
+                    "postal_code",
+                    "FN",
+                    "age",
+                    "club_member_status",
+                    "fashion_news_frequency",
+                    "Active",
+                ]
+            )
+        },
+        inplace=True,
+    )
+    customers[":ID(Customer)"] = customers.index
+    customers[":LABEL"] = "Customer"
+    customers["_id"] = customers[":ID(Customer)"]
+
+    articles = pd.DataFrame(original_data[Constants.node_item].x)
+    articles.rename(
+        columns={
+            i: column_name
+            for i, column_name in enumerate(
+                [
+                    "product_code",
+                    "product_type_no",
+                    "graphical_appearance_no",
+                    "colour_group_code",
+                ]
+            )
+        },
+        inplace=True,
+    )
+    articles[":ID(Article)"] = articles.index
+    articles[":LABEL"] = "Article"
+    articles["_id"] = articles[":ID(Article)"]
+
+    transactions = pd.DataFrame(
+        {
+            ":START_ID(Customer)": original_data[Constants.edge_key]
+            .edge_index[0]
+            .tolist(),
+            ":END_ID(Article)": original_data[Constants.edge_key]
+            .edge_index[1]
+            .tolist(),
+            ":TYPE": "BUYS",
+            "train_mask": 1.0,
+            "val_mask": 0.0,
+            "test_mask": 0.0,
+        }
+    )
+
+    save_to_neo4j(customers, articles, transactions)
