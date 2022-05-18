@@ -333,6 +333,7 @@ def save_to_neo4j(
     time.sleep(5)
     # Create the indexes for Customer & Article node types
     print("| Creating indexes...")
+
     os.system(
         "echo 'CREATE INDEX ON :Customer(ID)' | cypher-shell -u neo4j -p password --format plain"
     )
@@ -344,6 +345,11 @@ def save_to_neo4j(
     )
     os.system(
         "echo 'CREATE INDEX ON :Article(_id)' | cypher-shell -u neo4j -p password --format plain"
+
+    print("Number of nodes in the database:")
+    os.system(
+        "echo 'MATCH (n) RETURN count(n)' | cypher-shell -u neo4j -p password --format plain"
+
     )
 
 
