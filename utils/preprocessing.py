@@ -18,7 +18,7 @@ def create_data_pyg(
     data = HeteroData()
     data[Constants.node_user].x = customers
     data[Constants.node_item].x = articles
-    data[Constants.node_user, "buys", Constants.node_item].edge_index = t.as_tensor(
+    data[Constants.edge_key].edge_index = t.as_tensor(
         (transactions_to_customer_id, transactions_to_article_id),
         dtype=t.long,
     )
@@ -40,7 +40,7 @@ def create_data_dgl(
                 t.as_tensor(transactions_to_customer_id, dtype=t.long),
                 t.as_tensor(transactions_to_article_id, dtype=t.long),
             ),
-            (Constants.node_item, "rev_buys", Constants.node_user): (
+            Constants.rev_edge_key: (
                 t.as_tensor(transactions_to_article_id, dtype=t.long),
                 t.as_tensor(transactions_to_customer_id, dtype=t.long),
             ),
