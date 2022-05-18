@@ -125,8 +125,8 @@ class Encoder_Decoder_Model(t.nn.Module):
 
     def __embedding(self, x_dict: dict) -> dict:
         customer_features, article_features = (
-            x_dict[Constants.node_user].long(),
-            x_dict[Constants.node_item].long(),
+            x_dict[Constants.node_user],
+            x_dict[Constants.node_item]
         )
         embedding_customers, embedding_articles = [], []
         for i, embedding_layer in enumerate(self.embedding_customers):

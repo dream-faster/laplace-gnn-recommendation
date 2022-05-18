@@ -62,7 +62,7 @@ def preprocess(config: PreprocessingConfig):
             for g in genres_set:
                 data[g] = 1
             articles.append(data)
-    articles = pd.DataFrame(articles).astype({"year": "category"})
+    articles = pd.DataFrame(articles).fillna(0)
 
     print("| Loading transactions...")
     transactions = pd.read_csv(
@@ -137,10 +137,10 @@ def preprocess(config: PreprocessingConfig):
     assert config.save_to_neo4j == False, "We dont support neo4j just yet here"
 
     print("| Converting to tensors...")
-    customers = t.tensor(customers.to_numpy(), dtype=t.float)
+    customers = t.tensor(customers.to_numpy(), dtype=t.long)
     assert t.isnan(customers).any() == False
 
-    articles = t.tensor(articles.to_numpy(), dtype=t.float)
+    articles = t.tensor(articles.to_numpy(), dtype=t.long)
     assert t.isnan(articles).any() == False
 
     print("| Creating Data...")
