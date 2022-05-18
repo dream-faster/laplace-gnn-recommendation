@@ -12,11 +12,6 @@ from data.neo4j.neo4j_database import Database
 from data.neo4j.utils import get_neighborhood
 from utils.tensor import check_edge_index_flat_unique
 
-from timeit import default_timer as timer
-from datetime import timedelta
-import numpy as np
-
-times = []
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -49,8 +44,6 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
-        start = timer()
-
         """Create Edges"""
         all_edges = self.graph[Constants.edge_key].edge_index
 
@@ -200,9 +193,6 @@ class GraphDataset(InMemoryDataset):
         ].type(t.long)
         data[Constants.rev_edge_key].edge_label = labels.type(t.long)
 
-        end = timer()
-        times.append(timedelta(seconds=end - start))
-        print(np.mean(times))
         return data
 
 
