@@ -1,8 +1,8 @@
 from utils.constants import Constants
 from torch_geometric.data import HeteroData
 from config import Config
-from data.dataset_alt import GraphDataset as GraphDatasetAlt
 from data.dataset import GraphDataset
+from data.dataset_neo import GraphDataset as GraphDatasetNeo
 from torch import Tensor
 import torch as t
 import pandas as pd
@@ -10,7 +10,7 @@ from typing import Tuple, Optional
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
 
 
-def get_first_item_from_dataset(alternative: bool) -> HeteroData:
+def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
     data_dir = "data/derived/"
 
     config = Config(
@@ -44,17 +44,20 @@ def get_first_item_from_dataset(alternative: bool) -> HeteroData:
         p_dropout_features=0.0,
         batch_norm=True,
     )
-    if not alternative:
-        train_dataset = GraphDataset(
+
+    if graph_database:
+        train_dataset = GraphDatasetNeo(
             config=config,
             users_adj_list=data_dir + "dummy_edges_train.pt",
             graph_path=data_dir + "dummy_graph_train.pt",
             articles_adj_list=data_dir + "dummy_rev_edges_train.pt",
             train=True,
             randomization=False,
+            split_type="train",
         )
+
     else:
-        train_dataset = GraphDatasetAlt(
+        train_dataset = GraphDataset(
             config=config,
             users_adj_list=data_dir + "dummy_edges_train.pt",
             graph_path=data_dir + "dummy_graph_train.pt",

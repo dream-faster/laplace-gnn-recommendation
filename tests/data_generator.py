@@ -9,13 +9,17 @@ from tests.types import GeneratorConfig
 
 
 def create_entire_graph_data(
-    save=False, generated=False, config: Optional[GeneratorConfig] = None
+    save=False,
+    config: Optional[GeneratorConfig] = None,
+    type: Optional[str] = None,
 ) -> HeteroData:
     (
         node_features,
         article_features,
         graph_edges,
-    ) = __get_raw_data(generated=generated, config=config)
+    ) = __get_raw_data(config=config, type=type)
+
+    print(f"Generated test data is {type}")
 
     """Create Data"""
     data = HeteroData()
@@ -107,10 +111,10 @@ def create_subgraph_comparison(n_hop: int) -> HeteroData:
 
 
 def __get_raw_data(
-    generated: bool = False,
     config: Optional[GeneratorConfig] = None,
+    type: Optional[str] = None,
 ) -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
-    if generated and config is not None:
+    if type == "generated" and config is not None:
         return __generated(
             config.num_users,
             config.num_user_features,
@@ -119,24 +123,38 @@ def __get_raw_data(
             config.connection_ratio,
         )
     else:
-        return __manual()
+        return __manual(type)
 
 
-def __manual() -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
-    node_features = t.stack(
-        [t.tensor([0.0, 0.1]), t.tensor([1.0, 1.1]), t.tensor([2.0, 2.1])]
-    )
-    article_features = t.stack(
-        [
-            t.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
-            t.tensor([1.0, 1.1, 1.2, 1.3, 1.4]),
-            t.tensor([2.0, 2.1, 2.2, 2.3, 2.4]),
-            t.tensor([3.0, 3.1, 3.2, 3.3, 3.4]),
-            t.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
-            t.tensor([5.0, 5.1, 5.2, 5.3, 5.4]),
-        ]
-    )
-    graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]]).type(t.long)
+def __manual(type: Optional[str]) -> tuple[NodeFeatures, ArticleFeatures, AllEdges]:
+    if type == "random" or type == None:
+        node_features = t.stack(
+            [t.tensor([0.0, 0.1]), t.tensor([1.0, 1.1]), t.tensor([2.0, 2.1])]
+        )
+        article_features = t.stack(
+            [
+                t.tensor([0.0, 0.1, 0.2, 0.3, 0.4]),
+                t.tensor([1.0, 1.1, 1.2, 1.3, 1.4]),
+                t.tensor([2.0, 2.1, 2.2, 2.3, 2.4]),
+                t.tensor([3.0, 3.1, 3.2, 3.3, 3.4]),
+                t.tensor([4.0, 4.1, 4.2, 4.3, 4.4]),
+                t.tensor([5.0, 5.1, 5.2, 5.3, 5.4]),
+            ]
+        )
+        graph_edges = t.tensor([[0, 0, 0, 1, 1, 2, 2], [0, 2, 4, 1, 5, 3, 0]]).type(
+            t.long
+        )
+
+    elif type == "star":
+        node_features = t.stack(
+            [t.tensor([float(f"{i}.{j}") for j in range(6)]) for i in range(5)]
+        )
+        article_features = t.stack(
+            [t.tensor([float(f"{i}.{j}") for j in range(4)]) for i in range(4)]
+        )
+        graph_edges = t.tensor(
+            [[0, 0, 0, 0, 1, 2, 3, 4], [0, 1, 2, 3, 0, 1, 2, 3]]
+        ).type(t.long)
 
     return node_features, article_features, graph_edges
 

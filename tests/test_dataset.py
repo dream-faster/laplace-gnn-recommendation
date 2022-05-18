@@ -6,29 +6,28 @@ from torch_geometric import seed_everything
 from tests.util import get_first_item_from_dataset, deconstruct_heterodata
 from tests.types import GeneratorConfig, generator_config
 from config import link_pred_config
+from run_preprocessing import save_to_csv, save_to_neo4j
+import pandas as pd
 
 seed_everything(5)
 # Generate and save entire graph data:
 original_data = create_entire_graph_data(
-    save=True, generated=True, config=generator_config
+    save=True, config=generator_config, type="random"
 )
 
 # This is the data we are comparing it to:
 data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighbors)
 
 
-# the alternative dataset is currently failing the tests
-# def test_integrity_alt():
-#     # This is the data we are testing:
-#     data_from_dataset = get_first_item_from_dataset(alternative=True)
+def test_integrity_base(graph_database: bool = True):
+    if graph_database:
+        customers = pd.read_csv("data/saved/customers_mock.csv")
+        articles = pd.read_csv("data/saved/articles_mock.csv")
+        transactions = pd.read_csv("data/saved/transactions_mock.csv")
+        save_to_neo4j(customers, articles, transactions)
 
-#     integrity_edges(data=data_from_dataset, data_comp=data_comparison)
-#     integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
-
-
-def test_integrity_base():
     # This is the data we are testing:
-    data_from_dataset = get_first_item_from_dataset(alternative=False)
+    data_from_dataset = get_first_item_from_dataset(graph_database=graph_database)
 
     integrity_edges(data=data_from_dataset, data_comp=data_comparison)
     integrity_nodes(data=data_from_dataset, data_comp=data_comparison)
@@ -49,8 +48,20 @@ def integrity_edges(data: HeteroData, data_comp: HeteroData = data_comparison):
 
         # Comparing to subgraph dataset that we construct
         edges_comp = data_comp[edge_type]
-        assert t.equal(edges.edge_index, edges_comp.edge_index)
-        assert t.equal(edges.edge_label_index, edges_comp.edge_label_index)
+        assert t.equal(
+            edges.edge_index[0].sort()[0], edges_comp.edge_index[0].sort()[0]
+        )
+        assert t.equal(
+            edges.edge_index[1].sort()[0], edges_comp.edge_index[1].sort()[0]
+        )
+        assert t.equal(
+            edges.edge_label_index[0].sort()[0],
+            edges_comp.edge_label_index[0].sort()[0],
+        )
+        assert t.equal(
+            edges.edge_label_index[1].sort()[0],
+            edges_comp.edge_label_index[1].sort()[0],
+        )
         assert t.equal(edges.edge_label, edges_comp.edge_label)
 
 

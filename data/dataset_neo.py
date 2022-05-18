@@ -10,6 +10,7 @@ from utils.flatten import flatten
 import random
 from data.neo4j.neo4j_database import Database
 from data.neo4j.utils import get_neighborhood
+from utils.tensor import check_edge_index_flat_unique
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -111,13 +112,13 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        # n_hop_edges_old = fetch_n_hop_neighbourhood(
-        #     self.config.n_hop_neighbors,
-        #     idx,
-        #     self.users,
-        #     self.articles,
-        #     num_neighbors=self.config.num_neighbors,
-        # )
+        n_hop_edges_old = fetch_n_hop_neighbourhood(
+            self.config.n_hop_neighbors,
+            idx,
+            self.users,
+            self.articles,
+            num_neighbors=self.config.num_neighbors,
+        )
 
         n_hop_edges = t.tensor(
             get_neighborhood(
