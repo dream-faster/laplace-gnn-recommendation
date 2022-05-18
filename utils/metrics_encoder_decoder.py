@@ -70,7 +70,7 @@ def get_metrics_universal(
 
     # get all unique users in evaluated split
     users = edge_label_index[0].unique(sorted=True)
-    test_user_pos_items = create_adj_list(edge_index)
+    test_user_pos_items = create_adj_list(edge_index, users)
 
     # determine the correctness of topk predictions
     r = t.stack(

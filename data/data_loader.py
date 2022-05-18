@@ -31,7 +31,7 @@ def create_dataloaders(
         articles_adj_list=data_dir + "rev_edges_val.pt",
         train=False,
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
             # UsersSameLocationMatcher(config.candidate_pool_size, "val"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
@@ -44,7 +44,7 @@ def create_dataloaders(
         articles_adj_list=data_dir + "rev_edges_test.pt",
         train=False,
         matchers=[
-            LightGCNMatcher(config.candidate_pool_size),
+            # LightGCNMatcher(config.candidate_pool_size),
             PopularItemsMatcher(config.candidate_pool_size),
             # UsersSameLocationMatcher(config.candidate_pool_size, "test"),
             UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "test"),
