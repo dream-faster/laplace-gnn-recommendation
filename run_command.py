@@ -14,7 +14,7 @@ def run():
     # Go through each item in configs and add it to the parser
     for key, value in vars(link_pred_config).items():
         parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
-    for key, value in vars(only_users_and_articles_nodes).items():
+    for key, value in vars(preprocessing_config).items():
         parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
 
     args = parser.parse_args()
