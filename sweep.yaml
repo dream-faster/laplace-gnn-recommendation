@@ -1,5 +1,5 @@
 program: run_sweep.py
-method: bayes
+method: random
 project: fashion-recommendation-GNN
 name: Finding best hyperparameters for a trainingset of 100k
 early_terminate:
@@ -22,7 +22,7 @@ parameters:
   encoder_layer_output_size:
     values: [32, 64, 128, 256, 512]
   learning_rate:
-    values: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    values: [1e-2, 1e-3, 1e-4, 1e-5]
   n_hop_neighbors:
     min: 1
     max: 4
