@@ -77,8 +77,7 @@ def run_pipeline(config: Config) -> Stats:
 
     print("| Training Model...")
     old_val_precision = -1
-    loop_obj = tqdm(range(0, config.epochs))
-    for epoch in loop_obj:
+    for epoch in range(0, config.epochs):
         losses = train_with_dataloader(model, optimizer, train_loader, epoch, device)
 
         report_results(
