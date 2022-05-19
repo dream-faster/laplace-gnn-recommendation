@@ -30,8 +30,8 @@ def run_pipeline(config: Config) -> Stats:
     seed_everything(5)
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
     assert (
-        config.k <= config.candidate_pool_size
-    ), "k must be smaller than candidate_pool_size"
+        config.k * 2 <= config.candidate_pool_size
+    ), "k must be smaller than candidate_pool_size"  # we always have more than one matcher
 
     print("| Creating Datasets...")
     (
