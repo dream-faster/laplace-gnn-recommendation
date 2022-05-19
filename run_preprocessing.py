@@ -2,15 +2,15 @@ import pandas as pd
 from tqdm import tqdm
 from data.types import (
     DataType,
-    PreprocessingConfig,
+    BasePreprocessingConfig,
 )
 import torch as t
 import json
 import re
 from run_data_splitting import train_test_split_by_time
 from utils.labelencoder import encode_labels
-from config import only_users_and_articles_nodes
-from typing import List, Optional
+from config import preprocessing_config
+from typing import List
 from utils.preprocessing import (
     create_data_pyg,
     create_data_dgl,
@@ -24,19 +24,7 @@ def save_to_csv(dataframe: pd.DataFrame, name: str):
     dataframe.to_csv(f"data/saved/{name}.csv", index=False)
 
 
-class PreprocessingConfig:
-    filter_out_unconnected_nodes: bool
-    data_size: Optional[int]
-    save_to_neo4j: Optional[bool]
-    data_type: DataType
-
-    def print(self):
-        print("Configuration is:")
-        for key, value in vars(self).items():
-            print(f"{key:>20}: {value}")
-
-
-def preprocess(config: PreprocessingConfig):
+def preprocess(config: BasePreprocessingConfig):
     config.print()
     print("| Loading customers...")
     customers = pd.read_csv(
@@ -202,4 +190,4 @@ def read_file(filename: str) -> List[str]:
 
 
 if __name__ == "__main__":
-    preprocess(only_users_and_articles_nodes)
+    preprocess(preprocessing_config)

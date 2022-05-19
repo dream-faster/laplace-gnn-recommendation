@@ -8,11 +8,7 @@ from data.types import (
 import torch as t
 import json
 from utils.labelencoder import encode_labels
-import numpy as np
-from typing import Tuple
-from config import only_users_and_articles_nodes
-import numpy as np
-from utils.constants import Constants
+from config import preprocessing_config
 import os
 import time
 from utils.preprocessing import (
@@ -299,4 +295,4 @@ def save_to_neo4j(
 
 
 if __name__ == "__main__":
-    preprocess(only_users_and_articles_nodes)
+    preprocess(preprocessing_config)

@@ -30,18 +30,8 @@ class DataType(Enum):
 
 
 @dataclass
-class PreprocessingConfig:
-    customer_features: List[UserColumn]
-    article_features: List[ArticleColumn]
-
-    article_non_categorical_features: List[ArticleColumn]
+class BasePreprocessingConfig:
     filter_out_unconnected_nodes: bool
-
-    load_image_embedding: bool
-    load_text_embedding: bool
-    text_embedding_colname: Optional[
-        str
-    ]  # ["derived_name", "derived_look", "derived_category"]
     data_size: Optional[int]
     save_to_neo4j: Optional[bool]
     data_type: DataType
@@ -50,6 +40,20 @@ class PreprocessingConfig:
         print("Configuration is:")
         for key, value in vars(self).items():
             print(f"{key:>20}: {value}")
+
+
+@dataclass
+class PreprocessingConfig(BasePreprocessingConfig):
+    customer_features: List[UserColumn]
+    article_features: List[ArticleColumn]
+
+    article_non_categorical_features: List[ArticleColumn]
+
+    load_image_embedding: bool
+    load_text_embedding: bool
+    text_embedding_colname: Optional[
+        str
+    ]  # ["derived_name", "derived_look", "derived_category"]
 
 
 @dataclass

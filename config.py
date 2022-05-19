@@ -148,7 +148,11 @@ lightgcn_config = LightGCNConfig(
     num_recommendations=256,
 )
 
-only_users_and_articles_nodes = PreprocessingConfig(
+
+
+
+
+preprocessing_config = PreprocessingConfig(
     customer_features=[
         UserColumn.PostalCode,
         UserColumn.FN,
