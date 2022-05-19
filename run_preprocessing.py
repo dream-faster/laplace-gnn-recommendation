@@ -353,6 +353,10 @@ def save_to_neo4j(
         "echo 'CREATE INDEX ON :Article(_id)' | cypher-shell -u neo4j -p password --format plain"
     )
 
+    os.system(
+        "echo 'CREATE FULLTEXT INDEX relationship_index FOR ()-[r:BUYS]-() ON EACH [r.train_mask]' | cypher-shell -u neo4j -p password --format plain"
+    )
+
     print("Number of nodes in the database:")
     os.system(
         "echo 'MATCH (n) RETURN count(n)' | cypher-shell -u neo4j -p password --format plain"
