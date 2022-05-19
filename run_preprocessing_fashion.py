@@ -3,7 +3,6 @@ from tqdm import tqdm
 from data.types import (
     DataType,
     PreprocessingConfig,
-    UserColumn,
 )
 import torch as t
 import json
@@ -18,6 +17,7 @@ from utils.preprocessing import (
     extract_edges,
     extract_reverse_edges,
 )
+from utils.pandas import drop_columns_if_exist
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -256,8 +256,8 @@ def save_to_neo4j(
         set(["t_dat", "price", "sales_channel_id", "year-month"])
         & set(transactions.columns)
     ):
-        transactions.drop(
-            ["t_dat", "price", "sales_channel_id", "year-month"], axis=1, inplace=True
+        drop_columns_if_exist(
+            transactions, ["t_dat", "price", "sales_channel_id", "year-month"]
         )
 
     transactions[":TYPE"] = "BUYS"
