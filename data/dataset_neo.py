@@ -117,7 +117,7 @@ class GraphDataset(InMemoryDataset):
             get_neighborhood(
                 self.db,
                 node_id=idx,
-                n_neighbor=self.config.n_hop_neighbors + 1,
+                n_neighbor=self.config.n_hop_neighbors,
                 split_type=self.split_type,
             ),
             dtype=t.long,

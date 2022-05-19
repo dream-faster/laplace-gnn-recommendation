@@ -18,6 +18,7 @@ from utils.preprocessing import (
     extract_edges,
     extract_reverse_edges,
 )
+from data.neo4j.save import save_to_neo4j
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -122,7 +123,8 @@ def preprocess(config: BasePreprocessingConfig):
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
-    assert config.save_to_neo4j == False, "We dont support neo4j just yet here"
+    if config.save_to_neo4j:
+        save_to_neo4j(customers, articles, transactions, "movielens")
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.long)
