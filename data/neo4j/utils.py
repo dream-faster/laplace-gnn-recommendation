@@ -11,24 +11,17 @@ def get_neighborhood(
             n_neighbor=n_neighbor,
             node_type="Customer",
             split_type=split_type,
-            no_return=True,
+            no_return=False,
         )
-        + "RETURN collect(n), collect(m), collect(r)"
     )
-
-    """ Collect nodes and experiments into lists """
-    user_node = result[0][0] if result[0] else None
-    neighbor_nodes = result[1] if result else None
-    relationships = [relship for list in result[2] for relship in list]
 
     """ Filter nodes and experiments into lists """
     edge_index = [
         (
-            int(relship.start_node._properties["_id"]),
-            int(relship.end_node._properties["_id"]),
+            int(relship["startnode(rel)._id"]),
+            int(relship["endnode(rel)._id"]),
         )
-        for relship in relationships
-        if int(relship._properties[split_type + "_mask"]) == 1
+        for relship in result
     ]
 
     edge_index = list(set(edge_index))

@@ -31,11 +31,13 @@ class Database:
         no_return: bool = False,
     ) -> str:
         split_string = split_type + "_mask"
-        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}})-[r*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
+        # slow_query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
+        query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m) UNWIND r AS rel WITH DISTINCT rel"
+
         if no_return:
             return query + " "
         else:
-            return query + " RETURN m,r"
+            return query + " RETURN startnode(rel)._id, endnode(rel)._id"
 
     """ UTILITY METHODS """
 
@@ -43,7 +45,7 @@ class Database:
         with self.driver.session() as session:
             result = list(session.run(query))
 
-            return [record[key] for record in result for key in result[0].keys()]
+            return result
 
     def run_query(self, query: str):
         with self.driver.session() as session:
