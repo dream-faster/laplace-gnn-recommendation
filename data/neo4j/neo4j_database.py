@@ -34,23 +34,29 @@ class Database:
         # slow_query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
         # query_traditional = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m) UNWIND r AS rel WITH DISTINCT rel"
         query = (
-            f'MATCH (p:Customer {{_id: "{str(node_id)}"}})'
-            + f' CALL apoc.path.subgraphAll(p, {{relationshipFilter: "BUYS",minLevel: 1,maxLevel: {str(n_neighbor)}}})'
-            + " YIELD nodes, relationships"
+            f"MATCH (p:Customer {{_id: '{str(node_id)}'}})"
+            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
+            + " YIELD relationships"
         )
 
         if no_return:
             return query + " "
         else:
-            return query + " RETURN nodes, relationships;"
+            return query + " RETURN relationships"
+
+    @staticmethod
+    def query_all_nodes(node_type: str) -> str:
+        query = f"MATCH (n:{node_type}) RETURN n"
+
+        return query
 
     """ UTILITY METHODS """
 
     def run_match(self, query: str):
         with self.driver.session() as session:
-            result = session.run(query)
+            result = list(session.run(query))
 
-        return result
+            return result
 
     def run_query(self, query: str):
         with self.driver.session() as session:

@@ -16,15 +16,18 @@ def get_neighborhood(
     )
 
     """ Filter nodes and experiments into lists """
-    edge_index = [
-        (
-            int(relship["startnode(rel)._id"]),
-            int(relship["endnode(rel)._id"]),
-        )
-        for relship in result
-    ]
-
+    edge_index = [(res.start_node.id, res.end_node.id) for res in result[0][0]]
     edge_index = list(set(edge_index))
     edge_index_t = list(map(list, zip(*edge_index)))
 
     return edge_index_t
+
+
+def get_id_map(db: Database) -> tuple[dict, dict]:
+    customers = db.run_match(db.query_all_nodes(node_type="Customer"))
+    articles = db.run_match(db.query_all_nodes(node_type="Article"))
+
+    customer_map = {customer["n"].id: customer["n"]._id for customer in customers}
+    article_map = {article["n"].id: article["n"]._id for article in articles}
+
+    return customer_map, article_map

@@ -9,7 +9,7 @@ from config import Config
 from utils.flatten import flatten
 import random
 from data.neo4j.neo4j_database import Database
-from data.neo4j.utils import get_neighborhood
+from data.neo4j.utils import get_neighborhood, get_id_map
 from utils.tensor import check_edge_index_flat_unique
 
 
@@ -39,6 +39,8 @@ class GraphDataset(InMemoryDataset):
         self.randomization = randomization
         self.db = Database(db_param[0], db_param[1], db_param[2])
         self.split_type = split_type
+
+        self.article_remap, self.customer_remap = get_id_map(self.db)
 
     def __len__(self) -> int:
         return len(self.users)
@@ -113,17 +115,16 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        n_hop_edges = t.tensor(
-            get_neighborhood(
-                self.db,
-                node_id=idx,
-                n_neighbor=self.config.n_hop_neighbors,
-                split_type=self.split_type,
-            ),
-            dtype=t.long,
+        n_hop_edges = get_neighborhood(
+            self.db,
+            node_id=idx,
+            n_neighbor=self.config.n_hop_neighbors,
+            split_type=self.split_type,
         )
-
         # Filter out positive edges
+        n_hop_edges[0] = [self.customer_remap[x] for x in n_hop_edges[0]]
+        n_hop_edges[1] = [self.article_remap[x] for x in n_hop_edges[1]]
+        n_hop_edges = t.tensor(n_hop_edges, dtype=t.long)
         n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
 
         all_touched_edges = t.cat(
