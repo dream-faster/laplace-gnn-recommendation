@@ -31,14 +31,10 @@ class Config:
     conv_agg_type: str  # "add", "mean", "max", "lstm"
     heterogeneous_prop_agg_type: str  # "sum", "mean", "min", "max", "mul"
     save_model: bool
-    eval_every: int  # (LightGCN) evaluation to run every n epoch
-    lr_decay_every: int  # (LightGCN) lr decay to run every n epoch
-    Lambda: float  # (LightGCN)
+    eval_every: int  # evaluation to run every n epoch
     save_every: float  # How often the model should be saved, Ratio of epochs (eg.: 0.2 * epoch_num)
 
     batch_size: int  # batch size. refers to the # of customers in the batch (each will come with all of its edges)
-    val_split: float
-    test_split: float
     num_neighbors: int  # sample n neighbors for each node for n_hop_neighbors iterations
     n_hop_neighbors: int
     num_workers: int  # number of workers to use for data loading
@@ -67,9 +63,6 @@ class Config:
         assert (
             self.positive_edges_ratio <= 1.0
         ), "Positive Edges ratio has to be smaller than 1.0"
-        assert (
-            self.val_split + self.test_split <= 1.0
-        ), "Validation + Test split cannot be bigger than 1.0"
         assert self.p_dropout_edges <= 1.0, "p_dropout_edges cannot be bigger than 1.0"
         assert (
             self.p_dropout_features <= 1.0
@@ -111,8 +104,6 @@ link_pred_config = Config(
     heterogeneous_prop_agg_type="sum",
     learning_rate=0.01,
     save_model=False,
-    test_split=0.1,
-    val_split=0.1,
     batch_size=24,  # combination of batch_size with num_neighbors and n_hop_neighbors and num_workers determines if data would fit on gpu
     num_neighbors=64,  #
     n_hop_neighbors=3,
@@ -121,8 +112,6 @@ link_pred_config = Config(
     positive_edges_ratio=0.5,
     negative_edges_ratio=3.0,
     eval_every=1,
-    lr_decay_every=1,
-    Lambda=1e-6,
     save_every=0.2,  #
     profiler=None,  # Profiler(every=20),
     evaluate_break_at=None,
@@ -147,9 +136,6 @@ lightgcn_config = LightGCNConfig(
     show_graph=False,
     num_recommendations=256,
 )
-
-
-
 
 
 preprocessing_config = PreprocessingConfig(
