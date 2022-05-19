@@ -50,4 +50,4 @@ def test_pipeline():
     stats = run_pipeline(config)
     assert stats.loss < 0.5
     assert stats.recall_val > 0.01
-    assert stats.precision_test > 0.02
+    assert stats.precision_test > 0.01
