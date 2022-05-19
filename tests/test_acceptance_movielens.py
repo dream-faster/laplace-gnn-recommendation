@@ -3,7 +3,7 @@ from data.types import BasePreprocessingConfig
 from run_preprocessing import preprocess
 from run_pipeline import run_pipeline
 from torch_geometric import seed_everything
-
+from run_download_data import download_movielens
 
 preprocessing_config = BasePreprocessingConfig(
     filter_out_unconnected_nodes=True,
@@ -44,6 +44,7 @@ config = Config(
 
 
 def test_pipeline():
+    download_movielens()
     seed_everything(42)
     preprocess(preprocessing_config)
     stats = run_pipeline(config)
