@@ -158,7 +158,7 @@ preprocessing_config = PreprocessingConfig(
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
-    data_size=10_000,
+    data_size=None,
     save_to_neo4j=False,
     data_type=DataType.pyg,
 )

@@ -27,7 +27,7 @@ class GraphDataset(InMemoryDataset):
         split_type: str,
         matchers: Optional[List[Matcher]] = None,
         randomization: bool = True,
-        db_param: tuple[str, str, str] = ("bolt://localhost:7687", "neo4j", "password"),
+        db_param: Tuple[str, str, str] = ("bolt://localhost:7687", "neo4j", "password"),
     ):
 
         self.graph = t.load(graph_path)
