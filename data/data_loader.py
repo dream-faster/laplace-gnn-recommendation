@@ -8,22 +8,16 @@ import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader, DataLoader
 from .dataset import GraphDataset
 from .dataset_neo import GraphDataset as GraphDatasetNeo
-from .matching.lightgcn import LightGCNMatcher
-from .matching.users_with_common_purchases import UsersWithCommonPurchasesMatcher
-from .matching.users_same_location import UsersSameLocationMatcher
-from .matching.popular_items import PopularItemsMatcher
+from .matching import get_matchers
 
 
 def create_dataloaders(
     config: Config,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, CustomerIdMap, ArticleIdMap, HeteroData]:
-    if config.neo4j:
-        SelectDataset = GraphDatasetNeo
-    else:
-        SelectDataset = GraphDataset
+    Dataset = GraphDatasetNeo if config.neo4j else GraphDataset
 
     data_dir = "data/derived/"
-    train_dataset = SelectDataset(
+    train_dataset = Dataset(
         config=config,
         graph_path=data_dir + "train_graph.pt",
         users_adj_list=data_dir + "edges_train.pt",
@@ -32,33 +26,23 @@ def create_dataloaders(
         split_type="train",
     )
 
-    val_dataset = SelectDataset(
+    val_dataset = Dataset(
         config=config,
         graph_path=data_dir + "val_graph.pt",
         users_adj_list=data_dir + "edges_val.pt",
         articles_adj_list=data_dir + "rev_edges_val.pt",
         train=False,
         split_type="val",
-        # matchers=[
-        #     # LightGCNMatcher(config.candidate_pool_size),
-        #     PopularItemsMatcher(config.candidate_pool_size),
-        #     # UsersSameLocationMatcher(config.candidate_pool_size, "val"),
-        #     UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "val"),
-        # ],
+        matchers=get_matchers(config.matchers, "val", config.candidate_pool_size),
     )
-    test_dataset = SelectDataset(
+    test_dataset = Dataset(
         config=config,
         graph_path=data_dir + "test_graph.pt",
         users_adj_list=data_dir + "edges_test.pt",
         articles_adj_list=data_dir + "rev_edges_test.pt",
         train=False,
         split_type="test",
-        # matchers=[
-        #     # LightGCNMatcher(config.candidate_pool_size),
-        #     PopularItemsMatcher(config.candidate_pool_size),
-        #     # UsersSameLocationMatcher(config.candidate_pool_size, "test"),
-        #     UsersWithCommonPurchasesMatcher(config.candidate_pool_size, "test"),
-        # ],
+        matchers=get_matchers(config.matchers, "test", config.candidate_pool_size),
     )
 
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)

@@ -5,7 +5,7 @@ import torch as t
 from torch import Tensor
 
 
-class UsersWithCommonPurchasesMatcher(Matcher):
+class UsersWithCommonItemsMatcher(Matcher):
     def __init__(self, k: int, suffix):  ##: Literal["train", "test", "val"]):
         self.user_to_articles = t.load(f"data/derived/edges_{suffix}.pt")
         self.article_to_users = t.load(f"data/derived/rev_edges_{suffix}.pt")

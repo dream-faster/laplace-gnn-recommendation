@@ -8,7 +8,7 @@ import torch as t
 import pandas as pd
 from typing import Tuple, Optional
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
-from run_preprocessing import save_to_neo4j
+from run_preprocessing_fashion import save_to_neo4j
 
 
 def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
@@ -44,6 +44,7 @@ def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
         p_dropout_edges=0.0,
         p_dropout_features=0.0,
         batch_norm=True,
+        matchers="fashion"
     )
 
     if graph_database:

@@ -46,6 +46,8 @@ class Config:
     positive_edges_ratio: float  # Ratio of positive edges that we sample for edge_label_index, eg.: 0.5 means we take the half of the avilable edges from that user, the result won't be less than 1 (We will always sample at least one positive edge)
     negative_edges_ratio: float  # How many negative edges to sample based on the positive ones, eg.: 10 means we take 10*sampled_positive_edges
     batch_norm: bool
+    matchers: str  # "fashion" "movielens"
+
     p_dropout_edges: Optional[float]  # dropout probability for edges
     p_dropout_features: Optional[float]  # dropout probability for nodes
 
@@ -97,6 +99,7 @@ class LightGCNConfig:
 
 
 link_pred_config = Config(
+    matchers="movielens",  # "fashion" or "movielens"
     wandb_enabled=False,
     epochs=4,
     k=12,
@@ -165,7 +168,7 @@ only_users_and_articles_nodes = PreprocessingConfig(
     load_image_embedding=False,
     load_text_embedding=False,
     text_embedding_colname="derived_look",
-    data_size=1_000,
+    data_size=10_000,
     save_to_neo4j=False,
     data_type=DataType.pyg,
 )
