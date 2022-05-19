@@ -8,7 +8,7 @@ import torch as t
 import pandas as pd
 from typing import Tuple, Optional
 from utils.types import NodeFeatures, ArticleFeatures, AllEdges, SampledEdges, Labels
-from run_preprocessing import save_to_neo4j
+from run_preprocessing_fashion import save_to_neo4j
 
 
 def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
@@ -26,8 +26,6 @@ def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
         heterogeneous_prop_agg_type="sum",
         learning_rate=0.01,
         save_model=False,
-        test_split=0.1,
-        val_split=0.1,
         batch_size=1,  # combination of batch_size with num_neighbors and n_hop_neighbors and num_workers determines if data would fit on gpu
         num_neighbors=64,  # -1 takes all neighbors
         n_hop_neighbors=2,
@@ -36,14 +34,13 @@ def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
         positive_edges_ratio=0.5,
         negative_edges_ratio=1.0,
         eval_every=1,
-        lr_decay_every=1,
-        Lambda=1e-6,
         save_every=0.2,  #
         profiler=None,  # Profiler(every=20),
         evaluate_break_at=None,
         p_dropout_edges=0.0,
         p_dropout_features=0.0,
         batch_norm=True,
+        matchers="fashion",
     )
 
     if graph_database:

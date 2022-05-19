@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch as t
 from torch import optim
 from tqdm import tqdm
@@ -180,6 +179,7 @@ def train(config: LightGCNConfig):
             scheduler.step()
 
     if config.show_graph:
+        import matplotlib.pyplot as plt
         iters = [iter * config.eval_every for iter in range(len(train_losses))]
         plt.plot(iters, train_losses, label="train")
         plt.plot(iters, val_losses, label="validation")

@@ -22,7 +22,7 @@ original_data = create_entire_graph_data(
 data_comparison = create_subgraph_comparison(n_hop=link_pred_config.n_hop_neighbors)
 
 
-def test_integrity_base(graph_database: bool = True):
+def test_integrity_base(graph_database: bool = False):
     if graph_database:
         preprocess_and_load_to_neo4j(original_data)
 

@@ -1,22 +1,8 @@
-# import required modules
 import random
-from tqdm import tqdm
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-
 import torch as t
-from torch import nn, optim, Tensor
-
-from torch_sparse import SparseTensor, matmul
-
+from torch_sparse import SparseTensor
 from torch_geometric.utils import structured_negative_sampling
-from torch_geometric.data import download_url, extract_zip
-
-
-from torch_geometric.typing import Adj
-from model.lightgcn import LightGCN
 import json
 
 """# Loading the Dataset

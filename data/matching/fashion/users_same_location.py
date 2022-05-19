@@ -1,5 +1,5 @@
 from numpy import dtype
-from .type import Matcher
+from ..type import Matcher
 import torch as t
 
 # from typing import Literal
