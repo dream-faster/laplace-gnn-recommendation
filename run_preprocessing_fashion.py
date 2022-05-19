@@ -165,10 +165,10 @@ def preprocess(config: PreprocessingConfig):
         save_to_neo4j(customers, articles, transactions)
 
     print("| Converting to tensors...")
-    customers = t.tensor(customers.to_numpy(), dtype=t.float)
+    customers = t.tensor(customers.to_numpy(), dtype=t.long)
     assert t.isnan(customers).any() == False
 
-    articles = t.tensor(articles.to_numpy(), dtype=t.float)
+    articles = t.tensor(articles.to_numpy(), dtype=t.long)
     if config.load_image_embedding:
         articles = t.cat((articles, per_article_img_embedding), axis=1)
     if config.load_text_embedding:
