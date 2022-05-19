@@ -2,7 +2,7 @@ import argparse
 from run_pipeline import run_pipeline
 from run_preprocessing_fashion import preprocess
 from run_pipeline_lightgcn import train
-from config import link_pred_config, lightgcn_config, only_users_and_articles_nodes
+from config import link_pred_config, lightgcn_config, preprocessing_config
 
 
 def run():
@@ -14,14 +14,14 @@ def run():
     # Go through each item in configs and add it to the parser
     for key, value in vars(link_pred_config).items():
         parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
-    for key, value in vars(only_users_and_articles_nodes).items():
+    for key, value in vars(preprocessing_config).items():
         parser.add_argument(f"--{key.replace('_','-')}", type=type(value), default=None)
 
     args = parser.parse_args()
 
     # Decide which pipeline to configure
     if vars(args)["type"] == "preprocess":
-        config = only_users_and_articles_nodes
+        config = preprocessing_config
     elif vars(args)["type"] == "lightgcn":
         config = lightgcn_config
     else:

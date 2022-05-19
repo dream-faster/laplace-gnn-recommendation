@@ -6,6 +6,7 @@ config.epochs = 4
 config.k = 12
 config.eval_every = 4
 config.evaluate_break_at = 50
+config.batch_size = 128
 config.wandb_enabled = True
 
 run_pipeline(config)
