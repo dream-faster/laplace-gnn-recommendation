@@ -7,7 +7,7 @@ early_terminate:
   min_iter: 2000
 metric:
   goal: maximize
-  name: recall_val
+  name: precision_test
 parameters:
   num_gnn_layers:
     min: 1
@@ -21,10 +21,6 @@ parameters:
     values: [32, 64, 128, 256, 512]
   encoder_layer_output_size:
     values: [32, 64, 128, 256, 512]
-  conv_agg_type:
-    values: ["add", "mean", "max"]
-  heterogeneous_prop_agg_type:
-    values: ["sum", "mean", "min", "max", "mul"]
   learning_rate:
     values: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
   n_hop_neighbors:

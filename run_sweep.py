@@ -1,9 +1,9 @@
 from run_pipeline import run_pipeline
-from config import Config, link_pred_config
+from config import link_pred_config
 
 config = link_pred_config
-config.epochs = 4
-config.k = 12
+config.epochs = 5
+config.k = 40
 config.eval_every = 4
 config.evaluate_break_at = 50
 config.batch_size = 128

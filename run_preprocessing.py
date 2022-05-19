@@ -108,6 +108,7 @@ def preprocess(config: BasePreprocessingConfig):
     print(
         "| Splitting into train/test/val edges (using chronological stratified splitting)..."
     )
+    transactions = transactions.sort_values("timestamp")
     transactions = train_test_split_by_time(transactions, "customer_id")
 
     transactions_train = transactions[transactions["train_mask"] == True]
