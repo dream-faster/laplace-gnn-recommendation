@@ -118,7 +118,7 @@ link_pred_config = Config(
     p_dropout_edges=0.2,  # Currently not being used!
     p_dropout_features=0.3,
     batch_norm=True,
-    neo4j=False,
+    neo4j=True,
 )
 
 
@@ -159,8 +159,8 @@ preprocessing_config = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     data_size=10_000,
-    save_to_neo4j=False,
+    save_to_neo4j=True,
     data_type=DataType.pyg,
-    extra_node_type=None, #ArticleColumn.ProductTypeNo,
-    extra_edge_type_label=None, #"has_type",
+    extra_node_type=ArticleColumn.ColourGroupCode,  # ArticleColumn.ProductTypeNo,
+    extra_edge_type_label="Color",  # "has_type",
 )

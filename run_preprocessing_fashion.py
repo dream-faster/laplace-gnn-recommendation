@@ -104,6 +104,9 @@ def preprocess(config: PreprocessingConfig):
         extra_edges[config.extra_node_type.value] = extra_edges[
             config.extra_node_type.value
         ].apply(lambda x: extra_nodes_id_map_reverse[x])
+        extra_edges["article_id"] = extra_edges["article_id"].apply(
+            lambda x: article_id_map_reverse[x]
+        )
         extra_edges.rename(
             columns={config.extra_node_type.value: "extra_node_id"}, inplace=True
         )
@@ -180,7 +183,17 @@ def preprocess(config: PreprocessingConfig):
         extra_nodes.drop([config.extra_node_type.value], axis=1, inplace=True)
 
     if config.save_to_neo4j:
-        save_to_neo4j(customers, articles, transactions)
+        save_to_neo4j(
+            customers,
+            articles,
+            transactions,
+            extra_nodes,
+            config.extra_node_type.value
+            if config.extra_node_type is not None
+            else None,
+            extra_edges if extra_edges is not None else None,
+            config.extra_edge_type_label,
+        )
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.long)
