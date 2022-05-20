@@ -33,10 +33,18 @@ class Database:
         split_string = split_type + "_mask"
         # slow_query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
         # query_traditional = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m) UNWIND r AS rel WITH DISTINCT rel"
+        # query = (
+        #     f"MATCH (p:Customer {{_id: '{str(node_id)}'}})"
+        #     + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '<BUYS {{{split_string}:'1'}}', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
+        #     + " YIELD relationships"
+        # )
+
         query = (
-            f"MATCH (p:Customer {{_id: '{str(node_id)}'}})"
-            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
-            + " YIELD relationships"
+            f"MATCH (p:Customer {{_id: '{str(node_id)}'}}) "
+            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: 'BUYS', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
+            + f" YIELD relationships"
+            + f" WHERE all(rel in relationships WHERE rel.{split_string} = '1')"
+            + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
         )
 
         if no_return:

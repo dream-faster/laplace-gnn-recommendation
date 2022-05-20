@@ -11,12 +11,18 @@ def get_neighborhood(
             n_neighbor=n_neighbor,
             node_type="Customer",
             split_type=split_type,
-            no_return=False,
+            no_return=True,
         )
     )
 
     """ Filter nodes and experiments into lists """
-    edge_index = [(res.start_node.id, res.end_node.id) for res in result[0][0]]
+    edge_index = [
+        (int(res[1]), int(res[2])) for res in result[0][0] if res[0] == "Customer"
+    ]
+    edge_index.extend(
+        [(int(res[2]), int(res[1])) for res in result[0][0] if res[0] == "Article"]
+    )
+
     edge_index = list(set(edge_index))
     edge_index_t = list(map(list, zip(*edge_index)))
 

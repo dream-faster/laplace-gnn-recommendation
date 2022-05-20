@@ -40,8 +40,6 @@ class GraphDataset(InMemoryDataset):
         self.db = Database(db_param[0], db_param[1], db_param[2])
         self.split_type = split_type
 
-        self.article_remap, self.customer_remap = get_id_map(self.db)
-
     def __len__(self) -> int:
         return len(self.users)
 
@@ -122,8 +120,6 @@ class GraphDataset(InMemoryDataset):
             split_type=self.split_type,
         )
         # Filter out positive edges
-        n_hop_edges[0] = [self.customer_remap[x] for x in n_hop_edges[0]]
-        n_hop_edges[1] = [self.article_remap[x] for x in n_hop_edges[1]]
         n_hop_edges = t.tensor(n_hop_edges, dtype=t.long)
         n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
 
