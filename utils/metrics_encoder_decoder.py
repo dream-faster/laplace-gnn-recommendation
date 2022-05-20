@@ -46,6 +46,9 @@ def get_metrics_universal(
     """
 
     # Ratings expects a tensor of ratings for multiple users
+    edge_index = edge_index.detach().to("cpu")
+    edge_label_index = edge_label_index.detach().to("cpu")
+    model_output = model_output.detach().to("cpu")
 
     if len(model_output.shape) < 2:
         ratings = model_output.unsqueeze(0)

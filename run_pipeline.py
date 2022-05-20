@@ -30,8 +30,8 @@ def run_pipeline(config: Config) -> Stats:
     seed_everything(5)
     device = t.device("cuda" if t.cuda.is_available() else "cpu")
     assert (
-        config.k <= config.candidate_pool_size
-    ), "k must be smaller than candidate_pool_size"
+        config.k <= config.candidate_pool_size * 2
+    ), "k must be smaller than candidate_pool_size"  # we always have more than one matcher
 
     print("| Creating Datasets...")
     (
@@ -77,8 +77,10 @@ def run_pipeline(config: Config) -> Stats:
 
     print("| Training Model...")
     old_val_precision = -1
-    loop_obj = tqdm(range(0, config.epochs))
-    for epoch in loop_obj:
+    val_recall = 0.0
+    val_precision = 0.0
+
+    for epoch in range(0, config.epochs):
         losses = train_with_dataloader(model, optimizer, train_loader, epoch, device)
 
         report_results(
