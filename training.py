@@ -9,7 +9,7 @@ from torch_geometric.data import HeteroData, Data
 from torch_geometric.loader import DataLoader
 from tqdm.autonotebook import tqdm
 from torch_geometric.loader import NeighborLoader, LinkNeighborLoader
-from utils.metrics_encoder_decoder import get_metrics_universal
+from utils.metrics_encoder_decoder import get_metrics_encoder_decoder
 from utils.get_info import select_properties
 from typing import List, Tuple, Optional
 from utils.constants import Constants
@@ -38,18 +38,16 @@ def __train(
 def __test(
     data: Union[HeteroData, Data],
     model: Encoder_Decoder_Model,
-    exclude_edge_indices: list,
     k: int,
 ) -> Tuple[float, float]:
 
     x, edge_index_dict, edge_label_index, edge_label = select_properties(data)
     output = model.infer(x, edge_index_dict, edge_label_index)
 
-    recall, precision, ndcg = get_metrics_universal(
+    recall, precision, ndcg = get_metrics_encoder_decoder(
         output,
         edge_index_dict[Constants.edge_key],
         edge_label_index,
-        exclude_edge_indices,
         k=k,
     )
 
@@ -96,7 +94,7 @@ def test_with_dataloader(
         if break_at and i == break_at:
             break
         loop.set_description(f"{mode}")
-        recall, precision = __test(data.to(device), model, [], k=k)
+        recall, precision = __test(data.to(device), model, k=k)
         recalls.append(recall)
         precisions.append(precision)
         loop.set_postfix_str(

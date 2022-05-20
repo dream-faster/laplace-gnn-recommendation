@@ -1,10 +1,10 @@
-from neo4j.graph import Node, Relationship
 from data.neo4j.neo4j_database import Database
+from typing import List, Tuple
 
 
 def get_neighborhood(
     db: Database, node_id: int, n_neighbor: int, split_type: str
-) -> list:
+) -> List:
     result = db.run_match(
         db.query_n_neighbors(
             node_id=node_id,
@@ -29,7 +29,7 @@ def get_neighborhood(
     return edge_index_t
 
 
-def get_id_map(db: Database) -> tuple[dict, dict]:
+def get_id_map(db: Database) -> Tuple[dict, dict]:
     customers = db.run_match(db.query_all_nodes(node_type="Customer"))
     articles = db.run_match(db.query_all_nodes(node_type="Article"))
 

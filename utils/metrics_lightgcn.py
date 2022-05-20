@@ -4,6 +4,8 @@ from torch import Tensor
 from typing import List, Tuple, Optional
 from utils.tensor import difference_1d
 from .metrics import RecallPrecision_ATk, NDCGatK_r
+from tqdm import tqdm
+from .edges import create_adj_dict
 
 
 def bpr_loss(
@@ -45,37 +47,6 @@ def bpr_loss(
     return loss
 
 
-def create_adj_dict(edge_index: Tensor, from_nodes: Optional[Tensor] = None) -> dict:
-    """Generates dictionary of items for each user
-
-    Args:
-        edge_index (t.Tensor): 2 by N list of edges
-
-    Returns:
-        dict: dictionary of items for each user
-    """
-    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
-    items_per_user: dict = {}
-    for user in users:
-        items_per_user[user.item()] = edge_index[1][edge_index[0] == user]
-    return items_per_user
-
-
-def create_adj_list(
-    edge_index: Tensor, from_nodes: Optional[Tensor] = None
-) -> List[Tensor]:
-    """Generates list of items for each user
-
-    Args:
-        edge_index (t.Tensor): 2 by N list of edges
-
-    Returns:
-        tensor: List[Tensor] of items for each user
-    """
-    users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
-    return [edge_index[1][edge_index[0] == user] for user in users]
-
-
 def get_metrics_lightgcn(
     model, edge_index: Tensor, exclude_edge_indices: List[Tensor], k: int
 ) -> Tuple[float, float, float]:
@@ -92,15 +63,20 @@ def get_metrics_lightgcn(
     """
     user_embedding = model.users_emb.weight.detach().to("cpu")
     item_embedding = model.items_emb.weight.detach().to("cpu")
+    edge_index = edge_index.detach().to("cpu")
 
-    excluded_edges_per_user = create_adj_dict(t.cat(exclude_edge_indices, dim=1))
+    excluded_edges_per_user = create_adj_dict(
+        t.cat(exclude_edge_indices, dim=1).detach().to("cpu")
+    )
 
     # get all unique users in evaluated split
+    print("Getting unique users in evaluated split")
     users = edge_index[0].unique()
 
     # get the top k recommended items for each user
+    print("Computing recommendations for users...")
     top_K_items = {}
-    for user in users:
+    for user in tqdm(users):
         top_K_items[user.item()] = make_predictions_for_user(
             user_embedding, item_embedding, user.item(), excluded_edges_per_user, k
         )
