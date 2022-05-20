@@ -88,6 +88,31 @@ def preprocess(config: PreprocessingConfig):
         0,
     )
 
+    extra_nodes = None
+    extra_edges = None
+    if config.extra_node_type is not None:
+        print("| Loading extra node type...")
+        extra_nodes = pd.DataFrame(
+            articles[config.extra_node_type.value].unique(),
+            columns=[config.extra_node_type.value],
+        )
+        (
+            extra_nodes,
+            extra_nodes_id_map_forward,
+            extra_nodes_id_map_reverse,
+        ) = create_ids_and_maps(
+            extra_nodes,
+            config.extra_node_type.value,
+            0,
+        )
+        extra_edges = articles[["article_id", config.extra_node_type.value]]
+        extra_edges[config.extra_node_type.value] = extra_edges[
+            config.extra_node_type.value
+        ].apply(lambda x: extra_nodes_id_map_reverse[x])
+        extra_edges.rename(
+            columns={config.extra_node_type.value: "extra_node_id"}, inplace=True
+        )
+
     print("| Parsing transactions...")
     transactions["article_id"] = transactions["article_id"].apply(
         lambda x: article_id_map_reverse[x]
@@ -156,6 +181,8 @@ def preprocess(config: PreprocessingConfig):
     print("| Removing unused columns...")
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
+    if extra_nodes is not None:
+        extra_nodes.drop([config.extra_node_type.value], axis=1, inplace=True)
 
     if config.save_to_neo4j:
         save_to_neo4j(customers, articles, transactions)
@@ -171,27 +198,46 @@ def preprocess(config: PreprocessingConfig):
         articles = t.cat((articles, per_article_text_embedding), axis=1)
     assert t.isnan(articles).any() == False
 
+    if config.extra_node_type is not None:
+        extra_nodes = t.tensor(extra_nodes.to_numpy(), dtype=t.long)
+
     print("| Creating Data...")
-    create_func = (
-        create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
-    )
-    train_graph = create_func(
+    # If we ever want to get dgl data creation back
+    # create_func = (
+    #     create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
+    # )
+    train_graph = create_data_pyg(
         customers,
         articles,
+        extra_nodes,
+        config.extra_node_type.value if config.extra_node_type is not None else None,
         transactions_train["customer_id"].to_numpy(),
         transactions_train["article_id"].to_numpy(),
+        extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        config.extra_edge_type_label,
     )
-    val_graph = create_func(
+    val_graph = create_data_pyg(
         customers,
         articles,
+        extra_nodes,
+        config.extra_node_type.value if config.extra_node_type is not None else None,
         transactions_val["customer_id"].to_numpy(),
         transactions_val["article_id"].to_numpy(),
+        extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        config.extra_edge_type_label,
     )
-    test_graph = create_func(
+    test_graph = create_data_pyg(
         customers,
         articles,
+        extra_nodes,
+        config.extra_node_type.value if config.extra_node_type is not None else None,
         transactions_test["customer_id"].to_numpy(),
         transactions_test["article_id"].to_numpy(),
+        extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        config.extra_edge_type_label,
     )
 
     print("| Saving the graph...")

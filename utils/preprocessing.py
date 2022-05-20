@@ -1,7 +1,7 @@
 import pandas as pd
 import torch as t
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Optional
 import numpy as np
 from utils.constants import Constants
 
@@ -9,8 +9,13 @@ from utils.constants import Constants
 def create_data_pyg(
     customers: t.Tensor,
     articles: t.Tensor,
+    extra_nodes: Optional[t.Tensor],
+    extra_node_name: Optional[str],
     transactions_to_customer_id: np.ndarray,
     transactions_to_article_id: np.ndarray,
+    extra_edges_from_article_id: Optional[np.ndarray],
+    extra_edges_to_extra_node_id: Optional[np.ndarray],
+    extra_edge_type_label: Optional[Tuple[str, str, str]],
 ):
 
     from torch_geometric.data import HeteroData
@@ -18,10 +23,18 @@ def create_data_pyg(
     data = HeteroData()
     data[Constants.node_user].x = customers
     data[Constants.node_item].x = articles
+    if extra_nodes is not None:
+        data[extra_node_name].x = extra_nodes
+
     data[Constants.edge_key].edge_index = t.as_tensor(
         (transactions_to_customer_id, transactions_to_article_id),
         dtype=t.long,
     )
+    if extra_edge_type_label is not None:
+        data[extra_edge_type_label].edge_index = t.as_tensor(
+            (extra_edges_from_article_id, extra_edges_to_extra_node_id),
+            dtype=t.long,
+        )
     return data
 
 
