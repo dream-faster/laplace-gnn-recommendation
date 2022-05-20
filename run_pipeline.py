@@ -143,9 +143,9 @@ def run_pipeline(config: Config) -> Stats:
     )
     return Stats(
         loss=np.mean(losses),
-        recall_val=val_recall,
+        recall_val=None if val_recall is None else val_recall,
         recall_test=test_recall,
-        precision_val=val_precision,
+        precision_val=None if val_precision is None else val_precision,
         precision_test=test_precision,
     )
 
