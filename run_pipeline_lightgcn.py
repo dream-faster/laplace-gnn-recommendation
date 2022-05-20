@@ -7,9 +7,9 @@ from data.lightgcn_loader import create_dataloaders_lightgcn, sample_mini_batch
 from utils.metrics_lightgcn import (
     get_metrics_lightgcn,
     bpr_loss,
-    create_adj_dict,
     make_predictions_for_user,
 )
+from utils.edges import create_adj_dict
 from reporting.types import Stats
 
 
@@ -56,6 +56,7 @@ def evaluation(
         items_emb_0[neg_item_indices],
     )
 
+    print("| Calculating BPR loss...")
     loss = bpr_loss(
         users_emb_final,
         users_emb_0,
@@ -66,6 +67,7 @@ def evaluation(
         lambda_val,
     ).item()
 
+    print("| Evaluating model...")
     recall, precision, ndcg = get_metrics_lightgcn(
         model, edge_index, exclude_edge_indices, k
     )
@@ -180,6 +182,7 @@ def train(config: LightGCNConfig):
 
     if config.show_graph:
         import matplotlib.pyplot as plt
+
         iters = [iter * config.eval_every for iter in range(len(train_losses))]
         plt.plot(iters, train_losses, label="train")
         plt.plot(iters, val_losses, label="validation")

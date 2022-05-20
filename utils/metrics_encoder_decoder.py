@@ -3,7 +3,7 @@ import numpy as np
 from torch import Tensor
 from typing import List, Tuple
 from .metrics import RecallPrecision_ATk, NDCGatK_r
-from .metrics_lightgcn import create_adj_dict, create_adj_list
+from .edges import create_adj_dict, create_adj_list
 
 # helper function to get N_u
 def get_user_positive_items(edge_index: Tensor) -> dict:
@@ -26,11 +26,10 @@ def get_user_positive_items(edge_index: Tensor) -> dict:
 
 
 # wrapper function to get evaluation metrics
-def get_metrics_universal(
+def get_metrics_encoder_decoder(
     model_output,
     edge_index: Tensor,
     edge_label_index: Tensor,
-    exclude_edge_indices: List[Tensor],
     k: int,
 ) -> Tuple[float, float, float]:
     """Computes the evaluation metrics: recall, precision, and ndcg @ k
@@ -54,19 +53,6 @@ def get_metrics_universal(
         ratings = model_output.unsqueeze(0)
     else:
         ratings = model_output
-
-    for exclude_edge_index in exclude_edge_indices:
-        # gets all the positive items for each user from the edge index
-        user_pos_items = get_user_positive_items(exclude_edge_index)
-        # get coordinates of all edges to exclude
-        exclude_users = []
-        exclude_items = []
-        for user, items in user_pos_items.items():
-            exclude_users.extend([user] * len(items))
-            exclude_items.extend(items)
-
-        # set ratings of excluded edges to large negative value
-        ratings[exclude_users, exclude_items] = -(1 << 10)
 
     # get the top k recommended items for each user
     _, top_K_items = t.topk(ratings, k=k)

@@ -4,8 +4,7 @@ from torch import nn
 from torch import Tensor
 import torch as t
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
-from typing import Union, Optional
-from torch_geometric.data import Data, HeteroData
+from tqdm import tqdm
 
 # defines LightGCN model
 class LightGCN(MessagePassing):
@@ -60,7 +59,7 @@ class LightGCN(MessagePassing):
         emb_k = emb_0
 
         # multi-scale diffusion
-        for _ in range(self.num_iterations):
+        for _ in tqdm(range(self.num_iterations)):
             emb_k = self.propagate(edge_index_norm, x=emb_k)
             embs.append(emb_k)
 
