@@ -11,20 +11,29 @@ def get_neighborhood(
             n_neighbor=n_neighbor,
             node_type="Customer",
             split_type=split_type,
-            no_return=False,
+            no_return=True,
         )
     )
 
     """ Filter nodes and experiments into lists """
     edge_index = [
-        (
-            int(relship["startnode(rel)._id"]),
-            int(relship["endnode(rel)._id"]),
-        )
-        for relship in result
+        (int(res[1]), int(res[2])) for res in result[0][0] if res[0] == "Customer"
     ]
+    edge_index.extend(
+        [(int(res[2]), int(res[1])) for res in result[0][0] if res[0] == "Article"]
+    )
 
     edge_index = list(set(edge_index))
     edge_index_t = list(map(list, zip(*edge_index)))
 
     return edge_index_t
+
+
+def get_id_map(db: Database) -> tuple[dict, dict]:
+    customers = db.run_match(db.query_all_nodes(node_type="Customer"))
+    articles = db.run_match(db.query_all_nodes(node_type="Article"))
+
+    customer_map = {customer["n"].id: customer["n"]._id for customer in customers}
+    article_map = {article["n"].id: article["n"]._id for article in articles}
+
+    return customer_map, article_map
