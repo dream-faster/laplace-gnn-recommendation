@@ -29,13 +29,11 @@ def get_neighborhood(
             if res[0] == Constants.node_item
         ]
     )
-    edge_index.extend(
-        [
-            (int(res[2]), int(res[1]))
-            for res in result[0][0]
-            if res[0] == Constants.node_extra
-        ]
-    )
+    extra_edge_index = [
+        (int(res[1]), int(res[2]))
+        for res in result[0][0]
+        if res[0] == Constants.node_extra
+    ]
 
     edge_index = list(set(edge_index))
     edge_index_t = list(map(list, zip(*edge_index)))

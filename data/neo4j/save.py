@@ -15,7 +15,7 @@ def save_to_neo4j(
     customers: pd.DataFrame,
     articles: pd.DataFrame,
     transactions: pd.DataFrame,
-    extra_nodes: Optional[t.Tensor],
+    extra_nodes: Optional[pd.DataFrame],
     extra_node_name: Optional[str],
     extra_edges: Optional[pd.DataFrame],
     extra_edge_type_label: Optional[str],
@@ -47,7 +47,7 @@ def save_to_neo4j(
 
     if extra_nodes is not None:
         print("| Processing extra nodes...")
-        extra_node_df = pd.DataFrame(data=extra_nodes.clone())
+        extra_node_df = pd.DataFrame(data=extra_nodes.copy())
         extra_node_df[":LABEL"] = extra_edge_type_label
         extra_node_df.rename(columns={"index": f":ID({extra_node_name})"}, inplace=True)
         extra_node_df["_id"] = extra_node_df[f":ID({extra_node_name})"]
