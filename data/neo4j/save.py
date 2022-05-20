@@ -9,24 +9,6 @@ def save_to_csv(dataframe: pd.DataFrame, name: str):
 
 
 def save_to_neo4j(
-    customers: pd.DataFrame,
-    articles: pd.DataFrame,
-    transactions: pd.DataFrame,
-    dataset: str,
-):
-    if dataset == "fashion":
-        _to_neo4j_fashion(customers, articles, transactions)
-    elif dataset == "movielens":
-        _to_neo4j_fashion(customers, articles, transactions)
-
-
-def _to_neo4j_movielens(
-    customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
-):
-    pass
-
-
-def _to_neo4j_fashion(
     customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
 ):
     print("| Saving to neo4j...")

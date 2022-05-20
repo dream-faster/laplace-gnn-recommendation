@@ -124,7 +124,7 @@ def preprocess(config: BasePreprocessingConfig):
     articles.drop(["article_id"], axis=1, inplace=True)
 
     if config.save_to_neo4j:
-        save_to_neo4j(customers, articles, transactions, "movielens")
+        save_to_neo4j(customers, articles, transactions)
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.long)
