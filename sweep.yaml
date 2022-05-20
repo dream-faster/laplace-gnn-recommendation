@@ -28,7 +28,7 @@ parameters:
     max: 4
     distribution: int_uniform
   candidate_pool_size:
-    values: [24, 64, 128, 256]
+    values: [32, 64, 128, 256]
   positive_edges_ratio:
     values: [0.2, 0.5, 0.8, 1.0]
   negative_edges_ratio:
