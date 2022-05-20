@@ -5,25 +5,6 @@ from typing import List, Tuple
 from .metrics import RecallPrecision_ATk, NDCGatK_r
 from .edges import create_adj_dict, create_adj_list
 
-# helper function to get N_u
-def get_user_positive_items(edge_index: Tensor) -> dict:
-    """Generates dictionary of positive items for each user
-
-    Args:
-        edge_index (t.Tensor): 2 by N list of edges
-
-    Returns:
-        dict: dictionary of positive items for each user
-    """
-    user_pos_items: dict = {}
-    for i in range(edge_index.shape[1]):
-        user = edge_index[0][i].item()
-        item = edge_index[1][i].item()
-        if user not in user_pos_items:
-            user_pos_items[user] = []
-        user_pos_items[user].append(item)
-    return user_pos_items
-
 
 # wrapper function to get evaluation metrics
 def get_metrics_encoder_decoder(

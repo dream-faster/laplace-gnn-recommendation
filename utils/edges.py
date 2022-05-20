@@ -39,11 +39,3 @@ def create_adj_list(
     """
     users = edge_index[0].unique(sorted=True) if from_nodes is None else from_nodes
     return [edge_index[1][edge_index[0] == user] for user in users]
-
-    sorted_edges = t.sort(edge_index, dim=1).values
-    items_per_user: dict = defaultdict(lambda: t.tensor([], dtype=t.long))
-    for edge in sorted_edges:
-        items_per_user[edge[0].item()] = t.cat(
-            (items_per_user[edge[0].item()], edge[1].unsqueeze(dim=0)), dim=0
-        )
-    return items_per_user
