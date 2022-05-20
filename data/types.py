@@ -55,6 +55,9 @@ class PreprocessingConfig(BasePreprocessingConfig):
         str
     ]  # ["derived_name", "derived_look", "derived_category"]
 
+    extra_node_type: Optional[ArticleColumn]
+    extra_edge_type_label: Optional[str]
+
 
 @dataclass
 class FeatureInfo:

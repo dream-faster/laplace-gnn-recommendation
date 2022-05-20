@@ -132,26 +132,42 @@ def preprocess(config: BasePreprocessingConfig):
     assert t.isnan(articles).any() == False
 
     print("| Creating Data...")
-    create_func = (
-        create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
-    )
-    train_graph = create_func(
+    # If we ever want to get dgl data creation back
+    # create_func = (
+    #     create_data_dgl if config.data_type == DataType.dgl else create_data_pyg
+    # )
+    train_graph = create_data_pyg(
         customers,
         articles,
+        None,
+        None,
         transactions_train["customer_id"].to_numpy(),
         transactions_train["article_id"].to_numpy(),
+        None,
+        None,
+        None,
     )
-    val_graph = create_func(
+    val_graph = create_data_pyg(
         customers,
         articles,
+        None,
+        None,
         transactions_val["customer_id"].to_numpy(),
         transactions_val["article_id"].to_numpy(),
+        None,
+        None,
+        None,
     )
-    test_graph = create_func(
+    test_graph = create_data_pyg(
         customers,
         articles,
+        None,
+        None,
         transactions_test["customer_id"].to_numpy(),
         transactions_test["article_id"].to_numpy(),
+        None,
+        None,
+        None,
     )
 
     print("| Saving the graph...")

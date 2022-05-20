@@ -29,6 +29,8 @@ preprocess(
         data_size=None,
         save_to_csv=False,
         data_type=DataType.dgl,
+        extra_node_type=None,  # ArticleColumn.ProductTypeNo,
+        extra_edge_type_label=None,  # "has_type",
     )
 )
 process_hm()
