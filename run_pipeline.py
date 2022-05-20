@@ -77,6 +77,9 @@ def run_pipeline(config: Config) -> Stats:
 
     print("| Training Model...")
     old_val_precision = -1
+    val_recall = 0.0
+    val_precision = 0.0
+
     for epoch in range(0, config.epochs):
         losses = train_with_dataloader(model, optimizer, train_loader, epoch, device)
 
@@ -143,9 +146,9 @@ def run_pipeline(config: Config) -> Stats:
     )
     return Stats(
         loss=np.mean(losses),
-        recall_val=None if val_recall is None else val_recall,
+        recall_val=val_recall,
         recall_test=test_recall,
-        precision_val=None if val_precision is None else val_precision,
+        precision_val=val_precision,
         precision_test=test_precision,
     )
 

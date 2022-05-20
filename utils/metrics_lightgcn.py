@@ -90,8 +90,8 @@ def get_metrics_lightgcn(
     Returns:
         tuple: recall @ k, precision @ k, ndcg @ k
     """
-    user_embedding = model.users_emb.weight.to("cpu")
-    item_embedding = model.items_emb.weight.to("cpu")
+    user_embedding = model.users_emb.weight.detach().to("cpu")
+    item_embedding = model.items_emb.weight.detach().to("cpu")
 
     excluded_edges_per_user = create_adj_dict(t.cat(exclude_edge_indices, dim=1))
 
