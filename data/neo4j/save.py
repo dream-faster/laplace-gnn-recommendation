@@ -64,7 +64,7 @@ def save_to_neo4j(
     )
     print("| Starting Neo4j...")
     os.system("neo4j start")
-    time.sleep(8)
+    time.sleep(10)
     # Create the indexes for Customer & Article node types
     print("| Creating indexes...")
 
