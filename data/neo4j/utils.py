@@ -1,5 +1,6 @@
 from neo4j.graph import Node, Relationship
 from data.neo4j.neo4j_database import Database
+from utils.constants import Constants
 
 
 def get_neighborhood(
@@ -17,10 +18,23 @@ def get_neighborhood(
 
     """ Filter nodes and experiments into lists """
     edge_index = [
-        (int(res[1]), int(res[2])) for res in result[0][0] if res[0] == "Customer"
+        (int(res[1]), int(res[2]))
+        for res in result[0][0]
+        if res[0] == Constants.node_user
     ]
     edge_index.extend(
-        [(int(res[2]), int(res[1])) for res in result[0][0] if res[0] == "Article"]
+        [
+            (int(res[2]), int(res[1]))
+            for res in result[0][0]
+            if res[0] == Constants.node_item
+        ]
+    )
+    edge_index.extend(
+        [
+            (int(res[2]), int(res[1]))
+            for res in result[0][0]
+            if res[0] == Constants.node_extra
+        ]
     )
 
     edge_index = list(set(edge_index))

@@ -161,6 +161,4 @@ preprocessing_config = PreprocessingConfig(
     data_size=10_000,
     save_to_neo4j=True,
     data_type=DataType.pyg,
-    extra_node_type=ArticleColumn.ColourGroupCode,  # ArticleColumn.ProductTypeNo,
-    extra_edge_type_label="Color",  # "has_type",
 )
