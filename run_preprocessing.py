@@ -123,6 +123,10 @@ def preprocess(config: BasePreprocessingConfig):
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
 
+    transactions["train_mask"][transactions["val_mask"] == True] = True
+    transactions["train_mask"][transactions["test_mask"] == True] = True
+    transactions["val_mask"][transactions["test_mask"] == True] = True
+
     if config.save_to_neo4j:
         save_to_neo4j(customers, articles, transactions)
 

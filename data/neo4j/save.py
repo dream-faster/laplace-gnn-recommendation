@@ -12,18 +12,21 @@ def save_to_neo4j(
     customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
 ):
     print("| Saving to neo4j...")
+    print("| Processing customer nodes...")
     customers = customers.copy()
     customers[":LABEL"] = "Customer"
     customers.rename(columns={"index": ":ID(Customer)"}, inplace=True)
     customers["_id"] = customers[":ID(Customer)"]
     save_to_csv(customers, "customers")
 
+    print("| Processing article nodes...")
     articles = articles.copy()
     articles[":LABEL"] = "Article"
     articles.rename(columns={"index": ":ID(Article)"}, inplace=True)
     articles["_id"] = articles[":ID(Article)"]
     save_to_csv(articles, "articles")
 
+    print("| Renaming transactions...")
     transactions = transactions.copy()
     transactions.rename(
         columns={
@@ -32,19 +35,25 @@ def save_to_neo4j(
         },
         inplace=True,
     )
+
+    transactions = drop_columns_if_exist(
+        transactions, ["t_dat", "price", "sales_channel_id", "year-month"]
+    )
+
     transactions["train_mask"] = transactions["train_mask"].astype(int)
     transactions["test_mask"] = transactions["test_mask"].astype(int)
     transactions["val_mask"] = transactions["val_mask"].astype(int)
 
-    if bool(
-        set(["t_dat", "price", "sales_channel_id", "year-month"])
-        & set(transactions.columns)
-    ):
-        drop_columns_if_exist(
-            transactions, ["t_dat", "price", "sales_channel_id", "year-month"]
-        )
+    print("| Changing the edge names...")
+    transactions[":TYPE"] = transactions.apply(
+        lambda x: "BUYS_TRAIN"
+        if x["train_mask"] == 1
+        else "BUYS_VAL"
+        if x["val_mask"] == 1
+        else "BUYS_TEST",
+        axis=1,
+    )
 
-    transactions[":TYPE"] = "BUYS"
     save_to_csv(transactions, "transactions")
     # Neo4j needs to be stopped for neo4j-admin import to run
     print("| Stopping running instances of Neo4j...")
@@ -55,7 +64,7 @@ def save_to_neo4j(
     )
     print("| Starting Neo4j...")
     os.system("neo4j start")
-    time.sleep(5)
+    time.sleep(8)
     # Create the indexes for Customer & Article node types
     print("| Creating indexes...")
 

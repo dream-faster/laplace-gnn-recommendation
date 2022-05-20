@@ -39,11 +39,20 @@ class Database:
         #     + " YIELD relationships"
         # )
 
+        base = "BUYS_TRAIN"
+        extension = (
+            "|BUYS_VAL"
+            if split_type == "val"
+            else "|BUYS_VAL|BUYS_TEST"
+            if split_type == "test"
+            else ""
+        )
+        rel_string = base + extension
+
         query = (
             f"MATCH (p:Customer {{_id: '{str(node_id)}'}}) "
-            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: 'BUYS', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
+            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '{rel_string}', minLevel: 0, maxLevel: {str(n_neighbor)}}})"
             + f" YIELD relationships"
-            + f" WHERE all(rel in relationships WHERE rel.{split_string} = '1')"
             + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
         )
 
