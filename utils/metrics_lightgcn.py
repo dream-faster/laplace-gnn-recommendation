@@ -63,8 +63,11 @@ def get_metrics_lightgcn(
     """
     user_embedding = model.users_emb.weight.detach().to("cpu")
     item_embedding = model.items_emb.weight.detach().to("cpu")
+    edge_index = edge_index.detach().to("cpu")
 
-    excluded_edges_per_user = create_adj_dict(t.cat(exclude_edge_indices, dim=1))
+    excluded_edges_per_user = create_adj_dict(
+        t.cat(exclude_edge_indices, dim=1).detach().to("cpu")
+    )
 
     # get all unique users in evaluated split
     print("Getting unique users in evaluated split")
