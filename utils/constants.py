@@ -2,9 +2,9 @@ from typing import Tuple
 from data.types import ArticleColumn
 
 node_user = "customer"
-node_item = "movie"
-rel_type = "rated"
-rel_rev_type = "rev_rated"
+node_item = "article"
+rel_type = "buys"
+rel_rev_type = "rev_buys"
 node_extra = ArticleColumn.ColourGroupCode.value
 edge_key_extra = "HAS_COLOR"
 

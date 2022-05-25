@@ -113,15 +113,15 @@ class GraphDataset(InMemoryDataset):
                 ),
             )
 
-        n_hop_edges = get_neighborhood(
+        n_hop_edges_base, extra_edge_index_t = get_neighborhood(
             self.db,
             node_id=idx,
             n_neighbor=self.config.n_hop_neighbors,
             split_type=self.split_type,
         )
         # Filter out positive edges
-        n_hop_edges = t.tensor(n_hop_edges, dtype=t.long)
-        n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
+        n_hop_edges = t.tensor(n_hop_edges_base, dtype=t.long)
+        n_hop_edges_extra = t.tensor(extra_edge_index_t, dtype=t.long)
 
         all_touched_edges = t.cat(
             [

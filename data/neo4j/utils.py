@@ -5,7 +5,7 @@ from utils.constants import Constants
 
 def get_neighborhood(
     db: Database, node_id: int, n_neighbor: int, split_type: str
-) -> list:
+) -> list[list]:
     result = db.run_match(
         db.query_n_neighbors(
             node_id=node_id,
@@ -20,13 +20,13 @@ def get_neighborhood(
     edge_index = [
         (int(res[1]), int(res[2]))
         for res in result[0][0]
-        if res[0] == Constants.node_user
+        if res[0] == Constants.node_user.capitalize()
     ]
     edge_index.extend(
         [
             (int(res[2]), int(res[1]))
             for res in result[0][0]
-            if res[0] == Constants.node_item
+            if res[0] == Constants.node_item.capitalize()
         ]
     )
     extra_edge_index = [
@@ -38,7 +38,10 @@ def get_neighborhood(
     edge_index = list(set(edge_index))
     edge_index_t = list(map(list, zip(*edge_index)))
 
-    return edge_index_t
+    extra_edge_index = list(set(extra_edge_index))
+    extra_edge_index_t = list(map(list, zip(*extra_edge_index)))
+
+    return edge_index_t, extra_edge_index_t
 
 
 def get_id_map(db: Database) -> tuple[dict, dict]:
