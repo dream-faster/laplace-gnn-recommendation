@@ -47,13 +47,14 @@ class Database:
             if split_type == "test"
             else ""
         )
-        rel_string = base + extension
+        extra = "|HAS_COLOR"
+        rel_string = base + extension + extra
 
         query = (
             f"MATCH (p:Customer {{_id: '{str(node_id)}'}}) "
             + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '{rel_string}', minLevel: 0, maxLevel: {str(n_neighbor)}}})"
             + f" YIELD relationships"
-            + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
+            + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0],TYPE(r),LABELS(ENDNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
         )
 
         if no_return:

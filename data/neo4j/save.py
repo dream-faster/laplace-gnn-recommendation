@@ -48,7 +48,7 @@ def save_to_neo4j(
     if extra_nodes is not None:
         print("| Processing extra nodes...")
         extra_node_df = pd.DataFrame(data=extra_nodes.copy())
-        extra_node_df[":LABEL"] = extra_edge_type_label
+        extra_node_df[":LABEL"] = extra_node_name
         extra_node_df.rename(columns={"index": f":ID({extra_node_name})"}, inplace=True)
         extra_node_df["_id"] = extra_node_df[f":ID({extra_node_name})"]
         extra_node_df = extra_node_df.astype(str)
