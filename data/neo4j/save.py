@@ -5,6 +5,7 @@ from utils.pandas import drop_columns_if_exist
 import numpy as np
 from typing import Optional, Tuple
 import torch as t
+from utils.constants import Constants
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -23,24 +24,24 @@ def save_to_neo4j(
     print("| Saving to neo4j...")
     print("| Processing customer nodes...")
     customers = customers.copy()
-    customers[":LABEL"] = "Customer"
-    customers.rename(columns={"index": ":ID(Customer)"}, inplace=True)
-    customers["_id"] = customers[":ID(Customer)"]
+    customers[":LABEL"] = Constants.node_user
+    customers.rename(columns={"index": f":ID({Constants.node_user})"}, inplace=True)
+    customers["_id"] = customers[f":ID({Constants.node_user})"]
     save_to_csv(customers, "customers")
 
     print("| Processing article nodes...")
     articles = articles.copy()
-    articles[":LABEL"] = "Article"
-    articles.rename(columns={"index": ":ID(Article)"}, inplace=True)
-    articles["_id"] = articles[":ID(Article)"]
+    articles[":LABEL"] = Constants.node_item
+    articles.rename(columns={"index": f":ID({Constants.node_item})"}, inplace=True)
+    articles["_id"] = articles[f":ID({Constants.node_item})"]
     save_to_csv(articles, "articles")
 
     print("| Renaming transactions...")
     transactions = transactions.copy()
     transactions.rename(
         columns={
-            "customer_id": ":START_ID(Customer)",
-            "article_id": ":END_ID(Article)",
+            f"{Constants.node_user}_id": f":START_ID({Constants.node_user})",
+            f"{Constants.node_item}_id": f":END_ID({Constants.node_item})",
         },
         inplace=True,
     )
@@ -56,8 +57,8 @@ def save_to_neo4j(
         new_extra_edges = extra_edges.copy()
         new_extra_edges.rename(
             columns={
-                "article_id": ":START_ID(Article)",
-                "extra_node_id": f":END_ID({extra_node_name})",
+                f"{Constants.node_item}_id": f":START_ID({Constants.node_item})",
+                f"{extra_node_name}_id": f":END_ID({extra_node_name})",
             },
             inplace=True,
         )
@@ -75,11 +76,11 @@ def save_to_neo4j(
 
     print("| Changing the edge names...")
     transactions[":TYPE"] = transactions.apply(
-        lambda x: "BUYS_TEST"
+        lambda x: f"{Constants.rel_type}_TEST"
         if x["test_mask"] == 1
-        else "BUYS_VAL"
+        else f"{Constants.rel_type}_VAL"
         if x["val_mask"] == 1
-        else "BUYS_TRAIN",
+        else f"{Constants.rel_type}_TRAIN",
         axis=1,
     )
 
