@@ -2,17 +2,19 @@ from neo4j.graph import Node, Relationship
 from data.neo4j.neo4j_database import Database
 from utils.constants import Constants
 from collections import defaultdict
+import torch as t
 
 
 def get_neighborhood(
-    db: Database, node_id: int, n_neighbor: int, split_type: str
-) -> list[list]:
+    db: Database, node_id: int, n_neighbor: int, start_neighbor: int, split_type: str
+) -> defaultdict:
     result = db.run_match(
         db.query_n_neighbors(
             node_id=node_id,
             n_neighbor=n_neighbor,
             node_type="Customer",
             split_type=split_type,
+            start_neighbor=start_neighbor,
             no_return=True,
         )
     )
@@ -21,10 +23,16 @@ def get_neighborhood(
     edge_index = defaultdict(list)
 
     for from_type, rel_type, to_type, from_id, to_id in result[0][0]:
-        edge_index[(from_type, rel_type, to_type)].append((from_id, to_id))
+        edge_index[
+            (
+                from_type,
+                rel_type.replace("_TRAIN", "").replace("_TEST", "").replace("_VAL", ""),
+                to_type,
+            )
+        ].append(from_id, to_id)
 
     for key, index in edge_index.items():
-        edge_index[key] = list(map(list, zip(*index)))
+        edge_index[key] = t.tensor(list(map(list, zip(*index))), dtype=t.long)
 
     return edge_index
 

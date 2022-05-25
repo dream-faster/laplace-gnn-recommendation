@@ -11,6 +11,7 @@ import random
 from data.neo4j.neo4j_database import Database
 from data.neo4j.utils import get_neighborhood, get_id_map
 from utils.tensor import check_edge_index_flat_unique
+from collections import defaultdict
 
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
@@ -39,6 +40,10 @@ class GraphDataset(InMemoryDataset):
         self.randomization = randomization
         self.db = Database(db_param[0], db_param[1], db_param[2])
         self.split_type = split_type
+
+        self.default_edge_types = [Constants.edge_key]
+        self.other_edge_types = [Constants.edge_key_extra]
+        self.node_types = [Constants.node_user, Constants.node_item]
 
     def __len__(self) -> int:
         return len(self.users)
@@ -85,49 +90,29 @@ class GraphDataset(InMemoryDataset):
         else:
             negative_edges_ratio = self.config.negative_edges_ratio
 
-        if self.train:
-            # Randomly select from the whole graph
-            sampled_negative_article_edges = create_edges_from_target_indices(
-                idx,
-                get_negative_edges_random(
-                    subgraph_edges_to_filter=sampled_positive_article_indices,
-                    all_edges=all_edges,
-                    num_negative_edges=int(
-                        negative_edges_ratio * num_sampled_pos_edges
-                    ),
-                    randomization=self.randomization,
-                ),
-            )
-        else:
-            assert self.matchers is not None, "Must provide matchers for test"
-            # Select according to a heuristic (eg.: lightgcn scores)
-            candidates = t.cat(
-                [matcher.get_matches(idx) for matcher in self.matchers],
-                dim=0,
-            ).unique()
-            # but never add positive edges
-            sampled_negative_article_edges = create_edges_from_target_indices(
-                idx,
-                only_items_with_count_one(
-                    t.cat([candidates, positive_article_indices], dim=0)
-                ),
-            )
+        sampled_negative_article_edges = self.get_negative_edges(
+            all_edges,
+            sampled_positive_article_indices,
+            positive_article_indices,
+            idx,
+            negative_edges_ratio,
+            num_sampled_pos_edges,
+        )
 
-        n_hop_edges_base, extra_edge_index_t = get_neighborhood(
+        n_hop_edge_index = get_neighborhood(
             self.db,
             node_id=idx,
             n_neighbor=self.config.n_hop_neighbors,
+            start_neighbor=1,
             split_type=self.split_type,
         )
-        # Filter out positive edges
-        n_hop_edges = t.tensor(n_hop_edges_base, dtype=t.long)
-        n_hop_edges_extra = t.tensor(extra_edge_index_t, dtype=t.long)
 
+        # Filter out positive edges
         all_touched_edges = t.cat(
             [
                 positive_article_edges,
                 sampled_negative_article_edges,
-                n_hop_edges,
+                n_hop_edge_index[Constants.edge_key],
             ],
             dim=1,
         )
@@ -135,7 +120,7 @@ class GraphDataset(InMemoryDataset):
         all_subgraph_edges = t.cat(
             [
                 positive_article_edges,
-                n_hop_edges,
+                n_hop_edge_index[Constants.edge_key],
             ],
             dim=1,
         )
@@ -168,17 +153,34 @@ class GraphDataset(InMemoryDataset):
             dim=0,
         )
 
-        # all_sampled_edges, labels = shuffle_edges_and_labels(all_sampled_edges, labels)
+        """ Get Subgraph Edges, Sampled Edges and Features """
+        edge_index = defaultdict(list)
+        positive_sample, negative_sample = self.get_edge_label_index(idx)
+        neighborhood = get_neighborhood(
+            self.db,
+            node_id=idx,
+            n_neighbor=self.config.n_hop_neighbors,
+            start_neighbor=1,
+            split_type=self.split_type,
+        )
+        edge_index = get_edge_indexes(negative_sample, positive_sample, neighborhood)
+        original_node_ids = get_original_node_ids(edge_index)
+        edge_index = remap_edge_index(edge_index, original_node_ids)
 
         """ Create Data """
         data = HeteroData()
-        data[Constants.node_user].x = user_features
-        data[Constants.node_item].x = article_features
+
+        for node_type in self.node_types:
+            data[node_type].x = self.graph[node_type].x[original_node_ids[node_type]]
 
         # Add original directional edges
-        data[Constants.edge_key].edge_index = all_subgraph_edges.type(t.long)
-        data[Constants.edge_key].edge_label_index = all_sampled_edges.type(t.long)
-        data[Constants.edge_key].edge_label = labels.type(t.long)
+        for edge_type in self.default_edge_types:
+            data[edge_type].edge_index = all_subgraph_edges.type(t.long)
+            data[edge_type].edge_label_index = all_sampled_edges.type(t.long)
+            data[edge_type].edge_label = labels.type(t.long)
+
+        for edge_type in self.other_edge_types:
+            data[edge_type].edge_index = all_subgraph_edges.type(t.long)
 
         # Add reverse edges
         reverse_key = t.LongTensor([1, 0])
@@ -191,6 +193,98 @@ class GraphDataset(InMemoryDataset):
         data[Constants.rev_edge_key].edge_label = labels.type(t.long)
 
         return data
+
+    def get_edge_label_index(self, idx: int) -> Tuple[Tensor, Tensor]:
+        all_edges = self.graph[Constants.edge_key].edge_index
+
+        """ Positive Sample """
+        positive_article_indices = t.as_tensor(self.users[idx], dtype=t.long)
+        positive_sample = self.get_positive_sampled_edges(idx, positive_article_indices)
+
+        """ Negative Sample """
+        num_sampled_pos_edges = positive_sample.shape[0]
+
+        if num_sampled_pos_edges <= 1:
+            negative_edges_ratio = self.config.k - 1
+        else:
+            negative_edges_ratio = self.config.negative_edges_ratio
+
+        negative_sample = self.get_negative_sampled_edges(
+            all_edges,
+            positive_sample,
+            positive_article_indices,
+            idx,
+            negative_edges_ratio,
+            num_sampled_pos_edges,
+        )
+        return positive_sample, negative_sample
+
+    def get_positive_sampled_edges(
+        self, idx: int, positive_article_indices: Tensor
+    ) -> Tensor:
+        # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
+        samp_cut = max(
+            1,
+            math.floor(
+                len(positive_article_indices) * self.config.positive_edges_ratio
+            ),
+        )
+
+        if self.randomization:
+            random_integers = t.randint(
+                low=0, high=len(positive_article_indices), size=(samp_cut,)
+            )
+        else:
+            random_integers = t.tensor(
+                [
+                    t.min(positive_article_indices, dim=0)[1].item(),
+                    t.max(positive_article_indices, dim=0)[1].item(),
+                ]
+            )
+
+        sampled_positive_article_indices = positive_article_indices[random_integers]
+        sampled_positive_article_edges = create_edges_from_target_indices(
+            idx, sampled_positive_article_indices
+        )
+        return sampled_positive_article_edges
+
+    def get_negative_sampled_edges(
+        self,
+        all_edges: Tensor,
+        sampled_positive_article_indices: Tensor,
+        positive_article_indices: Tensor,
+        idx: int,
+        negative_edges_ratio: float,
+        num_sampled_pos_edges: int,
+    ) -> Tensor:
+        if self.train:
+            # Randomly select from the whole graph
+            sampled_negative_article_edges = create_edges_from_target_indices(
+                idx,
+                get_negative_edges_random(
+                    subgraph_edges_to_filter=sampled_positive_article_indices,
+                    all_edges=all_edges,
+                    num_negative_edges=int(
+                        negative_edges_ratio * num_sampled_pos_edges
+                    ),
+                    randomization=self.randomization,
+                ),
+            )
+        else:
+            assert self.matchers is not None, "Must provide matchers for test"
+            # Select according to a heuristic (eg.: lightgcn scores)
+            candidates = t.cat(
+                [matcher.get_matches(idx) for matcher in self.matchers],
+                dim=0,
+            ).unique()
+            # but never add positive edges
+            sampled_negative_article_edges = create_edges_from_target_indices(
+                idx,
+                only_items_with_count_one(
+                    t.cat([candidates, positive_article_indices], dim=0)
+                ),
+            )
+        return sampled_negative_article_edges
 
 
 def only_items_with_count_one(input: t.Tensor) -> t.Tensor:
