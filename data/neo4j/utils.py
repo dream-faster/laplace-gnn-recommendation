@@ -32,7 +32,10 @@ def get_neighborhood(
         ].append((int(from_id), int(to_id)))
 
     for key, index in edge_index.items():
-        edge_index[key] = t.tensor(list(map(list, zip(*index))), dtype=t.long)
+        if len(index) > 0:
+            edge_index[key] = t.tensor(list(map(list, zip(*index))), dtype=t.long)
+        else:
+            edge_index[key] = t.empty(0, dtype=t.long)
 
     return edge_index
 

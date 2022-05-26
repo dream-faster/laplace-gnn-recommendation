@@ -148,14 +148,22 @@ class GraphDataset(InMemoryDataset):
         for edge_type in self.config.default_edge_types:
             edge_index[edge_type] = t.cat(
                 [
-                    t.tensor(neighborhood[edge_type]),
-                    edge_label_index[edge_type][:, edge_label[edge_type] == 1],
+                    neighborhood[edge_type]
+                    if edge_type in neighborhood.keys()
+                    else t.empty(0),
+                    edge_label_index[edge_type][:, edge_label[edge_type] == 1]
+                    if edge_type in edge_label_index.keys()
+                    else t.empty(0),
                 ],
                 dim=1,
             )
 
         for edge_type in self.config.other_edge_types:
-            edge_index[edge_type] = t.tensor(neighborhood[edge_type])
+            edge_index[edge_type] = (
+                neighborhood[edge_type]
+                if edge_type in neighborhood.keys()
+                else t.empty(0)
+            )
 
         return edge_index
 

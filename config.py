@@ -125,11 +125,12 @@ link_pred_config = Config(
     batch_norm=True,
     neo4j=True,
     default_edge_types=[Constants.edge_key],
-    other_edge_types=[Constants.edge_key_extra],
+    # other_edge_types=[Constants.edge_key_extra],
+    other_edge_types=[],
     node_types=[
         Constants.node_user,
         Constants.node_item,
-        Constants.node_extra,
+        # Constants.node_extra,
     ],
 )
 
