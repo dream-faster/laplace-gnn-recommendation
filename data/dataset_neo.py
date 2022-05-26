@@ -74,7 +74,7 @@ class GraphDataset(InMemoryDataset):
 
         for node_type in self.node_types:
             data[node_type].x = (
-                self.graph[node_type].x[original_node_ids[node_type]].type(t.float)
+                self.graph[node_type].x[original_node_ids[node_type]].type(t.long)
             )
 
         # Add original directional edges and reverse edges
