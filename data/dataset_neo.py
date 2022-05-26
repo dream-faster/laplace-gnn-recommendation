@@ -44,7 +44,11 @@ class GraphDataset(InMemoryDataset):
 
         self.default_edge_types = [Constants.edge_key]
         self.other_edge_types = [Constants.edge_key_extra]
-        self.node_types = [Constants.node_user, Constants.node_item]
+        self.node_types = [
+            Constants.node_user,
+            Constants.node_item,
+            Constants.node_extra,
+        ]
 
     def __len__(self) -> int:
         return len(self.users)
