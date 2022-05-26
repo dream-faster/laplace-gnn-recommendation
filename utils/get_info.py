@@ -14,33 +14,24 @@ def __embedding_size_selector(max_category: int):
     return embedding_range_dict["10000"]
 
 
-def __heterogenous_features(full_data: HeteroData) -> Tuple[FeatureInfo, FeatureInfo]:
-    customer_features = full_data.x_dict[Constants.node_user]
-    article_features = full_data.x_dict[Constants.node_item]
+def __heterogenous_features(data: HeteroData) -> dict[FeatureInfo]:
+    node_types, _ = data.metadata()
+    feature_info_dict = dict()
 
-    customer_num_cat = t.max(customer_features, dim=0)[0].tolist()
-    article_num_cat = t.max(article_features, dim=0)[0].tolist()
+    for node_type in node_types:
+        features = data.x_dict[node_type]
+        num_cat = t.max(features, dim=0)[0].tolist()
+        feat_info = FeatureInfo(
+            num_feat=features.shape[1],
+            num_cat=num_cat,
+            embedding_size=[__embedding_size_selector(max_cat) for max_cat in num_cat],
+        )
+        feature_info_dict[node_type] = feat_info
 
-    customer_feat_info, article_feat_info = FeatureInfo(
-        num_feat=customer_features.shape[1],
-        num_cat=customer_num_cat,
-        embedding_size=[
-            __embedding_size_selector(max_cat) for max_cat in customer_num_cat
-        ],
-    ), FeatureInfo(
-        num_feat=article_features.shape[1],
-        num_cat=article_num_cat,
-        embedding_size=[
-            __embedding_size_selector(max_cat) for max_cat in article_num_cat
-        ],
-    )
-
-    return (customer_feat_info, article_feat_info)
+    return feature_info_dict
 
 
-def get_feature_info(
-    full_data: Union[HeteroData, Data]
-) -> Tuple[FeatureInfo, FeatureInfo]:
+def get_feature_info(full_data: Union[HeteroData, Data]) -> dict[FeatureInfo]:
 
     return __heterogenous_features(full_data)
 

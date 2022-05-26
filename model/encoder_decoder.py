@@ -77,7 +77,7 @@ class Encoder_Decoder_Model(t.nn.Module):
         self,
         encoder_layers: ModuleList,
         decoder_layers: ModuleList,
-        feature_info: FeatureInfo,
+        feature_info: dict[FeatureInfo],
         metadata: Tuple[List[str], List[Tuple[str]]],
         embedding: bool,
         heterogeneous_prop_agg_type: str,  # "sum", "mean", "min", "max", "mul",
@@ -98,45 +98,30 @@ class Encoder_Decoder_Model(t.nn.Module):
         self.encoder_layer_norm_customer = BatchNorm1d(encoder_layers[-1].out_channels)
         self.encoder_layer_norm_article = BatchNorm1d(encoder_layers[-1].out_channels)
 
+        self.embedding_layers = dict()
+
         if self.embedding:
-            customer_info, article_info = feature_info
-
-            self.embedding_customers = ModuleList(
-                [
-                    Embedding(
-                        num_embeddings=int(customer_info.num_cat[i] + 1),
-                        embedding_dim=int(customer_info.embedding_size[i]),
-                        max_norm=1,
-                    )
-                    for i in range(customer_info.num_feat)
-                ]
-            )
-
-            self.embedding_articles = ModuleList(
-                [
-                    Embedding(
-                        num_embeddings=int(article_info.num_cat[i] + 1),
-                        embedding_dim=int(article_info.embedding_size[i]),
-                        max_norm=1,
-                    )
-                    for i in range(article_info.num_feat)
-                ]
-            )
+            for key, item in feature_info.items():
+                self.embedding_layers[key] = ModuleList(
+                    [
+                        Embedding(
+                            num_embeddings=int(item.num_cat[i] + 1),
+                            embedding_dim=int(item.embedding_size[i]),
+                            max_norm=1,
+                        )
+                        for i in range(item.num_feat)
+                    ]
+                )
 
     def __embedding(self, x_dict: dict) -> dict:
-        customer_features, article_features = (
-            x_dict[Constants.node_user],
-            x_dict[Constants.node_item]
-        )
-        embedding_customers, embedding_articles = [], []
-        for i, embedding_layer in enumerate(self.embedding_customers):
-            embedding_customers.append(embedding_layer(customer_features[:, i]))
 
-        for i, embedding_layer in enumerate(self.embedding_articles):
-            embedding_articles.append(embedding_layer(article_features[:, i]))
-
-        x_dict[Constants.node_user] = t.cat(embedding_customers, dim=1)
-        x_dict[Constants.node_item] = t.cat(embedding_articles, dim=1)
+        for key, item in self.embedding_layers.items():
+            features = x_dict[key]
+            embedding = [
+                embedding_layer(features[:, i])
+                for i, embedding_layer in enumerate(item)
+            ]
+            x_dict[key] = t.cat(embedding, dim=1)
 
         return x_dict
 
