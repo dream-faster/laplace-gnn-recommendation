@@ -15,7 +15,7 @@ def create_data_pyg(
     transactions_to_article_id: np.ndarray,
     extra_edges_from_article_id: Optional[np.ndarray],
     extra_edges_to_extra_node_id: Optional[np.ndarray],
-    extra_edge_type_label: Optional[Tuple[str, str, str]],
+    extra_edge_type_label: Optional[str],
 ):
 
     from torch_geometric.data import HeteroData
@@ -31,7 +31,9 @@ def create_data_pyg(
         dtype=t.long,
     )
     if extra_edge_type_label is not None:
-        data[extra_edge_type_label].edge_index = t.as_tensor(
+        data[
+            (extra_node_name, extra_edge_type_label, Constants.node_item)
+        ].edge_index = t.as_tensor(
             (extra_edges_from_article_id, extra_edges_to_extra_node_id),
             dtype=t.long,
         )

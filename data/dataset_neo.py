@@ -1,3 +1,4 @@
+from numpy import dtype
 import torch as t
 import math
 from torch_geometric.data import Data, HeteroData, InMemoryDataset
@@ -11,6 +12,7 @@ import random
 from data.neo4j.neo4j_database import Database
 from data.neo4j.utils import get_neighborhood, get_id_map
 from utils.tensor import check_edge_index_flat_unique
+from collections import defaultdict
 
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
@@ -44,16 +46,174 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
-        """Create Edges"""
-        all_edges = self.graph[Constants.edge_key].edge_index
-
-        positive_article_indices = t.as_tensor(
-            self.users[idx], dtype=t.long
-        )  # all the positive target indices for the current user
-        positive_article_edges = create_edges_from_target_indices(
-            idx, positive_article_indices
+        """Get Subgraph Edges, Sampled Edges and Features"""
+        edge_label_index, edge_label = self.get_edge_label_index(idx)
+        neighborhood = get_neighborhood(
+            self.db,
+            node_id=idx,
+            n_neighbor=self.config.n_hop_neighbors,
+            start_neighbor=1,
+            split_type=self.split_type,
+        )
+        edge_index = self.get_edge_indexes(edge_label_index, edge_label, neighborhood)
+        original_node_ids = self.get_original_node_ids(edge_index, edge_label_index)
+        edge_index, edge_label_index = self.remap_indexes(
+            edge_index, edge_label_index, original_node_ids
         )
 
+        """ Create Data """
+        data = HeteroData()
+
+        for node_type in self.config.node_types:
+            data[node_type].x = (
+                self.graph[node_type].x[original_node_ids[node_type]].type(t.long)
+            )
+
+        # Add original directional edges and reverse edges
+        reverse_key = t.LongTensor([1, 0])
+        for edge_type in self.config.default_edge_types:
+            data[edge_type].edge_index = edge_index[edge_type].type(t.long)
+            data[edge_type].edge_label_index = edge_label_index[edge_type].type(t.long)
+
+            data[edge_type].edge_label = edge_label[edge_type].type(t.long)
+
+            # Reverse edges
+            data[
+                (edge_type[2], "rev_" + edge_type[1], edge_type[0])
+            ].edge_index = edge_index[edge_type][reverse_key].type(t.long)
+
+        for edge_type in self.config.other_edge_types:
+            data[edge_type].edge_index = edge_index[edge_type].type(t.long)
+
+            # Reverse edges
+            data[
+                (edge_type[2], "rev_" + edge_type[1], edge_type[0])
+            ].edge_index = edge_index[edge_type][reverse_key].type(t.long)
+
+        return data
+
+    def remap_indexes(
+        self, edge_index: dict, edge_label_index: dict, original_ids: dict
+    ) -> dict:
+        for key, item in edge_index.items():
+            edge_index[key] = remap_edges_to_start_from_zero(
+                item, original_ids[key[0]], original_ids[key[2]]
+            )
+
+        for key, item in edge_label_index.items():
+            edge_label_index[key] = remap_edges_to_start_from_zero(
+                item, original_ids[key[0]], original_ids[key[2]]
+            )
+
+        return edge_index, edge_label_index
+
+    def get_original_node_ids(self, edge_index: dict, edge_label_index: dict) -> dict:
+        original_node_ids = defaultdict(Tensor)
+
+        for edge_key, item in edge_index.items():
+            if item.shape[0] == 0:
+                continue
+            original_node_ids[edge_key[0]] = t.cat(
+                [original_node_ids[edge_key[0]], item[0]], dim=0
+            ).type(t.long)
+
+            original_node_ids[edge_key[2]] = t.cat(
+                [original_node_ids[edge_key[2]], item[1]], dim=0
+            ).type(t.long)
+
+        for edge_key, item in edge_label_index.items():
+            if item.shape[0] == 0:
+                continue
+            original_node_ids[edge_key[0]] = t.cat(
+                [original_node_ids[edge_key[0]], item[0]], dim=0
+            ).type(t.long)
+
+            original_node_ids[edge_key[2]] = t.cat(
+                [original_node_ids[edge_key[2]], item[1]], dim=0
+            ).type(t.long)
+
+        for key, item in original_node_ids.items():
+            original_node_ids[key] = t.unique(item)
+
+        return original_node_ids
+
+    def get_edge_indexes(
+        self, edge_label_index: Tensor, edge_label: Tensor, neighborhood: Tensor
+    ) -> Tensor:
+        """
+        Combine edge indexes: neighbor (without 0-hop neighbors) and positive sampled edges
+        """
+        edge_index = defaultdict(list)
+
+        for edge_type in self.config.default_edge_types:
+            edge_index[edge_type] = t.cat(
+                [
+                    neighborhood[edge_type]
+                    if edge_type in neighborhood.keys()
+                    else t.empty(0),
+                    edge_label_index[edge_type][:, edge_label[edge_type] == 1]
+                    if edge_type in edge_label_index.keys()
+                    else t.empty(0),
+                ],
+                dim=1,
+            )
+
+        for edge_type in self.config.other_edge_types:
+            edge_index[edge_type] = (
+                neighborhood[edge_type]
+                if edge_type in neighborhood.keys()
+                else t.empty(0)
+            )
+
+        return edge_index
+
+    def get_edge_label_index(self, idx: int) -> Tuple[Tensor, Tensor]:
+        edge_label_index = dict()
+        edge_label = dict()
+
+        for edge_type in self.config.default_edge_types:
+            all_edges = self.graph[edge_type].edge_index
+
+            """ Positive Sample """
+            # We will have to modify self.users to be a disctionary of self.users[idx][edge_type]
+            positive_article_indices = t.as_tensor(self.users[idx], dtype=t.long)
+            positive_sample = self.get_positive_sampled_edges(
+                idx, positive_article_indices
+            )
+
+            """ Negative Sample """
+            num_sampled_pos_edges = positive_sample.shape[0]
+
+            if num_sampled_pos_edges <= 1:
+                negative_edges_ratio = self.config.k - 1
+            else:
+                negative_edges_ratio = self.config.negative_edges_ratio
+
+            negative_sample = self.get_negative_sampled_edges(
+                all_edges,
+                positive_sample,
+                positive_article_indices,
+                idx,
+                negative_edges_ratio,
+                num_sampled_pos_edges,
+            )
+
+            edge_label_index[edge_type] = t.cat(
+                [positive_sample, negative_sample], dim=1
+            )
+            edge_label[edge_type] = t.cat(
+                [
+                    t.ones(positive_sample.shape[1]),
+                    t.zeros(negative_sample.shape[1]),
+                ],
+                dim=0,
+            )
+
+        return edge_label_index, edge_label
+
+    def get_positive_sampled_edges(
+        self, idx: int, positive_article_indices: Tensor
+    ) -> Tensor:
         # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
         samp_cut = max(
             1,
@@ -78,13 +238,17 @@ class GraphDataset(InMemoryDataset):
         sampled_positive_article_edges = create_edges_from_target_indices(
             idx, sampled_positive_article_indices
         )
+        return sampled_positive_article_edges
 
-        num_sampled_pos_edges = sampled_positive_article_indices.shape[0]
-        if num_sampled_pos_edges <= 1:
-            negative_edges_ratio = self.config.k - 1
-        else:
-            negative_edges_ratio = self.config.negative_edges_ratio
-
+    def get_negative_sampled_edges(
+        self,
+        all_edges: Tensor,
+        sampled_positive_article_indices: Tensor,
+        positive_article_indices: Tensor,
+        idx: int,
+        negative_edges_ratio: float,
+        num_sampled_pos_edges: int,
+    ) -> Tensor:
         if self.train:
             # Randomly select from the whole graph
             sampled_negative_article_edges = create_edges_from_target_indices(
@@ -112,85 +276,7 @@ class GraphDataset(InMemoryDataset):
                     t.cat([candidates, positive_article_indices], dim=0)
                 ),
             )
-
-        n_hop_edges = get_neighborhood(
-            self.db,
-            node_id=idx,
-            n_neighbor=self.config.n_hop_neighbors,
-            split_type=self.split_type,
-        )
-        # Filter out positive edges
-        n_hop_edges = t.tensor(n_hop_edges, dtype=t.long)
-        n_hop_edges = n_hop_edges[:, n_hop_edges[0] != idx]
-
-        all_touched_edges = t.cat(
-            [
-                positive_article_edges,
-                sampled_negative_article_edges,
-                n_hop_edges,
-            ],
-            dim=1,
-        )
-
-        all_subgraph_edges = t.cat(
-            [
-                positive_article_edges,
-                n_hop_edges,
-            ],
-            dim=1,
-        )
-
-        """ Node Features """
-        user_buckets = t.unique(all_touched_edges[0], sorted=True)
-        article_buckets = t.unique(all_touched_edges[1], sorted=True)
-
-        user_features = self.graph[Constants.node_user].x[user_buckets]
-        article_features = self.graph[Constants.node_item].x[article_buckets]
-
-        """ Remap and Prepare Edges """
-        all_subgraph_edges = remap_edges_to_start_from_zero(
-            all_subgraph_edges, user_buckets, article_buckets
-        )
-        all_sampled_edges = remap_edges_to_start_from_zero(
-            t.cat(
-                [sampled_positive_article_edges, sampled_negative_article_edges], dim=1
-            ),
-            user_buckets,
-            article_buckets,
-        )
-
-        # Prepare identifier of labels
-        labels = t.cat(
-            [
-                t.ones(sampled_positive_article_edges.shape[1]),
-                t.zeros(sampled_negative_article_edges.shape[1]),
-            ],
-            dim=0,
-        )
-
-        # all_sampled_edges, labels = shuffle_edges_and_labels(all_sampled_edges, labels)
-
-        """ Create Data """
-        data = HeteroData()
-        data[Constants.node_user].x = user_features
-        data[Constants.node_item].x = article_features
-
-        # Add original directional edges
-        data[Constants.edge_key].edge_index = all_subgraph_edges.type(t.long)
-        data[Constants.edge_key].edge_label_index = all_sampled_edges.type(t.long)
-        data[Constants.edge_key].edge_label = labels.type(t.long)
-
-        # Add reverse edges
-        reverse_key = t.LongTensor([1, 0])
-        data[Constants.rev_edge_key].edge_index = all_subgraph_edges[reverse_key].type(
-            t.long
-        )
-        data[Constants.rev_edge_key].edge_label_index = all_sampled_edges[
-            reverse_key
-        ].type(t.long)
-        data[Constants.rev_edge_key].edge_label = labels.type(t.long)
-
-        return data
+        return sampled_negative_article_edges
 
 
 def only_items_with_count_one(input: t.Tensor) -> t.Tensor:

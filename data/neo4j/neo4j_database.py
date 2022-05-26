@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase
 from typing import Optional
+from utils.constants import Constants
 
 query_periodic_commit = "USING PERIODIC COMMIT 10000 "
 
@@ -28,32 +29,26 @@ class Database:
         n_neighbor: int,
         node_type: str,
         split_type: str,
+        start_neighbor: int = 0,
         no_return: bool = False,
     ) -> str:
-        split_string = split_type + "_mask"
-        # slow_query = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m)"
-        # query_traditional = f"MATCH(n:{node_type} {{_id:'{str(node_id)}'}}) WITH n MATCH(n)-[r:BUYS*1..{str(n_neighbor)}{{{split_string}:'1'}}]-(m) UNWIND r AS rel WITH DISTINCT rel"
-        # query = (
-        #     f"MATCH (p:Customer {{_id: '{str(node_id)}'}})"
-        #     + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '<BUYS {{{split_string}:'1'}}', minLevel: 1, maxLevel: {str(n_neighbor)}}})"
-        #     + " YIELD relationships"
-        # )
 
-        base = "BUYS_TRAIN"
+        base = f"{Constants.rel_type}_TRAIN"
         extension = (
-            "|BUYS_VAL"
+            f"|{Constants.rel_type}_VAL"
             if split_type == "val"
-            else "|BUYS_VAL|BUYS_TEST"
+            else f"|{Constants.rel_type}_VAL|{Constants.rel_type}_TEST"
             if split_type == "test"
             else ""
         )
-        rel_string = base + extension
+        extra = f"|{Constants.rel_type_extra}"
+        rel_string = base + extension + extra
 
         query = (
-            f"MATCH (p:Customer {{_id: '{str(node_id)}'}}) "
-            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '{rel_string}', minLevel: 0, maxLevel: {str(n_neighbor)}}})"
+            f"MATCH (p:{node_type} {{_id: '{str(node_id)}'}}) "
+            + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '{rel_string}', minLevel: {str(start_neighbor)}, maxLevel: {str(n_neighbor)}}})"
             + f" YIELD relationships"
-            + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
+            + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0],TYPE(r),LABELS(ENDNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
         )
 
         if no_return:

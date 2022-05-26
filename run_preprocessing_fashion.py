@@ -15,7 +15,7 @@ from utils.preprocessing import (
     extract_edges,
     extract_reverse_edges,
 )
-
+from utils.constants import Constants
 from data.neo4j.save import save_to_neo4j
 
 
@@ -85,11 +85,11 @@ def preprocess(config: PreprocessingConfig):
 
     extra_nodes = None
     extra_edges = None
-    if config.extra_node_type is not None:
+    if Constants.node_extra is not None:
         print("| Loading extra node type...")
         extra_nodes = pd.DataFrame(
-            articles[config.extra_node_type.value].unique(),
-            columns=[config.extra_node_type.value],
+            articles[Constants.node_extra].unique(),
+            columns=[Constants.node_extra],
         )
         (
             extra_nodes,
@@ -97,15 +97,18 @@ def preprocess(config: PreprocessingConfig):
             extra_nodes_id_map_reverse,
         ) = create_ids_and_maps(
             extra_nodes,
-            config.extra_node_type.value,
+            Constants.node_extra,
             0,
         )
-        extra_edges = articles[["article_id", config.extra_node_type.value]]
-        extra_edges[config.extra_node_type.value] = extra_edges[
-            config.extra_node_type.value
-        ].apply(lambda x: extra_nodes_id_map_reverse[x])
+        extra_edges = articles[["article_id", Constants.node_extra]]
+        extra_edges[Constants.node_extra] = extra_edges[Constants.node_extra].apply(
+            lambda x: extra_nodes_id_map_reverse[x]
+        )
+        extra_edges["article_id"] = extra_edges["article_id"].apply(
+            lambda x: article_id_map_reverse[x]
+        )
         extra_edges.rename(
-            columns={config.extra_node_type.value: "extra_node_id"}, inplace=True
+            columns={Constants.node_extra: f"{Constants.node_extra}_id"}, inplace=True
         )
 
     print("| Parsing transactions...")
@@ -177,10 +180,18 @@ def preprocess(config: PreprocessingConfig):
     customers.drop(["customer_id"], axis=1, inplace=True)
     articles.drop(["article_id"], axis=1, inplace=True)
     if extra_nodes is not None:
-        extra_nodes.drop([config.extra_node_type.value], axis=1, inplace=True)
+        extra_nodes.drop([Constants.node_extra], axis=1, inplace=True)
 
     if config.save_to_neo4j:
-        save_to_neo4j(customers, articles, transactions)
+        save_to_neo4j(
+            customers,
+            articles,
+            transactions,
+            extra_nodes,
+            Constants.node_extra if Constants.node_extra is not None else None,
+            extra_edges if extra_edges is not None else None,
+            Constants.rel_type_extra,
+        )
 
     print("| Converting to tensors...")
     customers = t.tensor(customers.to_numpy(), dtype=t.long)
@@ -193,7 +204,7 @@ def preprocess(config: PreprocessingConfig):
         articles = t.cat((articles, per_article_text_embedding), axis=1)
     assert t.isnan(articles).any() == False
 
-    if config.extra_node_type is not None:
+    if Constants.node_extra is not None:
         extra_nodes = t.tensor(extra_nodes.to_numpy(), dtype=t.long)
 
     print("| Creating Data...")
@@ -205,34 +216,40 @@ def preprocess(config: PreprocessingConfig):
         customers,
         articles,
         extra_nodes,
-        config.extra_node_type.value if config.extra_node_type is not None else None,
+        Constants.node_extra if Constants.node_extra is not None else None,
         transactions_train["customer_id"].to_numpy(),
         transactions_train["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
-        config.extra_edge_type_label,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
+        Constants.edge_key_extra,
     )
     val_graph = create_data_pyg(
         customers,
         articles,
         extra_nodes,
-        config.extra_node_type.value if config.extra_node_type is not None else None,
+        Constants.node_extra if Constants.node_extra is not None else None,
         transactions_val["customer_id"].to_numpy(),
         transactions_val["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
-        config.extra_edge_type_label,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
+        Constants.edge_key_extra,
     )
     test_graph = create_data_pyg(
         customers,
         articles,
         extra_nodes,
-        config.extra_node_type.value if config.extra_node_type is not None else None,
+        Constants.node_extra if Constants.node_extra is not None else None,
         transactions_test["customer_id"].to_numpy(),
         transactions_test["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
-        config.extra_edge_type_label,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
+        Constants.edge_key_extra,
     )
 
     print("| Saving the graph...")

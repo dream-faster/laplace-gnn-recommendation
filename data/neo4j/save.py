@@ -2,6 +2,10 @@ import pandas as pd
 import os
 import time
 from utils.pandas import drop_columns_if_exist
+import numpy as np
+from typing import Optional, Tuple
+import torch as t
+from utils.constants import Constants
 
 
 def save_to_csv(dataframe: pd.DataFrame, name: str):
@@ -9,32 +13,58 @@ def save_to_csv(dataframe: pd.DataFrame, name: str):
 
 
 def save_to_neo4j(
-    customers: pd.DataFrame, articles: pd.DataFrame, transactions: pd.DataFrame
+    customers: pd.DataFrame,
+    articles: pd.DataFrame,
+    transactions: pd.DataFrame,
+    extra_nodes: Optional[pd.DataFrame],
+    extra_node_name: Optional[str],
+    extra_edges: Optional[pd.DataFrame],
+    extra_edge_type_label: Optional[str],
 ):
     print("| Saving to neo4j...")
     print("| Processing customer nodes...")
     customers = customers.copy()
-    customers[":LABEL"] = "Customer"
-    customers.rename(columns={"index": ":ID(Customer)"}, inplace=True)
-    customers["_id"] = customers[":ID(Customer)"]
+    customers[":LABEL"] = Constants.node_user
+    customers.rename(columns={"index": f":ID({Constants.node_user})"}, inplace=True)
+    customers["_id"] = customers[f":ID({Constants.node_user})"]
     save_to_csv(customers, "customers")
 
     print("| Processing article nodes...")
     articles = articles.copy()
-    articles[":LABEL"] = "Article"
-    articles.rename(columns={"index": ":ID(Article)"}, inplace=True)
-    articles["_id"] = articles[":ID(Article)"]
+    articles[":LABEL"] = Constants.node_item
+    articles.rename(columns={"index": f":ID({Constants.node_item})"}, inplace=True)
+    articles["_id"] = articles[f":ID({Constants.node_item})"]
     save_to_csv(articles, "articles")
 
     print("| Renaming transactions...")
     transactions = transactions.copy()
     transactions.rename(
         columns={
-            "customer_id": ":START_ID(Customer)",
-            "article_id": ":END_ID(Article)",
+            f"{Constants.node_user}_id": f":START_ID({Constants.node_user})",
+            f"{Constants.node_item}_id": f":END_ID({Constants.node_item})",
         },
         inplace=True,
     )
+
+    if extra_nodes is not None:
+        print("| Processing extra nodes...")
+        extra_node_df = pd.DataFrame(data=extra_nodes.copy())
+        extra_node_df[":LABEL"] = extra_node_name
+        extra_node_df.rename(columns={"index": f":ID({extra_node_name})"}, inplace=True)
+        extra_node_df["_id"] = extra_node_df[f":ID({extra_node_name})"]
+        extra_node_df = extra_node_df.astype(str)
+        save_to_csv(extra_node_df, f"{extra_node_name}")
+        new_extra_edges = extra_edges.copy()
+        new_extra_edges.rename(
+            columns={
+                f"{Constants.node_item}_id": f":START_ID({Constants.node_item})",
+                f"{extra_node_name}_id": f":END_ID({extra_node_name})",
+            },
+            inplace=True,
+        )
+        new_extra_edges = new_extra_edges.astype(int)
+        new_extra_edges[":TYPE"] = extra_edge_type_label
+        save_to_csv(new_extra_edges, "extra_transactions")
 
     transactions = drop_columns_if_exist(
         transactions, ["t_dat", "price", "sales_channel_id", "year-month"]
@@ -46,11 +76,11 @@ def save_to_neo4j(
 
     print("| Changing the edge names...")
     transactions[":TYPE"] = transactions.apply(
-        lambda x: "BUYS_TRAIN"
-        if x["train_mask"] == 1
-        else "BUYS_VAL"
+        lambda x: f"{Constants.rel_type}_TEST"
+        if x["test_mask"] == 1
+        else f"{Constants.rel_type}_VAL"
         if x["val_mask"] == 1
-        else "BUYS_TEST",
+        else f"{Constants.rel_type}_TRAIN",
         axis=1,
     )
 
@@ -59,9 +89,15 @@ def save_to_neo4j(
     print("| Stopping running instances of Neo4j...")
     os.system("neo4j stop")
     print("| Importing csv to database...")
-    os.system(
-        "neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force"
-    )
+    if extra_nodes is not None:
+        os.system(
+            f"neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --nodes=data/saved/{extra_node_name}.csv --relationships=data/saved/transactions.csv --relationships=data/saved/extra_transactions.csv --force"
+        )
+    else:
+        os.system(
+            f"neo4j-admin import --database=neo4j --nodes=data/saved/articles.csv --nodes=data/saved/customers.csv --relationships=data/saved/transactions.csv --force"
+        )
+
     print("| Starting Neo4j...")
     os.system("neo4j start")
     time.sleep(10)

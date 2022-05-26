@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from data.types import (
     PreprocessingConfig,
     UserColumn,
@@ -7,6 +7,7 @@ from data.types import (
     DataType,
 )
 from utils.profiling import Profiler
+from utils.constants import Constants
 
 embedding_range_dict = {
     "2": 2,
@@ -46,6 +47,10 @@ class Config:
 
     p_dropout_edges: Optional[float]  # dropout probability for edges
     p_dropout_features: Optional[float]  # dropout probability for nodes
+
+    default_edge_types: list[Tuple[str, str, str]]
+    other_edge_types: list[Tuple[str, str, str]]
+    node_types: list[str]
 
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
@@ -118,7 +123,15 @@ link_pred_config = Config(
     p_dropout_edges=0.2,  # Currently not being used!
     p_dropout_features=0.3,
     batch_norm=True,
-    neo4j=False,
+    neo4j=True,
+    default_edge_types=[Constants.edge_key],
+    # other_edge_types=[Constants.edge_key_extra],
+    other_edge_types=[],
+    node_types=[
+        Constants.node_user,
+        Constants.node_item,
+        # Constants.node_extra,
+    ],
 )
 
 
@@ -159,8 +172,6 @@ preprocessing_config = PreprocessingConfig(
     load_text_embedding=False,
     text_embedding_colname="derived_look",
     data_size=10_000,
-    save_to_neo4j=False,
+    save_to_neo4j=True,
     data_type=DataType.pyg,
-    extra_node_type=None, #ArticleColumn.ProductTypeNo,
-    extra_edge_type_label=None, #"has_type",
 )

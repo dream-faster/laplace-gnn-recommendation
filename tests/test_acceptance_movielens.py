@@ -4,6 +4,7 @@ from run_preprocessing import preprocess
 from run_pipeline import run_pipeline
 from torch_geometric import seed_everything
 from run_download_data import download_movielens
+from utils.constants import Constants
 
 preprocessing_config = BasePreprocessingConfig(
     filter_out_unconnected_nodes=True,
@@ -40,6 +41,12 @@ config = Config(
     p_dropout_features=0.3,
     batch_norm=True,
     neo4j=False,
+    default_edge_types=[Constants.edge_key],
+    other_edge_types=[],
+    node_types=[
+        Constants.node_user,
+        Constants.node_item,
+    ],
 )
 
 

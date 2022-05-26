@@ -41,6 +41,12 @@ def get_first_item_from_dataset(graph_database: bool) -> HeteroData:
         p_dropout_features=0.0,
         batch_norm=True,
         matchers="fashion",
+        default_edge_types=[Constants.edge_key],
+        other_edge_types=[],
+        node_types=[
+            Constants.node_user,
+            Constants.node_item,
+        ],
     )
 
     if graph_database:
