@@ -9,14 +9,14 @@ def get_SAGEConv_layers(
     from torch_geometric.nn import SAGEConv
 
     conv_single_layer = SAGEConv(
-        (-1, -1),
+        (-1, -1, -1),
         hidden_channels,
         aggr=agg_type,
         normalize=False,
         bias=True,
     )
     conv_last_layer = SAGEConv(
-        (-1, -1),
+        (-1, -1, -1),
         out_channels,
         aggr=agg_type,
         normalize=False,
