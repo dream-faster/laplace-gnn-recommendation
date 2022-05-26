@@ -71,17 +71,26 @@ class GraphDataset(InMemoryDataset):
         for node_type in self.node_types:
             data[node_type].x = self.graph[node_type].x[original_node_ids[node_type]]
 
-        # Add original directional edges
+        # Add original directional edges and reverse edges
+        reverse_key = t.LongTensor([1, 0])
         for edge_type in self.default_edge_types:
             data[edge_type].edge_index = edge_index[edge_type].type(t.long)
             data[edge_type].edge_label_index = edge_label_index[edge_type].type(t.long)
             data[edge_type].edge_label = edge_label[edge_type].type(t.long)
 
+            # Reverse edges
+            data["rev_" + edge_type].edge_index = edge_index[edge_type][
+                reverse_key
+            ].type(t.long)
+
         for edge_type in self.other_edge_types:
             data[edge_type].edge_index = edge_index[edge_type].type(t.long)
 
-        # # Add reverse edges
-        # reverse_key = t.LongTensor([1, 0])
+            # Reverse edges
+            data["rev_" + edge_type].edge_index = edge_index[edge_type][
+                reverse_key
+            ].type(t.long)
+
         # data[Constants.rev_edge_key].edge_index = all_subgraph_edges[reverse_key].type(
         #     t.long
         # )
