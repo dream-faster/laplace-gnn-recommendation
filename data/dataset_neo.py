@@ -79,17 +79,17 @@ class GraphDataset(InMemoryDataset):
             data[edge_type].edge_label = edge_label[edge_type].type(t.long)
 
             # Reverse edges
-            data["rev_" + edge_type].edge_index = edge_index[edge_type][
-                reverse_key
-            ].type(t.long)
+            data[
+                (edge_type[0], "rev_" + edge_type[1], edge_type[2])
+            ].edge_index = edge_index[edge_type][reverse_key].type(t.long)
 
         for edge_type in self.other_edge_types:
             data[edge_type].edge_index = edge_index[edge_type].type(t.long)
 
             # Reverse edges
-            data["rev_" + edge_type].edge_index = edge_index[edge_type][
-                reverse_key
-            ].type(t.long)
+            data[
+                (edge_type[0], "rev_" + edge_type[1], edge_type[2])
+            ].edge_index = edge_index[edge_type][reverse_key].type(t.long)
 
         # data[Constants.rev_edge_key].edge_index = all_subgraph_edges[reverse_key].type(
         #     t.long
