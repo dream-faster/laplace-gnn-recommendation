@@ -114,7 +114,6 @@ class Encoder_Decoder_Model(t.nn.Module):
                 )
 
     def __embedding(self, x_dict: dict) -> dict:
-
         for key, item in self.embedding_layers.items():
             features = x_dict[key]
             embedding = [

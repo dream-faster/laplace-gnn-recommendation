@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from data.types import (
     PreprocessingConfig,
     UserColumn,
@@ -7,6 +7,7 @@ from data.types import (
     DataType,
 )
 from utils.profiling import Profiler
+from utils.constants import Constants
 
 embedding_range_dict = {
     "2": 2,
@@ -46,6 +47,10 @@ class Config:
 
     p_dropout_edges: Optional[float]  # dropout probability for edges
     p_dropout_features: Optional[float]  # dropout probability for nodes
+
+    default_edge_types: list[Tuple[str, str, str]]
+    other_edge_types: list[Tuple[str, str, str]]
+    node_types: list[str]
 
     profiler: Optional[Profiler] = None
     evaluate_break_at: Optional[
@@ -119,6 +124,13 @@ link_pred_config = Config(
     p_dropout_features=0.3,
     batch_norm=True,
     neo4j=True,
+    default_edge_types=[Constants.edge_key],
+    other_edge_types=[Constants.edge_key_extra],
+    node_types=[
+        Constants.node_user,
+        Constants.node_item,
+        Constants.node_extra,
+    ],
 )
 
 

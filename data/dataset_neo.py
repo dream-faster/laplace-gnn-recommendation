@@ -42,14 +42,6 @@ class GraphDataset(InMemoryDataset):
         self.db = Database(db_param[0], db_param[1], db_param[2])
         self.split_type = split_type
 
-        self.default_edge_types = [Constants.edge_key]
-        self.other_edge_types = [Constants.edge_key_extra]
-        self.node_types = [
-            Constants.node_user,
-            Constants.node_item,
-            Constants.node_extra,
-        ]
-
     def __len__(self) -> int:
         return len(self.users)
 
@@ -72,14 +64,14 @@ class GraphDataset(InMemoryDataset):
         """ Create Data """
         data = HeteroData()
 
-        for node_type in self.node_types:
+        for node_type in self.config.node_types:
             data[node_type].x = (
                 self.graph[node_type].x[original_node_ids[node_type]].type(t.long)
             )
 
         # Add original directional edges and reverse edges
         reverse_key = t.LongTensor([1, 0])
-        for edge_type in self.default_edge_types:
+        for edge_type in self.config.default_edge_types:
             data[edge_type].edge_index = edge_index[edge_type].type(t.long)
             data[edge_type].edge_label_index = edge_label_index[edge_type].type(t.long)
 
@@ -90,7 +82,7 @@ class GraphDataset(InMemoryDataset):
                 (edge_type[2], "rev_" + edge_type[1], edge_type[0])
             ].edge_index = edge_index[edge_type][reverse_key].type(t.long)
 
-        for edge_type in self.other_edge_types:
+        for edge_type in self.config.other_edge_types:
             data[edge_type].edge_index = edge_index[edge_type].type(t.long)
 
             # Reverse edges
@@ -153,7 +145,7 @@ class GraphDataset(InMemoryDataset):
         """
         edge_index = defaultdict(list)
 
-        for edge_type in self.default_edge_types:
+        for edge_type in self.config.default_edge_types:
             edge_index[edge_type] = t.cat(
                 [
                     t.tensor(neighborhood[edge_type]),
@@ -162,7 +154,7 @@ class GraphDataset(InMemoryDataset):
                 dim=1,
             )
 
-        for edge_type in self.other_edge_types:
+        for edge_type in self.config.other_edge_types:
             edge_index[edge_type] = t.tensor(neighborhood[edge_type])
 
         return edge_index
@@ -171,7 +163,7 @@ class GraphDataset(InMemoryDataset):
         edge_label_index = dict()
         edge_label = dict()
 
-        for edge_type in self.default_edge_types:
+        for edge_type in self.config.default_edge_types:
             all_edges = self.graph[edge_type].edge_index
 
             """ Positive Sample """
