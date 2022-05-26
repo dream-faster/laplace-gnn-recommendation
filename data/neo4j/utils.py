@@ -12,7 +12,7 @@ def get_neighborhood(
         db.query_n_neighbors(
             node_id=node_id,
             n_neighbor=n_neighbor,
-            node_type="Customer",
+            node_type="customer",
             split_type=split_type,
             start_neighbor=start_neighbor,
             no_return=True,
@@ -29,7 +29,7 @@ def get_neighborhood(
                 rel_type.replace("_TRAIN", "").replace("_TEST", "").replace("_VAL", ""),
                 to_type,
             )
-        ].append(from_id, to_id)
+        ].append((int(from_id), int(to_id)))
 
     for key, index in edge_index.items():
         edge_index[key] = t.tensor(list(map(list, zip(*index))), dtype=t.long)
@@ -38,8 +38,8 @@ def get_neighborhood(
 
 
 def get_id_map(db: Database) -> tuple[dict, dict]:
-    customers = db.run_match(db.query_all_nodes(node_type="Customer"))
-    articles = db.run_match(db.query_all_nodes(node_type="Article"))
+    customers = db.run_match(db.query_all_nodes(node_type="customer"))
+    articles = db.run_match(db.query_all_nodes(node_type="article"))
 
     customer_map = {customer["n"].id: customer["n"]._id for customer in customers}
     article_map = {article["n"].id: article["n"]._id for article in articles}

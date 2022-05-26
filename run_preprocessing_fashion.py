@@ -108,7 +108,7 @@ def preprocess(config: PreprocessingConfig):
             lambda x: article_id_map_reverse[x]
         )
         extra_edges.rename(
-            columns={Constants.node_extra: "extra_node_id"}, inplace=True
+            columns={Constants.node_extra: f"{Constants.node_extra}_id"}, inplace=True
         )
 
     print("| Parsing transactions...")
@@ -190,7 +190,7 @@ def preprocess(config: PreprocessingConfig):
             extra_nodes,
             Constants.node_extra if Constants.node_extra is not None else None,
             extra_edges if extra_edges is not None else None,
-            Constants.edge_key_extra,
+            Constants.rel_type_extra,
         )
 
     print("| Converting to tensors...")
@@ -220,7 +220,9 @@ def preprocess(config: PreprocessingConfig):
         transactions_train["customer_id"].to_numpy(),
         transactions_train["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
         Constants.edge_key_extra,
     )
     val_graph = create_data_pyg(
@@ -231,7 +233,9 @@ def preprocess(config: PreprocessingConfig):
         transactions_val["customer_id"].to_numpy(),
         transactions_val["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
         Constants.edge_key_extra,
     )
     test_graph = create_data_pyg(
@@ -242,7 +246,9 @@ def preprocess(config: PreprocessingConfig):
         transactions_test["customer_id"].to_numpy(),
         transactions_test["article_id"].to_numpy(),
         extra_edges["article_id"].to_numpy() if extra_edges is not None else None,
-        extra_edges["extra_node_id"].to_numpy() if extra_edges is not None else None,
+        extra_edges[f"{Constants.node_extra}_id"].to_numpy()
+        if extra_edges is not None
+        else None,
         Constants.edge_key_extra,
     )
 

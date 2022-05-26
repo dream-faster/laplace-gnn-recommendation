@@ -50,110 +50,6 @@ class GraphDataset(InMemoryDataset):
         return len(self.users)
 
     def __getitem__(self, idx: int) -> Union[Data, HeteroData]:
-        # """Create Edges"""
-        # all_edges = self.graph[Constants.edge_key].edge_index
-
-        # positive_article_indices = t.as_tensor(
-        #     self.users[idx], dtype=t.long
-        # )  # all the positive target indices for the current user
-        # positive_article_edges = create_edges_from_target_indices(
-        #     idx, positive_article_indices
-        # )
-
-        # # Sample positive edges from subgraph (amount defined in config.positive_edges_ratio)
-        # samp_cut = max(
-        #     1,
-        #     math.floor(
-        #         len(positive_article_indices) * self.config.positive_edges_ratio
-        #     ),
-        # )
-
-        # if self.randomization:
-        #     random_integers = t.randint(
-        #         low=0, high=len(positive_article_indices), size=(samp_cut,)
-        #     )
-        # else:
-        #     random_integers = t.tensor(
-        #         [
-        #             t.min(positive_article_indices, dim=0)[1].item(),
-        #             t.max(positive_article_indices, dim=0)[1].item(),
-        #         ]
-        #     )
-
-        # sampled_positive_article_indices = positive_article_indices[random_integers]
-        # sampled_positive_article_edges = create_edges_from_target_indices(
-        #     idx, sampled_positive_article_indices
-        # )
-
-        # num_sampled_pos_edges = sampled_positive_article_indices.shape[0]
-        # if num_sampled_pos_edges <= 1:
-        #     negative_edges_ratio = self.config.k - 1
-        # else:
-        #     negative_edges_ratio = self.config.negative_edges_ratio
-
-        # sampled_negative_article_edges = self.get_negative_edges(
-        #     all_edges,
-        #     sampled_positive_article_indices,
-        #     positive_article_indices,
-        #     idx,
-        #     negative_edges_ratio,
-        #     num_sampled_pos_edges,
-        # )
-
-        # n_hop_edge_index = get_neighborhood(
-        #     self.db,
-        #     node_id=idx,
-        #     n_neighbor=self.config.n_hop_neighbors,
-        #     start_neighbor=1,
-        #     split_type=self.split_type,
-        # )
-
-        # # Filter out positive edges
-        # all_touched_edges = t.cat(
-        #     [
-        #         positive_article_edges,
-        #         sampled_negative_article_edges,
-        #         n_hop_edge_index[Constants.edge_key],
-        #     ],
-        #     dim=1,
-        # )
-
-        # all_subgraph_edges = t.cat(
-        #     [
-        #         positive_article_edges,
-        #         n_hop_edge_index[Constants.edge_key],
-        #     ],
-        #     dim=1,
-        # )
-
-        # """ Node Features """
-        # user_buckets = t.unique(all_touched_edges[0], sorted=True)
-        # article_buckets = t.unique(all_touched_edges[1], sorted=True)
-
-        # user_features = self.graph[Constants.node_user].x[user_buckets]
-        # article_features = self.graph[Constants.node_item].x[article_buckets]
-
-        # """ Remap and Prepare Edges """
-        # all_subgraph_edges = remap_edges_to_start_from_zero(
-        #     all_subgraph_edges, user_buckets, article_buckets
-        # )
-        # all_sampled_edges = remap_edges_to_start_from_zero(
-        #     t.cat(
-        #         [sampled_positive_article_edges, sampled_negative_article_edges], dim=1
-        #     ),
-        #     user_buckets,
-        #     article_buckets,
-        # )
-
-        # # Prepare identifier of labels
-        # labels = t.cat(
-        #     [
-        #         t.ones(sampled_positive_article_edges.shape[1]),
-        #         t.zeros(sampled_negative_article_edges.shape[1]),
-        #     ],
-        #     dim=0,
-        # )
-
         """Get Subgraph Edges, Sampled Edges and Features"""
         edge_label_index, edge_label = self.get_edge_label_index(idx)
         neighborhood = get_neighborhood(
@@ -163,9 +59,11 @@ class GraphDataset(InMemoryDataset):
             start_neighbor=1,
             split_type=self.split_type,
         )
-        edge_index = self.get_edge_indexes(edge_label_index, neighborhood)
-        original_node_ids = self.get_original_node_ids(edge_index)
-        # edge_index = remap_edge_index(edge_index, original_node_ids)
+        edge_index = self.get_edge_indexes(edge_label_index, edge_label, neighborhood)
+        original_node_ids = self.get_original_node_ids(edge_index, edge_label_index)
+        edge_index, edge_label_index = self.remap_indexes(
+            edge_index, edge_label_index, original_node_ids
+        )
 
         """ Create Data """
         data = HeteroData()
@@ -194,7 +92,22 @@ class GraphDataset(InMemoryDataset):
 
         return data
 
-    def get_original_node_ids(self, edge_index):
+    def remap_indexes(
+        self, edge_index: dict, edge_label_index: dict, original_ids: dict
+    ) -> dict:
+        for key, item in edge_index.items():
+            edge_index[key] = remap_edges_to_start_from_zero(
+                item, original_ids[key[0]], original_ids[key[2]]
+            )
+
+        for key, item in edge_label_index.items():
+            edge_label_index[key] = remap_edges_to_start_from_zero(
+                item, original_ids[key[0]], original_ids[key[2]]
+            )
+
+        return edge_index, edge_label_index
+
+    def get_original_node_ids(self, edge_index: dict, edge_label_index: dict) -> dict:
         original_node_ids = defaultdict(Tensor)
 
         for edge_key, item in edge_index.items():
@@ -208,19 +121,36 @@ class GraphDataset(InMemoryDataset):
                 [original_node_ids[edge_key[2]], item[1]], dim=0
             ).type(t.long)
 
+        for edge_key, item in edge_label_index.items():
+            if item.shape[0] == 0:
+                continue
+            original_node_ids[edge_key[0]] = t.cat(
+                [original_node_ids[edge_key[0]], item[0]], dim=0
+            ).type(t.long)
+
+            original_node_ids[edge_key[2]] = t.cat(
+                [original_node_ids[edge_key[2]], item[1]], dim=0
+            ).type(t.long)
+
+        for key, item in original_node_ids.items():
+            original_node_ids[key] = t.unique(item)
+
         return original_node_ids
 
     def get_edge_indexes(
-        self, edge_label_index: Tensor, neighborhood: Tensor
+        self, edge_label_index: Tensor, edge_label: Tensor, neighborhood: Tensor
     ) -> Tensor:
         """
-        Combine edge indexes
+        Combine edge indexes: neighbor (without 0-hop neighbors) and positive sampled edges
         """
         edge_index = defaultdict(list)
 
         for edge_type in self.default_edge_types:
             edge_index[edge_type] = t.cat(
-                [t.tensor(neighborhood[edge_type]), edge_label_index[edge_type]],
+                [
+                    t.tensor(neighborhood[edge_type]),
+                    edge_label_index[edge_type][:, edge_label[edge_type] == 1],
+                ],
                 dim=1,
             )
 
@@ -237,6 +167,7 @@ class GraphDataset(InMemoryDataset):
             all_edges = self.graph[edge_type].edge_index
 
             """ Positive Sample """
+            # We will have to modify self.users to be a disctionary of self.users[idx][edge_type]
             positive_article_indices = t.as_tensor(self.users[idx], dtype=t.long)
             positive_sample = self.get_positive_sampled_edges(
                 idx, positive_article_indices

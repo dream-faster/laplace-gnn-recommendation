@@ -45,7 +45,7 @@ class Database:
         rel_string = base + extension + extra
 
         query = (
-            f"MATCH (p:Customer {{_id: '{str(node_id)}'}}) "
+            f"MATCH (p:{node_type} {{_id: '{str(node_id)}'}}) "
             + f" CALL apoc.path.subgraphAll(p, {{relationshipFilter: '{rel_string}', minLevel: {str(start_neighbor)}, maxLevel: {str(n_neighbor)}}})"
             + f" YIELD relationships"
             + f" RETURN [r in relationships | [LABELS(STARTNODE(r))[0],TYPE(r),LABELS(ENDNODE(r))[0], STARTNODE(r)._id,ENDNODE(r)._id]] as arraysomething"
