@@ -1,8 +1,23 @@
 # **laplace**, a Graph Neural Network based Recommendation Engine
 
+##### Table of Contents  
+- [Overview](#Overview)  
+- [Get Started](#Get_Started) 
+  - [Installation & Data](#Installation) 
+  - [Main Pipeline](#Main_Pipeline) 
+- [Advanced Usage](#Advanced_Usage)  
+    - [Hyperparameter tuning](#Hyperparameter_tuning)     
+- [Further todo](#Further_todo)  
+- [Recommended resources](#Recommended_resources)  
+
+<br>
+
+
+
+<a name="Overview"></a>
 
 ## Overview
----
+
 **laplace** is an end-to-end ML framework to train and predict on neurally-enhanced graphs for recommendation. 
 
 The pipeline is designed for self-supervised edge prediction on heterogenous graphs. 
@@ -33,8 +48,10 @@ The pipeline is designed for self-supervised edge prediction on heterogenous gra
 <br>
 <br>
 
+<a name="Get_Started"></a>
+
 ## Get Started
----
+
 
 ### Installation & Data
 Install the environment with:
@@ -61,6 +78,8 @@ Currently the system works with the
 
 <br>
 
+<a name="Main_Pipeline"></a>
+
 ### Main Pipeline
 
 
@@ -81,38 +100,78 @@ Preprocessing turns tabular data into a graph and (optionally) loads it into a `
 
 - First download data as defined in 'Get Started'
 - Set preprocessing configurations in `config.py -> preprocessing_config`
+- Run `run_preprocessing.py`
+
+Data will be saved under `data/derived`.
 
 <br>
 
 *Note on neo4j:*
 
-It is recommended to use neo4j, it is the officially supported database of laplace.
+It is recommended to use neo4j, it is the officially supported database of laplace, by setting these parameters in `config.py`:
 
-You can view the graph and run queries after running the preprocessing pipeline (it automatically starts neo4j server). However, if neo4j stops running you can restart it with `neo4j start` in the terminal. [More info on neo4j](https://neo4j.com/developer/getting-started-resources/).
+    preprocessing_config.save_to_neo4j = True 
+    link_pred_config.neo4j = True
 
+    
+You can view the graph and run queries after running the preprocessing pipeline (it automatically starts neo4j server). 
+
+However, if neo4j stops running you can restart it with `neo4j start` in the terminal. [More info on neo4j](https://neo4j.com/developer/getting-started-resources/).
+
+<br>
 
 **Step 2: Training** 
 
+- Set training configurations in `config.py -> link_pred_config`
+- run training with `run_pipeline.py`
 
+<br>
+
+**Step 3: Get Inference** 
+
+- Run inference by launching `run_submission.py`
 
 
 <br>
 <br>
+
+<a name="Advanced_Usage"></a>
 
 ## Advanced Usage
----
 
 <br>
+
+<a name="Hyperparameter_tuning"></a>
 
 ### Hyperparameter tuning
 
 wandb is integrated into laplace.
 
-1. Create an `.env` file in the root of the project. Add your wandb api key: `WANDB_API_KEY=5234r5andomlettersexample3235325`
+1. Create an `.env` file in the root of the project. Add your wandb api key: `WANDB_API_KEY=12345random678letters91011example121314`
 2. You can configure the sweep under `sweep.yaml`
 3. Then run `run_sweep.py`
 
+<br>
+
 > ! Some sweep parameters are overwritten under run_sweep.py
+
+<br>
+<br>
+
+<a name="Futher_todo"></a>
+
+## Futher todo
+
+:white_large_square Benchmark different implementation
+:white_large_square Additional matchers
+
+<br>
+<br>
+
+<a name="Recommended_resources"></a>
+
+## Recommended resources
+
 
 
 
