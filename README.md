@@ -62,13 +62,23 @@ Activate the environment:
 
     conda activate fashion
 
-Download the required data. Run the following script from terminal:
+Download the required data. 
+
+1. Upload your data to a server. You should have a seperate file for: 
+     - articles.parquet
+     - customers.parquet
+     - transactions_splitted.parquet
+
+<br>
+
+2. Create an `.env` file in the root directory with a `DATA_HOST_URL` variable
+3. Run the following script from terminal:
 
     python run-download-data.py fashion
 
 
 
-
+<br>
 
 Currently the system works with the 
 - [H&M Fashion Recommendation Kaggle challenge dataset](https://www.kaggle.com/c/h-and-m-personalized-fashion-recommendations). <br> `python run-download-data.py fashion`

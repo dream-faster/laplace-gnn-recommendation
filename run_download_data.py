@@ -2,6 +2,9 @@ import os
 import argparse
 
 
+data_host_url = os.environ.get("DATA_HOST_URL")
+
+
 def download_movielens():
     os.system(
         "wget -nc -P data/original/ http://files.grouplens.org/datasets/movielens/ml-1m.zip"
@@ -12,14 +15,10 @@ def download_movielens():
 
 
 def download_fashion():
+    os.system(f"wget -nc -P data/original/ {data_host_url}/customers.parquet")
+    os.system(f"wget -nc -P data/original/ {data_host_url}/articles.parquet")
     os.system(
-        "wget -nc -P data/original/ https://storage.googleapis.com/heii-public/customers.parquet"
-    )
-    os.system(
-        "wget -nc -P data/original/ https://storage.googleapis.com/heii-public/articles.parquet"
-    )
-    os.system(
-        "wget -nc -P data/original/ https://storage.googleapis.com/heii-public/transactions_splitted.parquet"
+        f"wget -nc -P data/original/ {data_host_url}/transactions_splitted.parquet"
     )
 
 
