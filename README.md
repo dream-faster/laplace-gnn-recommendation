@@ -28,12 +28,12 @@ The pipeline is designed for self-supervised edge prediction on heterogenous gra
 
 ### Features
 
-- Two step, **Multi-model** composition:
-  1. Candidate Selection
+- Multi-step, hybrid recommendation pipeline:
+  1. Candidate Selection:
      - Integrating LightGCN recommendations (can be ran on its own aswell)
      - Multiple, custom heuristics
      - Strategies can be mixed and matched
-  2. GraphConvolutional network prediction on 
+  2. Ranking: GraphConvolutional network prediction on candidate edges
 - Works on **Heterogenous** graphs
   - User based training, validation and test splitting
   - N-hop neighborhood aggregation
